@@ -1,0 +1,44 @@
+﻿name: Quiniela Master Pro - Bot 24/7 LOTBA Sync
+
+on:
+  schedule:
+    # Runs every 5 minutes from 10:00 to 22:30 (UTC-3 is 13:00 to 01:30 UTC)
+    - cron: '*/5 13-23,0-2 * * 1-6'
+  workflow_dispatch:
+
+jobs:
+  sync_lotba:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run LOTBA & Multi-Source Official Scraper
+        run: |
+          python backend/scraper_service.py
+
+      - name: Deploy Updated draws.json to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OPENCLAW_NYJ_IA_WEB }}'
+          projectId: openclaw-nyj-ia-web
+          target: ingenieriajh
+          channelId: live
+        continue-on-error: true
+
+      - name: Commit Updated Draws Database
+        run: |
+          git config --global user.name 'Quiniela Sync Bot'
+          git config --global user.email 'bot@ingenieriajh.com'
+          git add backend/real_draws_dump.json backend/quiniela.db
+          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Auto-Sync: Actualización oficial de extractos LOTBA [skip ci]" && git push)
