@@ -790,6 +790,14 @@ export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
   // 2026-08-31 (Lunes - Extractos Oficiales 100% Verificados)
+  "2026-08-31_ciudad_vespertina": {
+    head_millar: "7437", head_centena: "437", head_ambo: "37",
+    board: ["7437", "5149", "0883", "8460", "4615", "4424", "7026", "0498", "8236", "8878", "5021", "7592", "7368", "2852", "1025", "7368", "1964", "4320", "4163", "8046"]
+  },
+  "2026-08-31_provincia_vespertina": {
+    head_millar: "6547", head_centena: "547", head_ambo: "47",
+    board: ["6547", "9638", "3341", "1359", "6572", "7965", "6218", "4713", "7875", "2153", "4136", "6614", "9163", "5405", "7504", "1965", "9259", "3049", "3758", "3575"]
+  },
   "2026-08-31_ciudad_matutina": {
     head_millar: "7200", head_centena: "200", head_ambo: "00",
     board: ["7200", "6038", "7444", "7530", "3823", "1126", "4585", "4141", "1487", "3700", "6880", "1580", "2115", "8071", "4780", "9912", "8743", "6542", "6512", "6857"]
