@@ -789,6 +789,16 @@ export function getShiftDrawStatus(shiftId, targetDateStr = null) {
 export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
+  // 2026-08-31 (Lunes - Extractos Oficiales 100% Verificados)
+  "2026-08-31_ciudad_previa": {
+    head_millar: "8662", head_centena: "662", head_ambo: "62",
+    board: ["8662", "4735", "5689", "9359", "1307", "3566", "6170", "5540", "0101", "3632", "7871", "1395", "6557", "5729", "8969", "5934", "8586", "6664", "6506", "3469"]
+  },
+  "2026-08-31_provincia_previa": {
+    head_millar: "5374", head_centena: "374", head_ambo: "74",
+    board: ["5374", "0704", "5816", "2481", "3232", "1463", "0248", "8677", "2174", "0673", "4130", "5497", "3610", "4476", "9923", "1938", "6464", "9146", "5228", "1475"]
+  },
+
   // 2026-08-29 (Sábado - Extractos Oficiales 100% Verificados)
   "2026-08-29_ciudad_previa": {
     head_millar: "3047", head_centena: "047", head_ambo: "47",
@@ -1002,8 +1012,106 @@ export function saveRealOfficialDrawToStorage(hashKey, drawData) {
   }
 }
 
-// Online Auto-Sync with Remote Real Draws Repository on Firebase
+// Native In-App Direct Extractor from LOTBA Official Server
+export async function fetchDirectFromLotba() {
+  try {
+    const todayStr = getLocalDateString(new Date());
+    const homeRes = await fetch('https://quiniela.loteriadelaciudad.gob.ar/', {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store' }
+    });
+    if (!homeRes.ok) return null;
+    const homeHtml = await homeRes.text();
+    
+    // Discover today's active sorteo IDs from the home table
+    const sorteoRegex = /<td>(\d{5})<\/td>\s*<td>([^<]+)<\/td>\s*<td>(\d{2}:\d{2})<\/td>/gi;
+    let match;
+    const sorteos = [];
+    while ((match = sorteoRegex.exec(homeHtml)) !== null) {
+      const shiftRaw = match[2].trim().toLowerCase();
+      let cleanShift = 'previa';
+      if (shiftRaw.includes('previa')) cleanShift = 'previa';
+      else if (shiftRaw.includes('primera')) cleanShift = 'primera';
+      else if (shiftRaw.includes('matutina')) cleanShift = 'matutina';
+      else if (shiftRaw.includes('vespertina')) cleanShift = 'vespertina';
+      else if (shiftRaw.includes('nocturna')) cleanShift = 'nocturna';
+      
+      sorteos.push({ id: match[1], shift: cleanShift, time: match[3] });
+    }
+
+    if (sorteos.length === 0) return null;
+
+    const extracted = {};
+    for (const s of sorteos.slice(0, 5)) {
+      for (const [jur, lot] of [['51', 'ciudad'], ['53', 'provincia']]) {
+        try {
+          const formData = new URLSearchParams();
+          formData.append('codigo', '0080');
+          formData.append('juridiccion', jur);
+          formData.append('sorteo', s.id);
+
+          const res = await fetch('https://quiniela.loteriadelaciudad.gob.ar/resultadosQuiniela/consultaResultados.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData.toString()
+          });
+          if (res.ok) {
+            const html = await res.text();
+            const posRegex = /<div class=["']pos["']>(\d{2})<\/div>\s*<div>(\d{4})<\/div>/gi;
+            let m;
+            const prizes = {};
+            while ((m = posRegex.exec(html)) !== null) {
+              const pos = parseInt(m[1], 10);
+              if (pos >= 1 && pos <= 20 && !prizes[pos]) {
+                prizes[pos] = m[2];
+              }
+            }
+            if (Object.keys(prizes).length === 20) {
+              const boardArr = Array.from({ length: 20 }, (_, i) => prizes[i + 1]);
+              const key = `${todayStr}_${lot}_${s.shift}`;
+              extracted[key] = {
+                draw_date: todayStr,
+                lottery: lot,
+                shift: s.shift,
+                head_millar: boardArr[0],
+                head_centena: boardArr[0].slice(-3),
+                head_ambo: boardArr[0].slice(-2),
+                board: boardArr
+              };
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (Object.keys(extracted).length > 0) {
+      const raw = localStorage.getItem(REAL_DRAWS_STORAGE_KEY);
+      const existing = raw ? JSON.parse(raw) : {};
+      const merged = { ...existing, ...extracted };
+      localStorage.setItem(REAL_DRAWS_STORAGE_KEY, JSON.stringify(merged));
+      return extracted;
+    }
+  } catch (err) {
+    console.warn("Direct LOTBA in-app extractor fallback:", err.message);
+  }
+  return null;
+}
+
+// Online Hybrid Auto-Sync: 1) Direct LOTBA Extractor + 2) Cloud Repository Fallback
 export async function syncRemoteOfficialDraws() {
+  let directUpdated = false;
+  let totalCount = 0;
+
+  // 1. Try Direct Native LOTBA Extractor (In-App real-time live connection)
+  try {
+    const directDraws = await fetchDirectFromLotba();
+    if (directDraws && Object.keys(directDraws).length > 0) {
+      directUpdated = true;
+      totalCount += Object.keys(directDraws).length;
+    }
+  } catch (e) {}
+
+  // 2. Fetch Central Cloud Repository from Firebase Hosting
   try {
     const res = await fetch(`https://ingenieriajh.web.app/api/draws.json?t=${Date.now()}`, {
       cache: 'no-store',
@@ -1016,18 +1124,22 @@ export async function syncRemoteOfficialDraws() {
         const existing = raw ? JSON.parse(raw) : {};
         const merged = { ...existing, ...data };
         localStorage.setItem(REAL_DRAWS_STORAGE_KEY, JSON.stringify(merged));
-        
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('quinela-draws-updated', {
-            detail: { count: Object.keys(data).length, timestamp: Date.now() }
-          }));
-        }
-        return { success: true, count: Object.keys(data).length };
+        totalCount = Math.max(totalCount, Object.keys(data).length);
       }
     }
   } catch (err) {
     console.warn("Remote draws auto-sync offline/fallback:", err.message);
   }
+
+  if (totalCount > 0) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('quinela-draws-updated', {
+        detail: { count: totalCount, timestamp: Date.now() }
+      }));
+    }
+    return { success: true, count: totalCount, directLotba: directUpdated };
+  }
+
   return { success: false, count: 0 };
 }
 
