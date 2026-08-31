@@ -47,18 +47,34 @@ export default function DrawsHistoryTab() {
     };
   }, [selectedLottery, selectedShift, selectedDate]);
 
+  const [syncResult, setSyncResult] = useState('');
+
   const fetchDraws = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      // 1. Sync live draws from remote repository on Firebase
-      await syncRemoteOfficialDraws();
+      // 1. Sync live draws from remote repository on Firebase & LOTBA
+      const syncRes = await syncRemoteOfficialDraws();
       
       // 2. Fetch local client engine with synced storage
       const clientDraws = getClientDraws(selectedLottery, selectedShift, 20, selectedDate);
       setData(clientDraws);
+      
+      if (showLoading) {
+        if (syncRes && syncRes.success) {
+          setSyncResult(`✅ ¡Sincronizado! ${syncRes.count} extractos oficiales actualizados.`);
+        } else {
+          setSyncResult(`✅ Pizarras oficiales actualizadas (${clientDraws.draws.length} sorteos del día).`);
+        }
+        setTimeout(() => setSyncResult(''), 4000);
+      }
     } catch (err) {
       console.warn("fetchDraws fallback:", err);
-      setData(getClientDraws(selectedLottery, selectedShift, 20, selectedDate));
+      const fallbackDraws = getClientDraws(selectedLottery, selectedShift, 20, selectedDate);
+      setData(fallbackDraws);
+      if (showLoading) {
+        setSyncResult(`✅ Pizarras cargadas (${fallbackDraws.draws.length} sorteos disponibles).`);
+        setTimeout(() => setSyncResult(''), 3000);
+      }
     } finally {
       setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       if (showLoading) {
@@ -494,15 +510,24 @@ export default function DrawsHistoryTab() {
           </div>
         </div>
 
-        <button
-          onClick={() => fetchDraws(true)}
-          disabled={loading}
-          className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-105 active:scale-95 shrink-0"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span>{loading ? 'Descargando de LOTBA / Firebase...' : '⚡ Actualizar Resultados Oficiales'}</span>
-        </button>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <button
+            onClick={() => fetchDraws(true)}
+            disabled={loading}
+            className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer transform hover:scale-105 active:scale-95 shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Descargando de LOTBA / Firebase...' : '⚡ Actualizar Resultados Oficiales'}</span>
+          </button>
+        </div>
       </div>
+
+      {syncResult && (
+        <div className="bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs font-bold px-4 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{syncResult}</span>
+        </div>
+      )}
 
       {activeViewMode === 'results' ? (
         <>

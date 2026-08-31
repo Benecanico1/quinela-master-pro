@@ -790,6 +790,14 @@ export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
   // 2026-08-31 (Lunes - Extractos Oficiales 100% Verificados)
+  "2026-08-31_ciudad_primera": {
+    head_millar: "3904", head_centena: "904", head_ambo: "04",
+    board: ["3904", "1025", "0498", "9984", "9834", "9624", "4299", "3299", "0538", "6160", "2364", "4094", "5439", "6916", "5295", "4622", "0106", "1933", "6637", "3372"]
+  },
+  "2026-08-31_provincia_primera": {
+    head_millar: "1660", head_centena: "660", head_ambo: "60",
+    board: ["1660", "8750", "4699", "6834", "6134", "6162", "9517", "9305", "1074", "7737", "9409", "9847", "4448", "8977", "7644", "2134", "7884", "0567", "7421", "8086"]
+  },
   "2026-08-31_ciudad_previa": {
     head_millar: "8662", head_centena: "662", head_ambo: "62",
     board: ["8662", "4735", "5689", "9359", "1307", "3566", "6170", "5540", "0101", "3632", "7871", "1395", "6557", "5729", "8969", "5934", "8586", "6664", "6506", "3469"]
@@ -1340,43 +1348,12 @@ export function getClientDraws(lottery = "all", shift = "all", limit = 15, custo
         const shiftStatus = getShiftDrawStatus(shiftId, dateStr);
         const shiftInfo = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === shiftId) || { name: shiftId, time: '18:00' };
 
-        if (shiftStatus.status === 'COMPLETED') {
-          const draw = generateDeterministicBoard(dateStr, lot, shiftId);
-          draw.status = 'COMPLETED';
-          draw.status_text = 'Pizarra Oficial Confirmada';
+        const draw = generateDeterministicBoard(dateStr, lot, shiftId);
+        // Only include draws that have actually completed and have verified official numbers
+        if (draw.status === 'COMPLETED' && draw.p1 && draw.p1 !== '----') {
           draw.shift_name = shiftInfo.name;
           draw.shift_time = shiftInfo.time;
           allDraws.push(draw);
-        } else if (shiftStatus.status === 'IN_PROGRESS') {
-          allDraws.push({
-            id: `${dateStr.replace(/-/g, '')}_${lot.slice(0, 3)}_${shiftId.slice(0, 3)}`,
-            draw_date: dateStr,
-            lottery: lot,
-            shift: shiftId,
-            shift_name: shiftInfo.name,
-            shift_time: shiftInfo.time,
-            status: 'IN_PROGRESS',
-            status_text: shiftStatus.status_text,
-            p1: '----',
-            head_ambo: '--',
-            significado: 'En Extracción...',
-            ai_hit: { is_hit: false, details: 'Sorteo en curso (Margen de 15 min)' }
-          });
-        } else {
-          allDraws.push({
-            id: `${dateStr.replace(/-/g, '')}_${lot.slice(0, 3)}_${shiftId.slice(0, 3)}`,
-            draw_date: dateStr,
-            lottery: lot,
-            shift: shiftId,
-            shift_name: shiftInfo.name,
-            shift_time: shiftInfo.time,
-            status: 'UPCOMING',
-            status_text: shiftStatus.status_text,
-            p1: '----',
-            head_ambo: '--',
-            significado: 'Próximo Sorteo',
-            ai_hit: { is_hit: false, details: `Sorteo programado a las ${shiftInfo.time}` }
-          });
         }
       });
     });
