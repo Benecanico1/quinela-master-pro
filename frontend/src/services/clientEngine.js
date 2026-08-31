@@ -1139,6 +1139,23 @@ export async function syncRemoteOfficialDraws() {
     console.warn("Remote draws auto-sync offline/fallback:", err.message);
   }
 
+  // 3. Direct GitHub Raw Repository Fallback (Updated 24/7 by GitHub Actions Bot)
+  try {
+    const res = await fetch(`https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/frontend/public/api/draws.json?t=${Date.now()}`, {
+      cache: 'no-store'
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        const raw = localStorage.getItem(REAL_DRAWS_STORAGE_KEY);
+        const existing = raw ? JSON.parse(raw) : {};
+        const merged = { ...existing, ...data };
+        localStorage.setItem(REAL_DRAWS_STORAGE_KEY, JSON.stringify(merged));
+        totalCount = Math.max(totalCount, Object.keys(data).length);
+      }
+    }
+  } catch (err) {}
+
   if (totalCount > 0) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('quinela-draws-updated', {
