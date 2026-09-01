@@ -789,6 +789,16 @@ export function getShiftDrawStatus(shiftId, targetDateStr = null) {
 export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
+  // 2026-09-01 (Martes - Extractos Oficiales 100% Verificados)
+  "2026-09-01_ciudad_previa": {
+    head_millar: "3621", head_centena: "621", head_ambo: "21",
+    board: ["3621", "7165", "9589", "1929", "8926", "3306", "4863", "5365", "6379", "7942", "8741", "4793", "3821", "7211", "7513", "6392", "7014", "7116", "9791", "8451"]
+  },
+  "2026-09-01_provincia_previa": {
+    head_millar: "7347", head_centena: "347", head_ambo: "47",
+    board: ["7347", "5256", "4638", "6414", "7693", "1002", "1603", "6075", "3383", "0895", "2117", "5990", "8063", "4114", "1434", "7950", "3873", "2657", "3028", "8598"]
+  },
+
   // 2026-08-31 (Lunes - Extractos Oficiales 100% Verificados)
   "2026-08-31_ciudad_nocturna": {
     head_millar: "3738", head_centena: "738", head_ambo: "38",
@@ -1366,17 +1376,8 @@ export function getClientDraws(lottery = "all", shift = "all", limit = 15, custo
   const now = new Date();
   const todayStr = getLocalDateString(now);
   
-  const datesToInclude = [];
-  if (customDate) {
-    datesToInclude.push(customDate);
-  } else {
-    // Include Today, Yesterday, and past 4 days in device local timezone
-    datesToInclude.push(todayStr);
-    for (let d = 1; d <= 4; d++) {
-      const past = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d);
-      datesToInclude.push(getLocalDateString(past));
-    }
-  }
+  // Rule: ONLY include today by default so prior days are not mixed into live results
+  const datesToInclude = [customDate || todayStr];
 
   const lotteries = lottery === 'all' ? ['ciudad', 'provincia'] : [lottery.toLowerCase()];
   const shifts = shift === 'all' ? ['nocturna', 'vespertina', 'matutina', 'primera', 'previa'] : [shift.toLowerCase()];

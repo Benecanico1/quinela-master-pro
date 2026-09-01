@@ -1,0 +1,47 @@
+﻿{
+  "project_info": {
+    "project_number": "442979078793",
+    "project_id": "dynotech-power-garaje",
+    "storage_bucket": "dynotech-power-garaje.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:442979078793:android:0e9065b12cacaee3b36c58",
+        "android_client_info": {
+          "package_name": "com.quinelamasterpro.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "442979078793-tuqqei3499r66a01lbid1b597o0nig1g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.quinelamasterpro.app",
+            "certificate_hash": "c4ca27aaa6f74fb6f3802235150e7a1e52d899b9"
+          }
+        },
+        {
+          "client_id": "442979078793-906lg7fsljbqubb8ssdrtnr8lpa8s64o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0XHmRdAdU-rqLbmHeVZ_sLeznzIR6I4c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "442979078793-906lg7fsljbqubb8ssdrtnr8lpa8s64o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
