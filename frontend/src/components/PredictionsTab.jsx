@@ -187,6 +187,17 @@ export default function PredictionsTab({
             <Copy className="w-3 h-3 text-emerald-400 group-hover:text-emerald-300 ml-auto shrink-0" />
           </button>
         </div>
+
+        {/* Único Botón Oficial para Jugar en Plataforma Oficial */}
+        <a
+          href={getAffiliateUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50 transition-all cursor-pointer active:scale-98 text-center"
+        >
+          <span>🌐 Jugar en Plataforma Oficial (lotba.bet.ar)</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
       </div>
 
       {/* AI Hub Header with Live Signal Timer and Clickable Efficiency Box */}
@@ -288,15 +299,15 @@ export default function PredictionsTab({
             return (
               <div
                 key={cand.number}
-                className={`rounded-2xl p-4 transition-all border cursor-pointer ${
+                className={`rounded-2xl p-3 sm:p-3.5 transition-all border cursor-pointer ${
                   idx === 0
-                    ? 'bg-gradient-to-b from-amber-950/50 to-slate-900 border-amber-500/60 shadow-lg shadow-amber-950/40 ring-1 ring-amber-500/30'
+                    ? 'bg-gradient-to-b from-amber-950/50 to-slate-900 border-amber-500/60 shadow-md ring-1 ring-amber-500/30'
                     : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                 }`}
                 onClick={() => setExpandedIndex(isExpanded ? null : idx)}
               >
                 {/* Header of Signal: Target Lottery Badge & Live Countdown Timer */}
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
                   <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
                     cand.target_lottery === 'ciudad' 
                       ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
@@ -308,15 +319,15 @@ export default function PredictionsTab({
                   </span>
 
                   {/* Individual Live Timer Badge */}
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-mono font-bold text-amber-400 shadow-inner">
-                    <Clock className="w-3 h-3 text-amber-400" />
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[9.5px] font-mono font-bold text-amber-400">
+                    <Clock className="w-2.5 h-2.5 text-amber-400" />
                     <span>{liveShiftInfo.formattedTimeLeft}</span>
                   </div>
                 </div>
 
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <span className={`text-3xl sm:text-4xl font-black font-mono tracking-tight px-3 py-1 rounded-xl border shadow-inner ${
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-2xl sm:text-3xl font-black font-mono tracking-tight px-2.5 py-0.5 rounded-xl border shadow-inner ${
                       idx === 0
                         ? 'bg-slate-950 text-amber-400 border-amber-500/50'
                         : 'bg-slate-950 text-white border-slate-800'
@@ -324,56 +335,38 @@ export default function PredictionsTab({
                       {cand.number}
                     </span>
                     <div>
-                      <div className="text-base font-black text-white leading-tight">
+                      <div className="text-xs sm:text-sm font-black text-white leading-tight">
                         "{cand.significado}"
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
+                      <div className="text-[9.5px] text-slate-400">
                         {cand.target_lottery_label}
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-xs whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-[10.5px]">
                       {cand.composite_score}% Conf.
                     </span>
                   </div>
                 </div>
 
-                {/* Explicit Play Type Breakdown (2 cifras, 3 cifras, 4 cifras) */}
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-1.5 text-xs bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/50">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">🎯 <strong>Ambo (2 cifras):</strong></span>
-                    <span className="font-mono font-black text-amber-300">{cand.number} <span className="text-[9px] text-slate-500 font-normal">(70x)</span></span>
+                {/* Explicit Play Type Breakdown (2 cifras, 3 cifras, 4 cifras) - Compact */}
+                <div className="mt-2 pt-1.5 border-t border-slate-800/80 grid grid-cols-3 gap-1 text-[10.5px] bg-slate-950/80 p-2 rounded-xl border border-slate-800/50 text-center">
+                  <div>
+                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Ambo (2c)</span>
+                    <span className="font-mono font-black text-amber-300">{cand.number}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">🔢 <strong>Terno (3 cifras):</strong></span>
-                    <span className="font-mono font-black text-slate-200">{cand.suggested_centenas?.[0]} <span className="text-[9px] text-slate-500 font-normal">(500x)</span></span>
+                  <div className="border-x border-slate-800/80">
+                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Terno (3c)</span>
+                    <span className="font-mono font-black text-slate-200">{cand.suggested_centenas?.[0]}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">👑 <strong>Cuaterno (4 cifras):</strong></span>
-                    <span className="font-mono font-black text-emerald-400">{cand.suggested_millar?.[0]} <span className="text-[9px] text-slate-500 font-normal">(3.500x)</span></span>
+                  <div>
+                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Cuaterno (4c)</span>
+                    <span className="font-mono font-black text-emerald-400">{cand.suggested_millar?.[0]}</span>
                   </div>
-                </div>
-
-                {/* Direct Action: Jugar en Plataforma Oficial */}
-                <div className="mt-3 flex items-center gap-2">
-                  <a
-                    href={getAffiliateUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const betText = `Sorteo ${cand.target_lottery_label} (${activePredictions.shift_name}): Ambo ${cand.number}, Terno ${cand.suggested_centenas?.[0]}, Cuaterno ${cand.suggested_millar?.[0]}`;
-                      navigator.clipboard.writeText(betText);
-                    }}
-                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow shadow-emerald-950 transition-all cursor-pointer active:scale-95"
-                  >
-                    <span>🎯 Jugar en Plataforma Oficial (.bet.ar)</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
                 </div>
 
                 {/* Free User Informational Banner directly under Top Prediction #1 */}

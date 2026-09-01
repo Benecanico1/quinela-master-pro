@@ -718,24 +718,24 @@ export default function DrawsHistoryTab() {
         </div>
       )}
 
-      {/* MODAL POPUP: LEYENDA DEL ACIERTO & DETALLE INTELIGENTE */}
+      {/* MODAL POPUP: LEYENDA DEL ACIERTO & DETALLE INTELIGENTE (Compact Mobile-Optimized) */}
       {selectedHitModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border-2 border-amber-500/70 rounded-3xl max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl relative overflow-hidden ring-1 ring-amber-500/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border-2 border-amber-500/70 rounded-3xl max-w-md w-full p-4 sm:p-5 space-y-3 shadow-2xl relative max-h-[88vh] overflow-y-auto ring-1 ring-amber-500/30 custom-scrollbar">
             {/* Top Glow Accent */}
             <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-amber-500 via-emerald-400 to-amber-500"></div>
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  <Trophy className="w-5 h-5" />
+                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <Trophy className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-white flex items-center gap-1.5">
+                  <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-1">
                     <span>🎯 LEYENDA DEL ACIERTO OFICIAL</span>
                   </h3>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[10.5px] text-slate-400">
                     {selectedHitModal.lotteryLabel} • Turno {selectedHitModal.shiftLabel} ({selectedHitModal.shiftTime} hs)
                   </span>
                 </div>
@@ -743,95 +743,95 @@ export default function DrawsHistoryTab() {
 
               <button
                 onClick={() => setSelectedHitModal(null)}
-                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Big Prize Showcase Banner */}
-            <div className="bg-gradient-to-br from-amber-950/70 via-slate-950 to-emerald-950/40 p-4 rounded-2xl border border-amber-500/50 text-center space-y-2">
-              <span className="inline-block px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-black uppercase tracking-wider">
+            {/* Big Prize Showcase Banner (Compact) */}
+            <div className="bg-gradient-to-br from-amber-950/70 via-slate-950 to-emerald-950/40 p-3 rounded-2xl border border-amber-500/50 text-center space-y-1.5">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9.5px] font-black uppercase tracking-wider">
                 {selectedHitModal.isPos1 ? '🏆 1° PREMIO A LA CABEZA' : `📍 PREMIO EN POSICIÓN #${selectedHitModal.position.toString().padStart(2, '0')}`}
               </span>
 
-              <div className="text-4xl sm:text-5xl font-black font-mono tracking-widest text-white">
+              <div className="text-3xl sm:text-4xl font-black font-mono tracking-widest text-white">
                 {selectedHitModal.num4}
               </div>
 
-              <div className="text-sm sm:text-base font-black text-amber-300">
+              <div className="text-xs sm:text-sm font-black text-amber-300">
                 ✨ "{selectedHitModal.significado}"
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-xs font-mono">
-                <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                  <span className="text-[9px] text-slate-500 block">Ambo (2 c.)</span>
-                  <strong className="text-amber-400 text-sm">{selectedHitModal.ambo}</strong>
+              <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-slate-800/80 text-[11px] font-mono">
+                <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+                  <span className="text-[8.5px] text-slate-500 block">Ambo (2 c.)</span>
+                  <strong className="text-amber-400 text-xs sm:text-sm">{selectedHitModal.ambo}</strong>
                 </div>
-                <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                  <span className="text-[9px] text-slate-500 block">Terno (3 c.)</span>
-                  <strong className="text-white text-sm">{selectedHitModal.terno}</strong>
+                <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+                  <span className="text-[8.5px] text-slate-500 block">Terno (3 c.)</span>
+                  <strong className="text-white text-xs sm:text-sm">{selectedHitModal.terno}</strong>
                 </div>
-                <div className="bg-slate-900/80 p-1.5 rounded-lg border border-slate-800">
-                  <span className="text-[9px] text-slate-500 block">Cuaterno (4 c.)</span>
-                  <strong className="text-emerald-400 text-sm">{selectedHitModal.num4}</strong>
+                <div className="bg-slate-900/90 p-1.5 rounded-lg border border-slate-800">
+                  <span className="text-[8.5px] text-slate-500 block">Cuaterno (4 c.)</span>
+                  <strong className="text-emerald-400 text-xs sm:text-sm">{selectedHitModal.num4}</strong>
                 </div>
               </div>
             </div>
 
-            {/* Official Multiplier Table */}
-            <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-2">
-              <h4 className="text-xs font-black text-slate-300 uppercase flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-amber-400" />
+            {/* Official Multiplier Table (Compact) */}
+            <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1">
+              <h4 className="text-[10.5px] font-black text-slate-300 uppercase flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-amber-400" />
                 <span>Multiplicadores Oficiales de Pago:</span>
               </h4>
-              <div className="space-y-1 text-xs text-slate-300">
-                <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                  <span>🎯 Ambo a la Cabeza (1° Premio):</span>
-                  <strong className="text-amber-400 font-mono font-bold">Paga 70x</strong>
+              <div className="space-y-0.5 text-[11px] text-slate-300">
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-800/60">
+                  <span>🎯 Ambo a la Cabeza (1°):</span>
+                  <strong className="text-amber-400 font-mono">Paga 70x</strong>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                  <span>🔢 Terno a la Cabeza (3 cifras):</span>
-                  <strong className="text-amber-300 font-mono font-bold">Paga 500x</strong>
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-800/60">
+                  <span>🔢 Terno a la Cabeza (3 c.):</span>
+                  <strong className="text-amber-300 font-mono">Paga 500x</strong>
                 </div>
-                <div className="flex justify-between items-center py-1 border-b border-slate-800/60">
-                  <span>👑 Cuaterno a la Cabeza (4 cifras):</span>
-                  <strong className="text-emerald-400 font-mono font-bold">Paga 3.500x</strong>
+                <div className="flex justify-between items-center py-0.5 border-b border-slate-800/60">
+                  <span>👑 Cuaterno a la Cabeza (4 c.):</span>
+                  <strong className="text-emerald-400 font-mono">Paga 3.500x</strong>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span>📍 Acierto en la Pizarra de 20:</span>
-                  <strong className="text-slate-200 font-mono font-bold">Paga 3.5x por posición</strong>
+                <div className="flex justify-between items-center py-0.5">
+                  <span>📍 En la Pizarra de 20:</span>
+                  <strong className="text-slate-200 font-mono">Paga 3.5x - 14x</strong>
                 </div>
               </div>
             </div>
 
-            {/* AI Algorithm Explanation */}
-            <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl space-y-1 text-xs text-slate-300">
-              <div className="text-emerald-300 font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            {/* AI Algorithm Explanation (Compact) */}
+            <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl space-y-1 text-xs text-slate-300">
+              <div className="text-emerald-300 font-bold flex items-center gap-1 text-[11px]">
+                <Sparkles className="w-3 h-3 text-emerald-400" />
                 <span>Diagnóstico Predictivo de la IA:</span>
               </div>
-              <p className="text-[11px] leading-relaxed text-slate-300">
+              <p className="text-[10.5px] leading-relaxed text-slate-300">
                 {selectedHitModal.aiHit?.is_hit
-                  ? `Este número fue clasificado por nuestro modelo con alta confianza (${selectedHitModal.aiHit.multiplier || 'Alta Probabilidad'}) tras registrar convergencia de Poisson y atraso crítico en el turno ${selectedHitModal.shiftLabel}.`
+                  ? `Clasificado con alta confianza (${selectedHitModal.aiHit.multiplier || 'Alta Probabilidad'}) por convergencia estadística en el turno ${selectedHitModal.shiftLabel}.`
                   : `El ambo ${selectedHitModal.ambo} ("${selectedHitModal.significado}") completó su ciclo de extracción en la pizarra oficial de ${selectedHitModal.lotteryLabel}.`}
               </p>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 pt-1">
+            {/* Action Buttons (Always Visible at bottom) */}
+            <div className="flex items-center gap-2 pt-1">
               <a
                 href="https://lotba.bet.ar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl text-center shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all"
+                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl text-center shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all"
               >
                 <span>Jugar en lotba.bet.ar</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <ExternalLink className="w-3 h-3" />
               </a>
               <button
                 onClick={() => setSelectedHitModal(null)}
-                className="py-3 px-5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all"
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Cerrar
               </button>

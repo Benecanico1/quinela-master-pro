@@ -1202,10 +1202,10 @@ export async function syncRemoteOfficialDraws() {
   return { success: false, count: 0 };
 }
 
-// Audit official draw against predictions archive or current engine predictions
+// Audit official draw against predictions archive or current engine predictions with strict lottery check
 export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
-  const predictions = getPredictionsFromRegistry(dateStr, lottery, shift) || 
-                      getClientPredictions(lottery, shift, 15).top_predictions || [];
+  const cleanLot = (lottery || 'ciudad').toLowerCase();
+  const predictions = getClientPredictions(cleanLot, shift, 15).top_predictions || [];
 
   if (!predictions || predictions.length === 0) {
     return { is_hit: false, details: "Sorteo auditado" };
@@ -1216,8 +1216,15 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
   const headCentena = p1.slice(-3);
   const headMillar = p1;
 
+  // Strict Rule: Must match the specific lottery or be explicitly designated for 'ambas'
+  const isMatchValidForLottery = (pred) => {
+    if (!pred || !pred.target_lottery) return true;
+    const t = pred.target_lottery.toLowerCase();
+    return t === cleanLot || t === 'ambas' || t === 'all';
+  };
+
   // 1. Check if Head (1° Premio) was hit
-  const headMatch = predictions.slice(0, 5).find(p => p.number === headAmbo);
+  const headMatch = predictions.slice(0, 5).find(p => p.number === headAmbo && isMatchValidForLottery(p));
   if (headMatch) {
     const rank = predictions.indexOf(headMatch) + 1;
     const isCuaternoHit = headMatch.suggested_millar && headMatch.suggested_millar.includes(headMillar);
@@ -1237,6 +1244,8 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
       trophyTitle = "🔥 ¡TRIPLE ACIERTO (TERNO)!";
     }
 
+    const lotLabel = cleanLot === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : 'Lotería de la Provincia de Bs As';
+
     return {
       is_hit: true,
       hit_type: 'CABEZA',
@@ -1245,13 +1254,13 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
       predicted_type: predictedType,
       predicted_terno: headCentena,
       predicted_cuaterno: headMillar,
-      target_lottery_label: headMatch.target_lottery_label || (lottery === 'ciudad' ? 'Lotería de la Ciudad' : 'Lotería de la Provincia'),
+      target_lottery_label: headMatch.target_lottery_label || lotLabel,
       position: 1,
       matched_positions: [1],
       ai_rank: rank,
       confidence: headMatch.confidence || (92 - rank * 1.5).toFixed(1),
       multiplier: prizeMultiplier,
-      details: `${trophyTitle} Pronosticamos el ${predictedType} '${headAmbo}' para ${headMatch.target_lottery_label || lottery} (Top #${rank})`
+      details: `${trophyTitle} Pronosticamos el ${predictedType} '${headAmbo}' para ${headMatch.target_lottery_label || lotLabel} (Top #${rank})`
     };
   }
 
@@ -1262,7 +1271,7 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
   for (let i = 1; i <= 20; i++) {
     const posVal = drawObj[`p${i}`] || "";
     const amboVal = posVal.slice(-2);
-    const matchedPred = predictions.slice(0, 5).find(p => p.number === amboVal);
+    const matchedPred = predictions.slice(0, 5).find(p => p.number === amboVal && isMatchValidForLottery(p));
     if (matchedPred) {
       matchedPositions.push(i);
       if (!firstBoardHit) {
@@ -1280,6 +1289,7 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
   if (firstBoardHit) {
     const pos = firstBoardHit.position;
     const mult = pos <= 5 ? "14x (A los 5)" : pos <= 10 ? "7x (A los 10)" : "3.5x (A los 20)";
+    const lotLabel = cleanLot === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : 'Lotería de la Provincia de Bs As';
     return {
       is_hit: true,
       hit_type: 'PIZARRA',
@@ -1288,13 +1298,13 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
       predicted_type: "Terminal de 2 Cifras (Ambo en Pizarra)",
       predicted_terno: (drawObj[`p${pos}`] || "").slice(-3),
       predicted_cuaterno: drawObj[`p${pos}`] || "",
-      target_lottery_label: firstBoardHit.predObj.target_lottery_label || (lottery === 'ciudad' ? 'Lotería de la Ciudad' : 'Lotería de la Provincia'),
+      target_lottery_label: firstBoardHit.predObj.target_lottery_label || lotLabel,
       position: pos,
       matched_positions: matchedPositions,
       ai_rank: firstBoardHit.rank,
       confidence: firstBoardHit.predObj.confidence || 85.0,
       multiplier: mult,
-      details: `✅ Acierto en Pizarra: Pronosticamos el ambo '${firstBoardHit.number}' (${firstBoardHit.significado}) en la Posición #${pos.toString().padStart(2, '0')} (${mult})`
+      details: `✅ Acierto en Pizarra: Pronosticamos el ambo '${firstBoardHit.number}' (${firstBoardHit.significado}) en la Posición #${pos.toString().padStart(2, '0')} (${mult}) para ${firstBoardHit.predObj.target_lottery_label || lotLabel}`
     };
   }
 
