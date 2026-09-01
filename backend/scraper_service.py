@@ -69,9 +69,24 @@ def scrape_lotba_official() -> List[Dict[str, Any]]:
                 shift = detect_shift_from_text(shift_raw) or 'previa'
                 sorteos_found.append((sorteo_id, shift))
                 
-        date_str = datetime.now().strftime("%Y-%m-%d")
+        now_arg = datetime.now()
+        date_str = now_arg.strftime("%Y-%m-%d")
+        current_minutes = now_arg.hour * 60 + now_arg.minute
+
+        SHIFT_START_MINUTES = {
+            'previa': 10 * 60 + 15,    # 10:15
+            'primera': 12 * 60 + 0,    # 12:00
+            'matutina': 15 * 60 + 0,   # 15:00
+            'vespertina': 18 * 60 + 0, # 18:00
+            'nocturna': 21 * 60 + 0    # 21:00
+        }
         
         for sorteo_id, shift in sorteos_found:
+            # Critical Safety: Only record for today if the shift's official start time has arrived!
+            shift_min = SHIFT_START_MINUTES.get(shift, 0)
+            if current_minutes < shift_min:
+                continue
+
             for jur_code, lot_name in [('51', 'ciudad'), ('53', 'provincia')]:
                 try:
                     payload = {'codigo': '0080', 'juridiccion': jur_code, 'sorteo': sorteo_id}

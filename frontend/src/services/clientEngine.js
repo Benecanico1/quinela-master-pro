@@ -790,6 +790,14 @@ export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
   // 2026-09-01 (Martes - Extractos Oficiales 100% Verificados)
+  "2026-09-01_ciudad_primera": {
+    head_millar: "8959", head_centena: "959", head_ambo: "59",
+    board: ["8959", "4342", "5068", "1158", "4303", "5029", "9542", "5986", "9863", "9495", "7983", "9892", "0560", "1911", "5261", "9534", "6535", "1993", "7389", "1741"]
+  },
+  "2026-09-01_provincia_primera": {
+    head_millar: "0710", head_centena: "710", head_ambo: "10",
+    board: ["0710", "3587", "7598", "2304", "7413", "2393", "2133", "8889", "7365", "0212", "7299", "3844", "0720", "4715", "7119", "9551", "7655", "9849", "5545", "9898"]
+  },
   "2026-09-01_ciudad_previa": {
     head_millar: "3621", head_centena: "621", head_ambo: "21",
     board: ["3621", "7165", "9589", "1929", "8926", "3306", "4863", "5365", "6379", "7942", "8741", "4793", "3821", "7211", "7513", "6392", "7014", "7116", "9791", "8451"]
@@ -1316,6 +1324,42 @@ export function generateDeterministicBoard(dateStr, lottery, shift) {
   const cleanLot = lottery.toLowerCase();
   const cleanShift = shift.toLowerCase();
   const hashKey = `${dateStr}_${cleanLot}_${cleanShift}`;
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+  const isToday = !dateStr || dateStr === todayStr;
+
+  const shiftInfo = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === cleanShift) || { name: cleanShift, time: '18:00' };
+  const shiftStatus = getShiftDrawStatus(cleanShift, dateStr);
+
+  // STRICT GUARANTEE: If it's today and the official shift time has not completed yet,
+  // NEVER return a completed board with premature or stale numbers.
+  if (isToday && shiftStatus.status !== 'COMPLETED') {
+    const drawObj = {
+      id: `${dateStr.replace(/-/g, '')}_${cleanLot.slice(0, 3)}_${cleanShift.slice(0, 3)}`,
+      draw_date: dateStr,
+      lottery: cleanLot,
+      lottery_name: cleanLot === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : 'Lotería de la Provincia de Bs As',
+      shift: cleanShift,
+      shift_name: shiftInfo.name,
+      shift_time: shiftInfo.time,
+      status: shiftStatus.status || 'UPCOMING',
+      status_text: shiftStatus.status === 'IN_PROGRESS' 
+        ? 'Sorteo en curso / Aguardando extracto oficial de Lotería'
+        : `Próximo sorteo programado a las ${shiftInfo.time} hs`,
+      head_ambo: '--',
+      head_centena: '---',
+      head_millar: '----',
+      significado: shiftStatus.status === 'IN_PROGRESS' ? 'Extracción en vivo...' : 'Pendiente de Sorteo',
+      p1: '----',
+      ai_hit: { is_hit: false, details: `Sorteo programado a las ${shiftInfo.time}` }
+    };
+
+    for (let i = 1; i <= 20; i++) {
+      drawObj[`p${i}`] = '----';
+    }
+
+    return drawObj;
+  }
 
   // 1. Check Real Official Database (and local synced storage) first
   const realDb = getRealOfficialDrawsFromStorage();
@@ -1349,10 +1393,7 @@ export function generateDeterministicBoard(dateStr, lottery, shift) {
     return drawObj;
   }
 
-  // STRICT RULE: If the draw has not occurred or has no official extract recorded, NEVER invent fake numbers.
-  const shiftInfo = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === cleanShift) || { name: cleanShift, time: '18:00' };
-  const shiftStatus = getShiftDrawStatus(cleanShift, dateStr);
-
+  // Return pending draw object
   const drawObj = {
     id: `${dateStr.replace(/-/g, '')}_${cleanLot.slice(0, 3)}_${cleanShift.slice(0, 3)}`,
     draw_date: dateStr,
@@ -1364,9 +1405,7 @@ export function generateDeterministicBoard(dateStr, lottery, shift) {
     status: shiftStatus.status || 'UPCOMING',
     status_text: shiftStatus.status === 'IN_PROGRESS' 
       ? 'Sorteo en curso / Aguardando extracto oficial de Lotería'
-      : shiftStatus.status === 'COMPLETED'
-        ? 'Extracto en proceso de carga oficial'
-        : `Próximo sorteo programado a las ${shiftInfo.time} hs`,
+      : `Próximo sorteo programado a las ${shiftInfo.time} hs`,
     head_ambo: '--',
     head_centena: '---',
     head_millar: '----',
@@ -1390,17 +1429,17 @@ export function getClientDraws(lottery = "all", shift = "all", limit = 15, custo
   const datesToInclude = [customDate || todayStr];
 
   const lotteries = lottery === 'all' ? ['ciudad', 'provincia'] : [lottery.toLowerCase()];
-  const shifts = shift === 'all' ? ['nocturna', 'vespertina', 'matutina', 'primera', 'previa'] : [shift.toLowerCase()];
+  // Chronological order from morning to night
+  const shifts = shift === 'all' ? ['previa', 'primera', 'matutina', 'vespertina', 'nocturna'] : [shift.toLowerCase()];
 
   const allDraws = [];
 
   datesToInclude.forEach(dateStr => {
     shifts.forEach(shiftId => {
       lotteries.forEach(lot => {
-        const shiftStatus = getShiftDrawStatus(shiftId, dateStr);
         const shiftInfo = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === shiftId) || { name: shiftId, time: '18:00' };
-
         const draw = generateDeterministicBoard(dateStr, lot, shiftId);
+
         // Only include draws that have actually completed and have verified official numbers
         if (draw.status === 'COMPLETED' && draw.p1 && draw.p1 !== '----') {
           draw.shift_name = shiftInfo.name;
