@@ -148,184 +148,140 @@ export default function DrawsHistoryTab() {
     });
   };
 
+  const [expandedBoards, setExpandedBoards] = useState({});
+  const toggleBoard = (drawId) => {
+    setExpandedBoards(prev => ({ ...prev, [drawId]: !prev[drawId] }));
+  };
+
   const renderDrawCard = (draw) => {
     const isCompleted = draw.status === 'COMPLETED';
     const isInProgress = draw.status === 'IN_PROGRESS';
-    const isUpcoming = draw.status === 'UPCOMING';
     const ambo = isCompleted ? (draw.head_ambo || draw.p1?.slice(-2) || '--') : '--';
-    const sig = isCompleted ? (SIGNIFICADOS[ambo] || draw.significado || 'Ambo') : draw.significado;
+    const sig = isCompleted ? (SIGNIFICADOS[ambo] || draw.significado || 'La Suerte') : draw.significado;
     const aiHit = draw.ai_hit;
     const matchedPositions = aiHit?.matched_positions || [];
+    const isExpanded = !!expandedBoards[draw.id];
 
     return (
       <div
         key={draw.id}
-        className={`bg-slate-900 border rounded-3xl p-4 sm:p-5 shadow-xl transition-all space-y-4 ${
+        className={`bg-slate-900/95 border rounded-2xl p-3.5 sm:p-4 shadow-lg transition-all space-y-3 ${
           aiHit?.is_hit
-            ? 'border-amber-500/70 ring-1 ring-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/20'
+            ? 'border-emerald-500/60 ring-1 ring-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/20'
             : 'border-slate-800'
         }`}
       >
-        {/* Draw Header Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className={`px-3 py-1 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow ${
+        {/* Draw Header Banner: Lotería + Turno + Horario + Fecha */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow ${
               draw.lottery === 'ciudad'
                 ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
                 : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
             }`}>
               {draw.lottery === 'ciudad' ? <Building2 className="w-3.5 h-3.5" /> : <Trees className="w-3.5 h-3.5" />}
-              <span>{draw.lottery === 'ciudad' ? 'Ciudad (Nacional)' : 'Provincia de Bs As'}</span>
+              <span>{draw.lottery === 'ciudad' ? '🏛️ Nacional' : '🌿 Provincia'}</span>
             </span>
 
-            <span className="px-3 py-1 rounded-xl bg-slate-950 text-amber-300 border border-slate-800 text-xs font-bold capitalize">
-              Turno: <strong>{draw.shift_name || draw.shift}</strong> ({draw.shift_time || '18:00'} hs)
+            <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-amber-300 border border-slate-800 text-xs font-bold capitalize">
+              {draw.shift_name || draw.shift} • {draw.shift_time || '18:00'} hs
             </span>
 
-            <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-slate-400 border border-slate-800 text-[11px] font-mono">
-              Fecha: {draw.draw_date}
+            <span className="px-2 py-0.5 rounded-lg bg-slate-950 text-slate-400 border border-slate-800 text-[10.5px] font-mono">
+              {draw.draw_date}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`px-3 py-1 rounded-xl text-[11px] font-black uppercase border ${
+            <span className={`px-2.5 py-0.5 rounded-lg text-[10.5px] font-black uppercase border ${
               isCompleted 
                 ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50 flex items-center gap-1'
-                : isInProgress 
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
-                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
             }`}>
-              {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : null}
-              {isCompleted ? 'Pizarra Oficial 20 Premios' : isInProgress ? 'En Sorteo (Margen 15m)' : `Programado ${draw.shift_time || '21:00'}`}
+              {isCompleted ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : null}
+              {isCompleted ? 'Oficial 20 Premios' : 'En Sorteo'}
             </span>
           </div>
         </div>
 
-        {/* 1° Premio Hero Spotlight (Interactive Popup) */}
+        {/* 1° Premio Hero Row (Compact) */}
         {isCompleted ? (
           <div 
             onClick={() => openHitModal(draw, 1)}
-            title="Toca para ver la leyenda y explicación del acierto"
-            className="cursor-pointer bg-gradient-to-r from-amber-950/60 via-slate-950 to-slate-950 border-2 border-amber-500/60 hover:border-amber-400 rounded-2xl p-3.5 sm:p-4 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 transition-all transform hover:scale-[1.01] active:scale-98 group"
+            title="Toca para ver la leyenda del número"
+            className="cursor-pointer bg-slate-950 border border-amber-500/50 hover:border-amber-400 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-all hover:bg-slate-900"
           >
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="bg-amber-500 group-hover:bg-amber-400 text-slate-950 p-2 sm:p-2.5 rounded-2xl text-center shadow-md shrink-0 transition-colors">
-                <span className="text-[10px] font-black uppercase block leading-none">1° PREMIO</span>
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-wider">{draw.p1 || '----'}</span>
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-500 text-slate-950 px-2.5 py-1.5 rounded-xl text-center shadow font-black shrink-0">
+                <span className="text-[9px] uppercase block leading-none">1° PREMIO</span>
+                <span className="text-xl sm:text-2xl font-black font-mono tracking-wider">{draw.p1 || '----'}</span>
               </div>
 
               <div>
-                <div className="text-xs text-amber-300 font-black uppercase tracking-wider flex items-center gap-1.5">
+                <div className="text-xs text-amber-300 font-bold flex items-center gap-1.5">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>A LA CABEZA: AMBO {ambo}</span>
+                  <span>A LA CABEZA: AMBO <strong>{ambo}</strong></span>
                 </div>
-                <div className="text-sm font-bold text-white mt-0.5 flex items-center gap-1.5">
-                  <span>"{sig}"</span>
-                  <span className="text-slate-400 font-normal text-xs">(Paga 70x al ambo)</span>
-                  <span className="text-[10px] text-amber-400 underline font-bold group-hover:text-amber-300">Ver Leyenda ↗</span>
-                </div>
-                <div className="text-[11px] text-slate-300 flex items-center gap-2 mt-0.5">
-                  <span>Terno: <strong className="text-amber-300 font-mono">{draw.p1?.slice(-3)}</strong> (500x)</span>
-                  <span>•</span>
-                  <span>4 Cifras: <strong className="text-emerald-400 font-mono">{draw.p1}</strong> (3.500x)</span>
+                <div className="text-xs font-semibold text-white mt-0.5">
+                  "{sig}" <span className="text-slate-400 text-[11px] font-normal">(Terno {draw.p1?.slice(-3)})</span>
                 </div>
               </div>
             </div>
 
-            {aiHit && aiHit.is_hit && (
-              <div className="w-full sm:w-auto px-3 py-2 bg-emerald-950/80 border border-emerald-500/50 rounded-xl text-center sm:text-right shrink-0">
-                <span className="text-[10px] text-emerald-400 font-bold uppercase block">Multiplicador Acertado</span>
-                <span className="text-sm font-black text-white font-mono">{aiHit.multiplier}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* Compact Pending / Upcoming Draw Card */
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 shadow-inner">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
-                <Clock className="w-4 h-4 animate-pulse" />
-              </div>
-              <div>
-                <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                  <span>{draw.status_text}</span>
-                </h4>
-                <p className="text-[10.5px] text-slate-400">
-                  {isInProgress ? 'Extrayendo 20 números oficiales de LOTBA...' : 'Pizarra disponible tras el sorteo oficial.'}
-                </p>
-              </div>
-            </div>
-            <span className="text-[10.5px] font-bold text-amber-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-800 shrink-0">
-              ⏰ {draw.shift_time || '21:00'} hs
-            </span>
-          </div>
-        )}
-
-        {/* AI Hit Verification & Audit Banner (Interactive Click) */}
-        {isCompleted && aiHit && aiHit.is_hit && (
-          <div 
-            onClick={() => openHitModal(draw, 1)}
-            title="Toca para ver el diagnóstico completo de la IA"
-            className="cursor-pointer p-3.5 bg-gradient-to-r from-amber-950/80 via-slate-950 to-emerald-950/50 border border-amber-500/60 hover:border-emerald-400/80 rounded-2xl space-y-1.5 shadow transition-all transform hover:scale-[1.01] active:scale-98 group"
-          >
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                  <Sparkles className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-1.5">
-                    <span>🎯 ¡ACIERTO OFICIAL DE LA IA VERIFICADO!</span>
-                    <span className="text-[10px] text-emerald-400 underline font-bold group-hover:text-emerald-300">(Toca para ver leyenda ↗)</span>
-                  </h4>
-                  <span className="text-[11px] text-slate-300 font-semibold">
-                    Pronóstico emitido para: <strong className="text-white">{aiHit.target_lottery_label}</strong>
-                  </span>
-                </div>
-              </div>
-
-              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-black rounded-lg">
-                {aiHit.multiplier}
-              </span>
-            </div>
-
-            <div className="bg-slate-950/90 p-2.5 rounded-xl border border-slate-800 text-xs text-slate-200 leading-relaxed">
-              <div className="flex flex-wrap items-center gap-2">
-                <span>📌 <strong>Qué pronosticamos:</strong> {aiHit.predicted_type}</span>
-                <span>•</span>
-                <span>Ambo: <strong className="text-amber-400 font-mono">{aiHit.number}</strong> ({aiHit.significado})</span>
-                <span>•</span>
-                <span>Terno: <strong className="text-slate-200 font-mono">{aiHit.predicted_terno}</strong></span>
-                <span>•</span>
-                <span>Cuaterno: <strong className="text-emerald-400 font-mono">{aiHit.predicted_cuaterno}</strong></span>
-              </div>
-              <div className="text-[11px] text-emerald-400 font-semibold mt-1">
-                {aiHit.details}
-              </div>
+            <div className="text-right shrink-0">
+              <span className="text-[10px] text-amber-400 font-bold hover:underline">Ver Leyenda ↗</span>
             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* FULL 20 NUMBERS OFFICIAL BOARD (2 Columns: 1-10 Left, 11-20 Right) */}
+        {/* Frase Directa: Si Hubo o No Premio Pronosticado */}
         {isCompleted && (
-          <div className="space-y-2 pt-2 border-t border-slate-800/80">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-              <span className="flex items-center gap-1 text-slate-300">
-                <Hash className="w-3.5 h-3.5 text-amber-400" />
-                <span>Pizarra Oficial de los 20 Premios (Extracto Completo):</span>
-              </span>
-              <span className="text-[10px] text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
-                20 Números de 4 Cifras
+          aiHit && aiHit.is_hit ? (
+            <div 
+              onClick={() => openHitModal(draw, 1)}
+              className="cursor-pointer p-2.5 bg-gradient-to-r from-emerald-950/90 via-slate-950 to-amber-950/40 border border-emerald-500/60 rounded-xl flex items-center justify-between gap-2 shadow"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-black text-emerald-300">
+                  🎯 ¡PREMIO PRONOSTICADO! Acertó Ambo {aiHit.number} ({aiHit.multiplier})
+                </span>
+              </div>
+              <span className="text-[10px] text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md font-mono shrink-0">
+                Posición #{aiHit.matched_positions?.[0] || '1'}
               </span>
             </div>
+          ) : (
+            <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 text-slate-400 text-xs flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
+                <span>⚪ Sin premio pronosticado en este sorteo</span>
+              </span>
+              <span className="text-[10px] text-slate-500">Auditado Oficial</span>
+            </div>
+          )
+        )}
 
-            {/* 2-Column Responsive Grid (1-10 and 11-20) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {/* Column 1: Premios 1° al 10° */}
-              <div className="bg-slate-950/90 p-2.5 rounded-2xl border border-slate-800 space-y-1.5 shadow-inner">
-                <div className="text-[10px] font-black uppercase text-slate-500 px-1">Posiciones 01 al 10</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {Array.from({ length: 10 }, (_, idx) => idx + 1).map((pos) => {
+        {/* Collapsible Button to show/hide the 20 Numbers Board */}
+        {isCompleted && (
+          <div className="pt-1">
+            <button
+              onClick={() => toggleBoard(draw.id)}
+              className="w-full py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>{isExpanded ? '🔼 Ocultar Pizarra de 20 Números' : '📋 Ver Pizarra Completa (20 Premios) ▼'}</span>
+            </button>
+
+            {/* FULL 20 NUMBERS BOARD (Shown ONLY when expanded) */}
+            {isExpanded && (
+              <div className="mt-2.5 p-2.5 bg-slate-950 rounded-xl border border-slate-800 animate-fadeIn space-y-2">
+                <div className="text-[10px] font-black uppercase text-slate-400 flex items-center justify-between px-1">
+                  <span>Extracto Oficial Completo de 20 Premios</span>
+                  <span className="text-emerald-400">4 Cifras</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {Array.from({ length: 20 }, (_, idx) => idx + 1).map((pos) => {
                     const val = draw[`p${pos}`] || '0000';
                     const isPos1 = pos === 1;
                     const isHitOnThisPos = matchedPositions.includes(pos);
@@ -334,68 +290,24 @@ export default function DrawsHistoryTab() {
                       <div
                         key={pos}
                         onClick={() => openHitModal(draw, pos)}
-                        title={`Posición #${pos.toString().padStart(2, '0')}: Toca para ver la leyenda`}
-                        className={`cursor-pointer px-3 py-2 rounded-xl border flex items-center justify-between transition-all transform hover:scale-[1.02] active:scale-98 ${
+                        className={`cursor-pointer px-2 py-1.5 rounded-lg border flex items-center justify-between transition-all ${
                           isPos1
-                            ? 'bg-amber-950/60 border-amber-500/80 text-amber-300 font-black shadow-md ring-1 ring-amber-500/40 hover:border-amber-400'
+                            ? 'bg-amber-950/60 border-amber-500/80 text-amber-300 font-black ring-1 ring-amber-500/40'
                             : isHitOnThisPos
-                              ? 'bg-emerald-950/70 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40 hover:border-emerald-400 animate-pulse'
-                              : 'bg-slate-900 border-slate-800 text-slate-200 hover:border-slate-700'
+                              ? 'bg-emerald-950/70 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
+                              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
                         }`}
                       >
-                        <span className={`text-[10px] font-bold ${isPos1 ? 'text-amber-400 font-black' : isHitOnThisPos ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        <span className={`text-[9px] font-bold ${isPos1 ? 'text-amber-400' : isHitOnThisPos ? 'text-emerald-400' : 'text-slate-500'}`}>
                           #{pos.toString().padStart(2, '0')}
                         </span>
-                        <div className="text-right">
-                          <span className="font-mono font-black text-sm tracking-wider">{val}</span>
-                          {isHitOnThisPos && !isPos1 && (
-                            <span className="block text-[8px] font-black text-emerald-400 uppercase tracking-tight">
-                              🎯 Acierto AI
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-mono font-black text-xs tracking-wider">{val}</span>
                       </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* Column 2: Premios 11° al 20° */}
-              <div className="bg-slate-950/90 p-2.5 rounded-2xl border border-slate-800 space-y-1.5 shadow-inner">
-                <div className="text-[10px] font-black uppercase text-slate-500 px-1">Posiciones 11 al 20</div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {Array.from({ length: 10 }, (_, idx) => idx + 11).map((pos) => {
-                    const val = draw[`p${pos}`] || '0000';
-                    const isHitOnThisPos = matchedPositions.includes(pos);
-
-                    return (
-                      <div
-                        key={pos}
-                        onClick={() => openHitModal(draw, pos)}
-                        title={`Posición #${pos.toString().padStart(2, '0')}: Toca para ver la leyenda`}
-                        className={`cursor-pointer px-3 py-2 rounded-xl border flex items-center justify-between transition-all transform hover:scale-[1.02] active:scale-98 ${
-                          isHitOnThisPos
-                            ? 'bg-emerald-950/70 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40 hover:border-emerald-400 animate-pulse'
-                            : 'bg-slate-900 border-slate-800 text-slate-200 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`text-[10px] font-bold ${isHitOnThisPos ? 'text-emerald-400' : 'text-slate-500'}`}>
-                          #{pos.toString().padStart(2, '0')}
-                        </span>
-                        <div className="text-right">
-                          <span className="font-mono font-black text-sm tracking-wider">{val}</span>
-                          {isHitOnThisPos && (
-                            <span className="block text-[8px] font-black text-emerald-400 uppercase tracking-tight">
-                              🎯 Acierto AI
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
