@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  History, Calendar, ChevronDown, ChevronUp, Trophy, CheckCircle2, 
+  History, Calendar, ChevronDown, ChevronUp, ChevronRight, Trophy, CheckCircle2, 
   RefreshCw, Check, Sparkles, Award, TrendingUp, ShieldCheck, Flame, Clock, Radio, Building2, Trees,
   Layers, CheckSquare, FileText, Eye, AlertCircle, Hash, Star, X, ExternalLink, Zap, HelpCircle
 } from 'lucide-react';

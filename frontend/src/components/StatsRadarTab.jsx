@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
   Flame, Clock, Radio, Info, ChevronRight, Target, ShieldCheck, 
   Sparkles, Crown, Lock, Award, TrendingUp, Zap, CheckCircle2, History, Calendar, Filter, Building2, Trees,
-  Copy, Check, BarChart2, Share2
+  Copy, Check, BarChart2, Share2, Trophy
 } from 'lucide-react';
 import { getClientFrequencies, getRadar30DaysHistory } from '../services/clientEngine';
 

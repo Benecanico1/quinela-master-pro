@@ -59,6 +59,11 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -66,7 +71,7 @@ class ErrorBoundary extends React.Component {
           <div className="text-rose-400 font-bold text-lg">Actualizando vista...</div>
           <p className="text-slate-300 text-xs">Optimizando datos estadísticos.</p>
           <button 
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => this.setState({ hasError: false, error: null })}
             className="px-4 py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs hover:bg-amber-400 cursor-pointer"
           >
             Recargar Módulo
@@ -361,7 +366,7 @@ export default function App() {
 
       {/* Main Content Body */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <ErrorBoundary>
+        <ErrorBoundary key={activeTab} resetKey={activeTab}>
           {activeTab === 'predictions' && (
             <PredictionsTab 
               predictions={predictions} 
