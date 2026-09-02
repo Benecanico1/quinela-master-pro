@@ -63,7 +63,10 @@ export default function PredictionsTab({
   };
 
   const handleCopyDailySummaryForSocialMedia = () => {
-    const dailyData = getClientPredictions('all', 'todo_el_dia', 5);
+    const ciudadData = getClientPredictions('ciudad', 'todo_el_dia', 4);
+    const provData = getClientPredictions('provincia', 'todo_el_dia', 4);
+    const allData = getClientPredictions('all', 'todo_el_dia', 5);
+
     const now = new Date();
     const todayFormatted = now.toLocaleDateString('es-AR', {
       weekday: 'long',
@@ -73,32 +76,53 @@ export default function PredictionsTab({
     });
 
     let postText = `🔥 *PRONÓSTICO OFICIAL DEL DÍA (Quinela Master Pro)* 🔥\n`;
-    postText += `📅 ${todayFormatted.toUpperCase()} | Ciudad y Provincia\n\n`;
-    postText += `🎯 *LOS FIJOS DE LA JORNADA (Y DÓNDE JUGARLOS):*\n`;
+    postText += `📅 ${todayFormatted.toUpperCase()}\n\n`;
 
-    dailyData.top_predictions.slice(0, 5).forEach((p, idx) => {
+    // 1. Sección Lotería de la Ciudad (Nacional)
+    postText += `🏛️ *LOTERÍA DE LA CIUDAD (NACIONAL) - FIJOS DEL DÍA:*\n`;
+    ciudadData.top_predictions.slice(0, 4).forEach((p, idx) => {
       const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
       const terno = p.suggested_centenas?.[0] || `7${p.number}`;
       const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
-      const lotTag = p.target_lottery === 'ciudad' ? '🏛️ Ciudad' : p.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas';
       const posTag = idx === 0 
         ? '👑 A LA CABEZA (1° Premio Pleno)' 
         : idx === 1 
-          ? '🎯 Al 1° y a los 5 (Premio Combinado)' 
-          : idx < 4 
-            ? '💎 A los 5 o a los 10 (Pizarra Segura)' 
-            : '🛡️ A los 10 o a los 20 (Para Salvar la Jugada)';
+          ? '🎯 Al 1° y a los 5' 
+          : idx === 2 
+            ? '💎 A los 5 o a los 10' 
+            : '🛡️ A los 10 o a los 20';
 
       postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
       postText += `   ↳ 📍 Jugar: *${posTag}*\n`;
-      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}* | ${lotTag}\n`;
+      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}*\n`;
     });
 
-    if (dailyData.suggested_redoblonas && dailyData.suggested_redoblonas[0]) {
-      const redo = dailyData.suggested_redoblonas[0];
-      postText += `\n🔒 *REDOBLONA CANDADO DEL DÍA:*\n`;
-      postText += `💎 Pareja: *${redo.pair}* (${redo.significados})\n`;
-      postText += `   ↳ Modalidad: ${redo.recommended_positions} (${redo.target})\n`;
+    // 2. Sección Lotería de la Provincia (Bs As)
+    postText += `\n🌿 *LOTERÍA DE LA PROVINCIA (BS AS) - FIJOS DEL DÍA:*\n`;
+    provData.top_predictions.slice(0, 4).forEach((p, idx) => {
+      const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
+      const terno = p.suggested_centenas?.[0] || `7${p.number}`;
+      const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
+      const posTag = idx === 0 
+        ? '👑 A LA CABEZA (1° Premio Pleno)' 
+        : idx === 1 
+          ? '🎯 Al 1° y a los 5' 
+          : idx === 2 
+            ? '💎 A los 5 o a los 10' 
+            : '🛡️ A los 10 o a los 20';
+
+      postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
+      postText += `   ↳ 📍 Jugar: *${posTag}*\n`;
+      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}*\n`;
+    });
+
+    // 3. Sección Redoblonas Candado del Día
+    if (allData.suggested_redoblonas && allData.suggested_redoblonas.length > 0) {
+      postText += `\n🔒 *REDOBLONAS CANDADO DEL DÍA:*\n`;
+      allData.suggested_redoblonas.forEach((redo) => {
+        postText += `💎 Pareja: *${redo.pair}* (${redo.significados})\n`;
+        postText += `   ↳ Modalidad: ${redo.recommended_positions} (${redo.target})\n`;
+      });
     }
 
     postText += `\n📲 *Generado con Inteligencia Artificial por Quinela Master Pro*\n`;
@@ -106,7 +130,7 @@ export default function PredictionsTab({
     postText += `https://ingenieriajh.com/quinela.html`;
 
     navigator.clipboard.writeText(postText);
-    setCopyStatus('¡Pronóstico del Día copiado para compartir en Redes! 📢✨');
+    setCopyStatus('¡Pronóstico del Día copiado separado por Lotería! 📢✨');
     setTimeout(() => setCopyStatus(''), 3000);
   };
 
