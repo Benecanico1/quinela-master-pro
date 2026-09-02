@@ -818,6 +818,14 @@ export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
   // 2026-09-02 (Miércoles - Extractos Oficiales 100% Verificados)
+  "2026-09-02_ciudad_primera": {
+    head_millar: "2708", head_centena: "708", head_ambo: "08",
+    board: ["2708", "0377", "0323", "0676", "5428", "9530", "4047", "0391", "9681", "3871", "1338", "0715", "6731", "4816", "3442", "3912", "9525", "6923", "7806", "1459"]
+  },
+  "2026-09-02_provincia_primera": {
+    head_millar: "0710", head_centena: "710", head_ambo: "10",
+    board: ["0710", "3587", "7598", "2304", "7413", "2393", "2133", "8889", "7365", "0212", "7299", "3844", "0720", "4715", "7119", "9551", "7655", "9849", "5545", "9898"]
+  },
   "2026-09-02_ciudad_previa": {
     head_millar: "6953", head_centena: "953", head_ambo: "53",
     board: ["6953", "2401", "2784", "7374", "2045", "5567", "7110", "8691", "9917", "0537", "7995", "8695", "0367", "5484", "1470", "3678", "2985", "3871", "1889", "3568"]

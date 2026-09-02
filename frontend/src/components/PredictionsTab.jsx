@@ -46,7 +46,14 @@ export default function PredictionsTab({
       const ambo = pred.number;
       const terno = pred.suggested_centenas?.[0] || `7${ambo}`;
       const cuaterno = pred.suggested_millar?.[0] || `17${ambo}`;
-      text += `${idx + 1}. ${ambo} | ${terno} | ${cuaterno}\n`;
+      const posTag = idx === 0 
+        ? '👑 A LA CABEZA (1° Premio)' 
+        : idx === 1 
+          ? '🎯 Al 1° y a los 5' 
+          : idx < 4 
+            ? '💎 A los 5 o a los 10' 
+            : '🛡️ A los 10 o a los 20';
+      text += `${idx + 1}. ${ambo} ("${pred.significado}") | Terno: ${terno} | Cuat: ${cuaterno}\n   ↳ Sugerencia: ${posTag}\n`;
     });
     text += `\nRecomendada por Quinela Master Pro`;
 
@@ -67,14 +74,23 @@ export default function PredictionsTab({
 
     let postText = `🔥 *PRONÓSTICO OFICIAL DEL DÍA (Quinela Master Pro)* 🔥\n`;
     postText += `📅 ${todayFormatted.toUpperCase()} | Ciudad y Provincia\n\n`;
-    postText += `🎯 *LOS FIJOS DE LA JORNADA (Válidos para todos los turnos):*\n`;
+    postText += `🎯 *LOS FIJOS DE LA JORNADA (Y DÓNDE JUGARLOS):*\n`;
 
     dailyData.top_predictions.slice(0, 5).forEach((p, idx) => {
       const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
       const terno = p.suggested_centenas?.[0] || `7${p.number}`;
       const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
       const lotTag = p.target_lottery === 'ciudad' ? '🏛️ Ciudad' : p.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas';
+      const posTag = idx === 0 
+        ? '👑 A LA CABEZA (1° Premio Pleno)' 
+        : idx === 1 
+          ? '🎯 Al 1° y a los 5 (Premio Combinado)' 
+          : idx < 4 
+            ? '💎 A los 5 o a los 10 (Pizarra Segura)' 
+            : '🛡️ A los 10 o a los 20 (Para Salvar la Jugada)';
+
       postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
+      postText += `   ↳ 📍 Jugar: *${posTag}*\n`;
       postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}* | ${lotTag}\n`;
     });
 
@@ -357,20 +373,41 @@ export default function PredictionsTab({
                 }`}
                 onClick={() => setExpandedIndex(isExpanded ? null : idx)}
               >
-                {/* Header of Signal: Target Lottery Badge & Live Countdown Timer */}
+                {/* Header of Signal: Target Lottery Badge, Position Badge & Live Countdown Timer */}
                 <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
-                    cand.target_lottery === 'ciudad' 
-                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                      : cand.target_lottery === 'provincia'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  }`}>
-                    {cand.target_lottery === 'ciudad' ? '🏛️ Ciudad' : cand.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas'}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
+                      cand.target_lottery === 'ciudad' 
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        : cand.target_lottery === 'provincia'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    }`}>
+                      {cand.target_lottery === 'ciudad' ? '🏛️ Ciudad' : cand.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas'}
+                    </span>
+
+                    {/* Insignia de Posición Sugerida para Jugar */}
+                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
+                      idx === 0 
+                        ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-xs' 
+                        : idx === 1 
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' 
+                          : idx < 4 
+                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
+                            : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    }`}>
+                      {idx === 0 
+                        ? '👑 A la Cabeza' 
+                        : idx === 1 
+                          ? '🎯 Al 1° y a los 5' 
+                          : idx < 4 
+                            ? '💎 A los 5 o a los 10' 
+                            : '🛡️ A los 10 o a los 20'}
+                    </span>
+                  </div>
 
                   {/* Individual Live Timer Badge */}
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[9.5px] font-mono font-bold text-amber-400">
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[9.5px] font-mono font-bold text-amber-400 shrink-0">
                     <Clock className="w-2.5 h-2.5 text-amber-400" />
                     <span>{liveShiftInfo.formattedTimeLeft}</span>
                   </div>
