@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Flame, Clock, Layers, ChevronDown, ChevronUp, 
   Shuffle, Copy, Check, ShieldCheck, Lock, Crown, RefreshCw, Zap,
-  Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink
+  Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink, Share2
 } from 'lucide-react';
 import { getClientPredictions, SHIFT_DEFINITIONS, getCurrentActiveShift, formatSecondsToHMS } from '../services/clientEngine';
 import { getAffiliateUrl } from '../services/firebaseClient';
@@ -55,6 +55,45 @@ export default function PredictionsTab({
     setTimeout(() => setCopyStatus(''), 2500);
   };
 
+  const handleCopyDailySummaryForSocialMedia = () => {
+    const dailyData = getClientPredictions('all', 'todo_el_dia', 5);
+    const now = new Date();
+    const todayFormatted = now.toLocaleDateString('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    let postText = `🔥 *PRONÓSTICO OFICIAL DEL DÍA (Quinela Master Pro)* 🔥\n`;
+    postText += `📅 ${todayFormatted.toUpperCase()} | Ciudad y Provincia\n\n`;
+    postText += `🎯 *LOS FIJOS DE LA JORNADA (Válidos para todos los turnos):*\n`;
+
+    dailyData.top_predictions.slice(0, 5).forEach((p, idx) => {
+      const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
+      const terno = p.suggested_centenas?.[0] || `7${p.number}`;
+      const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
+      const lotTag = p.target_lottery === 'ciudad' ? '🏛️ Ciudad' : p.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas';
+      postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
+      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}* | ${lotTag}\n`;
+    });
+
+    if (dailyData.suggested_redoblonas && dailyData.suggested_redoblonas[0]) {
+      const redo = dailyData.suggested_redoblonas[0];
+      postText += `\n🔒 *REDOBLONA CANDADO DEL DÍA:*\n`;
+      postText += `💎 Pareja: *${redo.pair}* (${redo.significados})\n`;
+      postText += `   ↳ Modalidad: ${redo.recommended_positions} (${redo.target})\n`;
+    }
+
+    postText += `\n📲 *Generado con Inteligencia Artificial por Quinela Master Pro*\n`;
+    postText += `🎁 *Probá la app con 15 DÍAS VIP GRATIS acá:* 👇\n`;
+    postText += `https://ingenieriajh.com/quinela.html`;
+
+    navigator.clipboard.writeText(postText);
+    setCopyStatus('¡Pronóstico del Día copiado para compartir en Redes! 📢✨');
+    setTimeout(() => setCopyStatus(''), 3000);
+  };
+
   const handleQuickGenerate = () => {
     const randomPick = isVip ? top5[Math.floor(Math.random() * top5.length)] : top5[0];
     setGeneratedTicket({
@@ -77,6 +116,7 @@ export default function PredictionsTab({
 
   const shiftOptions = [
     { id: 'auto', label: 'Auto (En Vivo)', icon: Zap },
+    { id: 'todo_el_dia', label: '⭐ Todo el Día (Fijos)', icon: Sparkles },
     { id: 'la_previa', label: 'La Previa (10:15)', icon: Clock },
     { id: 'primera', label: 'Primera (12:00)', icon: Clock },
     { id: 'matutina', label: 'Matutina (15:00)', icon: Clock },
@@ -187,6 +227,17 @@ export default function PredictionsTab({
             <Copy className="w-3 h-3 text-emerald-400 group-hover:text-emerald-300 ml-auto shrink-0" />
           </button>
         </div>
+
+        {/* Botón de Viralización: Copiar Pronóstico del Día para Redes Sociales */}
+        <button
+          type="button"
+          onClick={handleCopyDailySummaryForSocialMedia}
+          className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
+        >
+          <Share2 className="w-3.5 h-3.5 text-slate-950" />
+          <span>📢 Copiar Pronóstico del Día (Para Redes y WhatsApp)</span>
+          <Copy className="w-3.5 h-3.5 ml-auto text-slate-900" />
+        </button>
 
         {/* Único Botón Oficial para Jugar en Plataforma Oficial */}
         <a

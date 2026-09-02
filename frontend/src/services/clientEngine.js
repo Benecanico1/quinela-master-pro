@@ -438,6 +438,34 @@ export function getClientPredictions(lottery = "all", shift = "auto", topK = 15)
         { pair: "69 y 31", significados: "La Mudanza y La Luz", target: "Ciudad (Nacional)", pair_score: 89.8, recommended_positions: "Al 1° y a los 5" },
         { pair: "88 y 24", significados: "El Papa y Caballo", target: "Ambas Loterías", pair_score: 87.3, recommended_positions: "Al 1° y a los 10" }
       ]
+    },
+    todo_el_dia: {
+      name: 'Pronóstico de Todo el Día',
+      time: 'Jornada Completa',
+      ciudad: [
+        { num: "69", score: 94.2, delay: 38, target: "ciudad", reasons: ["La Mudanza: máximo score acumulado de la jornada en LOTBA"] },
+        { num: "16", score: 92.5, delay: 24, target: "ciudad", reasons: ["El Anillo: ciclo armónico sostenido en Ciudad"] },
+        { num: "03", score: 91.8, delay: 39, target: "ciudad", reasons: ["San Cono: atractor masivo para toda la jornada"] },
+        { num: "70", score: 89.4, delay: 29, target: "ciudad", reasons: ["Muerto Sueño: rebote estadístico en Ciudad"] }
+      ],
+      provincia: [
+        { num: "04", score: 94.8, delay: 38, target: "provincia", reasons: ["La Cama: mayor probabilidad acumulada del día en Provincia (IPLyC)"] },
+        { num: "20", score: 93.1, delay: 34, target: "provincia", reasons: ["La Fiesta: terminación cero dominante en la jornada bonaerense"] },
+        { num: "87", score: 91.9, delay: 32, target: "provincia", reasons: ["Piojos: número caliente con alta tasa de repetición"] },
+        { num: "32", score: 90.5, delay: 33, target: "provincia", reasons: ["El Dinero: centro de masa en Provincia"] }
+      ],
+      all: [
+        { num: "04", score: 94.8, delay: 38, target: "provincia", reasons: ["Fijo del Día: La Cama (Provincia de Bs As)"] },
+        { num: "69", score: 94.2, delay: 38, target: "ciudad", reasons: ["Fijo del Día: La Mudanza (Ciudad Nacional)"] },
+        { num: "20", score: 93.1, delay: 34, target: "ambas", reasons: ["Fijo del Día: La Fiesta (Válido para Ambas)"] },
+        { num: "16", score: 92.5, delay: 24, target: "ciudad", reasons: ["Fijo del Día: El Anillo (Ciudad Nacional)"] },
+        { num: "87", score: 91.9, delay: 32, target: "provincia", reasons: ["Fijo del Día: Piojos (Provincia Bs As)"] }
+      ],
+      redoblonas: [
+        { pair: "04 y 69", significados: "La Cama y La Mudanza", target: "Ambas Loterías", pair_score: 93.5, recommended_positions: "Al 1° y a los 5" },
+        { pair: "20 y 87", significados: "La Fiesta y Piojos", target: "Provincia Bs As", pair_score: 92.0, recommended_positions: "Al 1° y a los 10" },
+        { pair: "16 y 03", significados: "El Anillo y San Cono", target: "Ciudad (Nacional)", pair_score: 91.4, recommended_positions: "Al 1° y a los 10" }
+      ]
     }
   };
 
@@ -789,6 +817,16 @@ export function getShiftDrawStatus(shiftId, targetDateStr = null) {
 export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
+  // 2026-09-02 (Miércoles - Extractos Oficiales 100% Verificados)
+  "2026-09-02_ciudad_previa": {
+    head_millar: "6953", head_centena: "953", head_ambo: "53",
+    board: ["6953", "2401", "2784", "7374", "2045", "5567", "7110", "8691", "9917", "0537", "7995", "8695", "0367", "5484", "1470", "3678", "2985", "3871", "1889", "3568"]
+  },
+  "2026-09-02_provincia_previa": {
+    head_millar: "0681", head_centena: "681", head_ambo: "81",
+    board: ["0681", "9842", "9079", "4495", "3543", "5927", "2358", "0554", "3193", "9235", "7684", "1123", "8903", "1374", "6150", "1442", "8369", "9041", "1503", "4978"]
+  },
+
   // 2026-09-01 (Martes - Extractos Oficiales 100% Verificados)
   "2026-09-01_ciudad_primera": {
     head_millar: "8959", head_centena: "959", head_ambo: "59",
@@ -1147,10 +1185,19 @@ export async function fetchDirectFromLotba() {
   return null;
 }
 
-// Online Hybrid Auto-Sync: 1) Direct LOTBA Extractor + 2) Cloud Repository Fallback
+// Online Hybrid Auto-Sync: 0) Firebase Firestore + 1) Direct LOTBA Extractor + 2) Cloud Repository Fallback
 export async function syncRemoteOfficialDraws() {
   let directUpdated = false;
   let totalCount = 0;
+
+  // 0. Try Real-Time Firestore Cloud Database (Instant, Official, No Quotas)
+  try {
+    const { syncDrawsFromFirestore } = await import('./firebaseClient.js');
+    const firestoreDraws = await syncDrawsFromFirestore();
+    if (firestoreDraws && Object.keys(firestoreDraws).length > 0) {
+      totalCount = Math.max(totalCount, Object.keys(firestoreDraws).length);
+    }
+  } catch (e) {}
 
   // 1. Try Direct Native LOTBA Extractor (In-App real-time live connection)
   try {

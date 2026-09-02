@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { saveRealOfficialDrawToStorage } from './clientEngine';
+import { saveRealOfficialDrawToStorage } from './clientEngine.js';
 
 // Firebase configuration with verified Google Auth credentials
 const firebaseConfig = {
@@ -110,6 +110,39 @@ export async function logOutGoogleAccount() {
   }
 }
 
+// Fetch today's official draws directly from Firestore
+export async function syncDrawsFromFirestore() {
+  if (!db) return null;
+  try {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    // 1. Check today's specific document
+    const todayRef = doc(db, 'official_draws', todayStr);
+    const snap = await getDoc(todayRef);
+    let updatedData = {};
+    if (snap.exists()) {
+      updatedData = snap.data();
+    }
+
+    // 2. Also check 'latest' doc
+    const latestRef = doc(db, 'official_draws', 'latest');
+    const latestSnap = await getDoc(latestRef);
+    if (latestSnap.exists()) {
+      updatedData = { ...updatedData, ...latestSnap.data() };
+    }
+
+    if (Object.keys(updatedData).length > 0) {
+      const raw = localStorage.getItem('quinela_official_draws_real_v1');
+      const existing = raw ? JSON.parse(raw) : {};
+      const merged = { ...existing, ...updatedData };
+      localStorage.setItem('quinela_official_draws_real_v1', JSON.stringify(merged));
+      return merged;
+    }
+  } catch (err) {
+    console.warn("Firestore draws sync error:", err.message);
+  }
+  return null;
+}
+
 // Subscribe to real-time official draws updates from Firestore
 export function subscribeToOfficialDraws(onUpdate) {
   if (!db) return () => {};
@@ -119,10 +152,19 @@ export function subscribeToOfficialDraws(onUpdate) {
     const unsubscribe = onSnapshot(drawsRef, (snapshot) => {
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added' || change.type === 'modified') {
-          const drawData = change.doc.data();
-          const docId = change.doc.id; // e.g. "2026-08-27_ciudad_previa"
-          if (drawData && drawData.board) {
-            saveRealOfficialDrawToStorage(docId, drawData);
+          const docData = change.doc.data();
+          if (!docData) return;
+
+          // If document is a single draw
+          if (docData.board) {
+            saveRealOfficialDrawToStorage(change.doc.id, docData);
+          } else {
+            // Document contains multiple draws as key-value pairs
+            Object.keys(docData).forEach((key) => {
+              if (docData[key] && docData[key].board) {
+                saveRealOfficialDrawToStorage(key, docData[key]);
+              }
+            });
           }
         }
       });
