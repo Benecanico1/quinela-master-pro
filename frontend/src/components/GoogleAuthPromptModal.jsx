@@ -34,9 +34,10 @@ export default function GoogleAuthPromptModal({ isOpen, onClose, onGoogleSuccess
       }
 
       const isAdmin = cleanEmail === 'jesushidalgo25@gmail.com';
+      const docId = `user_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
       const userData = {
-        id: `google_${Date.now()}`,
+        id: docId,
         name: displayName,
         email: cleanEmail,
         photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}`,
@@ -53,7 +54,7 @@ export default function GoogleAuthPromptModal({ isOpen, onClose, onGoogleSuccess
       // Save to Firestore if connected
       if (db) {
         try {
-          const userRef = doc(db, 'users', userData.id);
+          const userRef = doc(db, 'users', docId);
           const userSnap = await getDoc(userRef);
           if (userSnap.exists()) {
             const existing = userSnap.data();
@@ -67,6 +68,12 @@ export default function GoogleAuthPromptModal({ isOpen, onClose, onGoogleSuccess
           console.warn("Firestore sync skipped:", dbErr);
         }
       }
+
+      // Link device telemetry
+      try {
+        const { syncUserProfileToCloud } = await import('../services/telemetryService');
+        await syncUserProfileToCloud(userData);
+      } catch (e) {}
 
       localStorage.setItem('quiniela_user', JSON.stringify(userData));
       onGoogleSuccess(userData);

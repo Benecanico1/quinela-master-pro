@@ -45,6 +45,7 @@ import {
   getClientPredictions,
   syncRemoteOfficialDraws
 } from './services/clientEngine';
+import { registerDeviceSession, syncUserProfileToCloud } from './services/telemetryService';
 
 // Robust Error Boundary to guarantee app never crashes to black screen
 class ErrorBoundary extends React.Component {
@@ -139,6 +140,9 @@ export default function App() {
         .catch(() => {});
     }
 
+    // 0. Register device installation telemetry session in Firestore
+    registerDeviceSession();
+
     // 1. Immediate Cloud Auto-Sync with LOTBA/Firebase on App Launch
     syncRemoteOfficialDraws().then(res => {
       if (res.success) {
@@ -159,6 +163,8 @@ export default function App() {
     localStorage.setItem('quiniela_user', JSON.stringify(userData));
     localStorage.setItem('has_completed_onboarding', 'true');
     setIsWelcomeAuthOpen(false);
+    // Sync profile to cloud
+    syncUserProfileToCloud(userData);
     // Automatically transition to the Interactive Guide
     setIsGuideOpen(true);
   };
@@ -180,6 +186,7 @@ export default function App() {
     localStorage.setItem('quiniela_user', JSON.stringify(guestUser));
     localStorage.setItem('has_completed_onboarding', 'true');
     setIsWelcomeAuthOpen(false);
+    registerDeviceSession();
     // Automatically transition to the Interactive Guide
     setIsGuideOpen(true);
   };
@@ -244,9 +251,9 @@ export default function App() {
   const tabs = [
     { id: 'predictions', label: 'Pronósticos AI', icon: Sparkles, color: 'text-amber-400', isVipOnly: false },
     { id: 'draws_history', label: 'Sorteos & Resultados', icon: Trophy, color: 'text-amber-300', isVipOnly: false },
-    { id: 'bankroll', label: 'Estrategia & Premios', icon: Calculator, color: 'text-emerald-400', isVipOnly: true },
+    { id: 'stats_radar', label: 'Radar & Números', icon: Radio, color: 'text-cyan-400', isVipOnly: false },
     { id: 'dreams', label: 'Libro de Sueños', icon: Moon, color: 'text-purple-400', isVipOnly: false },
-    { id: 'stats_radar', label: 'Radar & Números', icon: Radio, color: 'text-cyan-400', isVipOnly: false }
+    { id: 'bankroll', label: 'Estrategia & Premios', icon: Calculator, color: 'text-emerald-400', isVipOnly: true }
   ];
 
   return (
@@ -374,7 +381,7 @@ export default function App() {
           )}
 
           {activeTab === 'draws_history' && (
-            <DrawsHistoryTab />
+            <DrawsHistoryTab onNavigateToRadar={() => setActiveTab('stats_radar')} />
           )}
 
           {activeTab === 'bankroll' && (
@@ -522,11 +529,11 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('bankroll')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'bankroll' ? 'text-emerald-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('stats_radar')}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'stats_radar' ? 'text-cyan-400' : 'text-slate-400'}`}
         >
-          <Calculator className="w-4 h-4" />
-          <span className="text-[9px] font-bold">Estrategia</span>
+          <Radio className="w-4 h-4" />
+          <span className="text-[9px] font-bold">Radar</span>
         </button>
 
         <button
@@ -538,11 +545,11 @@ export default function App() {
         </button>
 
         <button
-          onClick={() => setActiveTab('stats_radar')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'stats_radar' ? 'text-cyan-400' : 'text-slate-400'}`}
+          onClick={() => setActiveTab('bankroll')}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'bankroll' ? 'text-emerald-400' : 'text-slate-400'}`}
         >
-          <Radio className="w-4 h-4" />
-          <span className="text-[9px] font-bold">Radar</span>
+          <Calculator className="w-4 h-4" />
+          <span className="text-[9px] font-bold">Estrategia</span>
         </button>
       </div>
 

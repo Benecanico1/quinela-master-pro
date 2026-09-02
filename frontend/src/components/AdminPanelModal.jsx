@@ -3,14 +3,17 @@ import axios from 'axios';
 import { 
   X, Users, CreditCard, Megaphone, Settings, 
   ShieldCheck, Check, Plus, RefreshCw, Crown, AlertCircle,
-  Eye, Image as ImageIcon, MessageSquareHeart, Star, ThumbsUp, Lightbulb, AlertTriangle, ChevronRight, Trophy, ExternalLink
+  Eye, Image as ImageIcon, MessageSquareHeart, Star, ThumbsUp, Lightbulb, AlertTriangle, ChevronRight, Trophy, ExternalLink, Smartphone
 } from 'lucide-react';
 import { getRealOfficialDrawsFromStorage, saveRealOfficialDrawToStorage, SIGNIFICADOS, getLocalDateString } from '../services/clientEngine';
 import { getAffiliateUrl, setAffiliateUrl } from '../services/firebaseClient';
+import { getCloudAdminTelemetry, grantVipDaysInCloud } from '../services/telemetryService';
 
 export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushidalgo25@gmail.com' }) {
   const [adminTab, setAdminTab] = useState('users');
   const [usersList, setUsersList] = useState([]);
+  const [installsList, setInstallsList] = useState([]);
+  const [userSubTab, setUserSubTab] = useState('registered'); // 'registered' or 'installs'
   const [paymentsList, setPaymentsList] = useState([]);
   const [feedbackList, setFeedbackList] = useState([]);
   const [settings, setSettings] = useState({ mercadopago_alias: 'quiniela.master.pro', usdt_trc20_wallet: 'TQ7x...' });
@@ -80,35 +83,38 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
   const fetchAdminData = async () => {
     setLoading(true);
     try {
-      // 1. Always load local data first
-      const localPayments = JSON.parse(localStorage.getItem('pending_payments') || '[]');
-      const localFeedback = JSON.parse(localStorage.getItem('app_feedback_list') || '[]');
-      const currentUser = JSON.parse(localStorage.getItem('quiniela_user') || 'null');
-
-      const defaultUsers = [
-        { id: 1, name: 'Jesús Hidalgo (Admin)', email: 'jesushidalgo25@gmail.com', role: 'admin', is_vip: 1, tier: 'VIP_ANNUAL', trial_active: 0, vip_active: 1, vip_days_left: 365 }
-      ];
-      if (currentUser && currentUser.email !== 'jesushidalgo25@gmail.com' && currentUser.email !== 'visita@quiniela.com') {
-        defaultUsers.push({ ...currentUser, id: currentUser.id || Date.now() });
+      // 1. Fetch live telemetry directly from Firebase Firestore
+      try {
+        const cloudData = await getCloudAdminTelemetry();
+        if (cloudData.users && cloudData.users.length > 0) {
+          setUsersList(cloudData.users);
+        } else {
+          setUsersList([
+            { id: 'admin', name: 'Jesús Hidalgo (Admin)', email: 'jesushidalgo25@gmail.com', role: 'admin', is_vip: 1, tier: 'VIP_ANNUAL', trial_active: 0, vip_active: 1, vip_days_left: 365 }
+          ]);
+        }
+        if (cloudData.installs) {
+          setInstallsList(cloudData.installs);
+        }
+      } catch (cloudErr) {
+        console.warn('Error fetching Firestore telemetry:', cloudErr);
       }
 
-      setUsersList(defaultUsers);
+      // 2. Load local payments & feedback
+      const localPayments = JSON.parse(localStorage.getItem('pending_payments') || '[]');
+      const localFeedback = JSON.parse(localStorage.getItem('app_feedback_list') || '[]');
       setPaymentsList(localPayments);
       setFeedbackList(localFeedback);
 
-      // 2. Try remote sync if available
+      // 3. Fallback sync for secondary endpoints
       try {
-        const [uRes, pRes, sRes, promoRes, fRes] = await Promise.all([
-          axios.get(`/api/admin/users?admin_email=${adminEmail}`, { timeout: 1200 }).catch(() => ({ data: [] })),
+        const [pRes, sRes, promoRes, fRes] = await Promise.all([
           axios.get(`/api/admin/payments?admin_email=${adminEmail}`, { timeout: 1200 }).catch(() => ({ data: [] })),
           axios.get('/api/public/payment-info', { timeout: 1200 }).catch(() => ({ data: {} })),
           axios.get('/api/public/promo-popup', { timeout: 1200 }).catch(() => ({ data: null })),
           axios.get('/api/feedback/list', { timeout: 1200 }).catch(() => ({ data: [] }))
         ]);
 
-        if (Array.isArray(uRes.data) && uRes.data.length > 0) {
-          setUsersList(uRes.data);
-        }
         if (Array.isArray(pRes.data) && pRes.data.length > 0) {
           setPaymentsList([...localPayments, ...pRes.data]);
         }
@@ -122,7 +128,7 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
           setPromo(promoRes.data);
         }
       } catch (networkErr) {
-        // Safe silent fallback to local storage
+        // Safe silent fallback
       }
     } catch (err) {
       console.error('Error fetching admin data:', err);
@@ -141,20 +147,25 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
 
   const handleGrantVip = async (userId, days) => {
     setUsersList(prev => (prev || []).map(u => {
-      if (u.id === userId) {
+      if (u.id === userId || u.email === userId) {
         return { ...u, is_vip: 1, tier: 'VIP_MONTHLY', vip_active: 1, vip_days_left: (u.vip_days_left || 0) + days };
       }
       return u;
     }));
 
     const currentUser = JSON.parse(localStorage.getItem('quiniela_user') || '{}');
-    if (currentUser.id === userId || currentUser.email === adminEmail) {
+    if (currentUser.id === userId || currentUser.email === userId || currentUser.email === adminEmail) {
       currentUser.is_vip = true;
       currentUser.tier = 'VIP_MONTHLY';
       currentUser.vip_active = true;
       currentUser.vip_days_left = (currentUser.vip_days_left || 0) + days;
       localStorage.setItem('quiniela_user', JSON.stringify(currentUser));
     }
+
+    // Direct Firestore update
+    try {
+      await grantVipDaysInCloud(userId, days);
+    } catch (e) {}
 
     try {
       await axios.post('/api/admin/users/grant-vip', {
@@ -297,10 +308,82 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
           {/* USERS MANAGEMENT TAB */}
           {!loading && adminTab === 'users' && (
             <div className="space-y-4">
+              {/* Telemetry KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Total Dispositivos</span>
+                    <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+                  </div>
+                  <div className="text-lg font-black text-white">{installsList.length}</div>
+                  <div className="text-[9.5px] text-slate-500">Instalaciones activas</div>
+                </div>
+
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Registrados</span>
+                    <Users className="w-3.5 h-3.5 text-purple-400" />
+                  </div>
+                  <div className="text-lg font-black text-white">{usersList.length}</div>
+                  <div className="text-[9.5px] text-slate-500">Con cuenta de correo</div>
+                </div>
+
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">Visitantes Libres</span>
+                    <Eye className="w-3.5 h-3.5 text-blue-400" />
+                  </div>
+                  <div className="text-lg font-black text-white">
+                    {installsList.filter(i => !i.isRegistered).length}
+                  </div>
+                  <div className="text-[9.5px] text-slate-500">Sin correo ingresado</div>
+                </div>
+
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div className="flex items-center justify-between text-slate-400 mb-1">
+                    <span className="text-[11px] font-bold">VIPs Activos</span>
+                    <Crown className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
+                  <div className="text-lg font-black text-amber-400">
+                    {usersList.filter(u => u.is_vip).length}
+                  </div>
+                  <div className="text-[9.5px] text-slate-500">Con acceso VIP</div>
+                </div>
+              </div>
+
+              {/* Sub-tab Switcher: Registrados con Correo vs Dispositivos Libres */}
+              <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setUserSubTab('registered')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    userSubTab === 'registered'
+                      ? 'bg-purple-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>👤 Registrados con Correo ({usersList.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setUserSubTab('installs')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    userSubTab === 'installs'
+                      ? 'bg-indigo-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>📱 Dispositivos Libres / Descargas ({installsList.length})</span>
+                </button>
+              </div>
+
               <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <input
                   type="text"
-                  placeholder="Buscar por nombre o correo..."
+                  placeholder={userSubTab === 'registered' ? "Buscar por nombre o correo..." : "Buscar por ID de dispositivo..."}
                   value={searchUser}
                   onChange={(e) => setSearchUser(e.target.value)}
                   className="w-full sm:w-80 bg-slate-950 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-purple-500"
@@ -309,67 +392,138 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
                   onClick={fetchAdminData}
                   className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+                  <RefreshCw className="w-3.5 h-3.5" /> Actualizar Datos
                 </button>
               </div>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80">
-                <table className="w-full text-left text-xs min-w-[500px]">
-                  <thead className="bg-slate-900/90 text-slate-400 font-bold border-b border-slate-800">
-                    <tr>
-                      <th className="p-3">Usuario</th>
-                      <th className="p-3">Correo</th>
-                      <th className="p-3 text-center">Membresía</th>
-                      <th className="p-3 text-center">Vigencia</th>
-                      <th className="p-3 text-center">Acción VIP</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
-                    {filteredUsers.map((u) => (
-                      <tr key={u.id || u.email} className="hover:bg-slate-900/40">
-                        <td className="p-3 font-bold text-white">{u.name || 'Sin Nombre'}</td>
-                        <td className="p-3 font-mono text-slate-400">{u.email}</td>
-                        <td className="p-3 text-center">
-                          <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : u.is_vip ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-slate-800 text-slate-400'}`}>
-                            {u.tier || (u.is_vip ? 'VIP' : 'FREE')}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center font-medium">
-                          {u.trial_active ? (
-                            <span className="text-emerald-400">{u.trial_days_left}d prueba</span>
-                          ) : u.vip_active ? (
-                            <span className="text-amber-400">{u.vip_days_left}d VIP</span>
-                          ) : (
-                            <span className="text-rose-400 font-bold">Free</span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => handleGrantVip(u.id, 15)}
-                              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold text-[10px] cursor-pointer"
-                            >
-                              +15D
-                            </button>
-                            <button
-                              onClick={() => handleGrantVip(u.id, 30)}
-                              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded font-black text-[10px] cursor-pointer shadow"
-                            >
-                              +1 Mes
-                            </button>
-                            <button
-                              onClick={() => handleGrantVip(u.id, 365)}
-                              className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold text-[10px] cursor-pointer"
-                            >
-                              +1 Año
-                            </button>
-                          </div>
-                        </td>
+              {/* TABLE: REGISTERED USERS */}
+              {userSubTab === 'registered' && (
+                <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80">
+                  <table className="w-full text-left text-xs min-w-[500px]">
+                    <thead className="bg-slate-900/90 text-slate-400 font-bold border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Usuario</th>
+                        <th className="p-3">Correo</th>
+                        <th className="p-3 text-center">Membresía</th>
+                        <th className="p-3 text-center">Vigencia</th>
+                        <th className="p-3 text-center">Acción VIP</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {filteredUsers.map((u) => (
+                        <tr key={u.id || u.email} className="hover:bg-slate-900/40">
+                          <td className="p-3 font-bold text-white flex items-center gap-2">
+                            {u.photoURL ? (
+                              <img src={u.photoURL} alt="avatar" className="w-6 h-6 rounded-full border border-slate-700 bg-slate-800" />
+                            ) : null}
+                            <span>{u.name || 'Sin Nombre'}</span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-400">{u.email}</td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] ${u.role === 'admin' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' : u.is_vip ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'bg-slate-800 text-slate-400'}`}>
+                              {u.tier || (u.is_vip ? 'VIP' : 'FREE')}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center font-medium">
+                            {u.trial_active ? (
+                              <span className="text-emerald-400">{u.trial_days_left || u.vip_days_left}d prueba</span>
+                            ) : u.vip_active || u.is_vip ? (
+                              <span className="text-amber-400">{u.vip_days_left}d VIP</span>
+                            ) : (
+                              <span className="text-rose-400 font-bold">Free</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleGrantVip(u.id || u.email, 15)}
+                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-bold text-[10px] cursor-pointer"
+                              >
+                                +15D
+                              </button>
+                              <button
+                                onClick={() => handleGrantVip(u.id || u.email, 30)}
+                                className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded font-black text-[10px] cursor-pointer shadow"
+                              >
+                                +1 Mes
+                              </button>
+                              <button
+                                onClick={() => handleGrantVip(u.id || u.email, 365)}
+                                className="px-2 py-1 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold text-[10px] cursor-pointer"
+                              >
+                                +1 Año
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* TABLE: FREE DEVICE INSTALLS */}
+              {userSubTab === 'installs' && (
+                <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80">
+                  <table className="w-full text-left text-xs min-w-[550px]">
+                    <thead className="bg-slate-900/90 text-slate-400 font-bold border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Dispositivo ID</th>
+                        <th className="p-3 text-center">Versión App</th>
+                        <th className="p-3 text-center">Aperturas</th>
+                        <th className="p-3">Primera Apertura</th>
+                        <th className="p-3">Última Actividad</th>
+                        <th className="p-3 text-center">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {installsList.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-slate-500">
+                            No hay dispositivos registrados aún.
+                          </td>
+                        </tr>
+                      ) : (
+                        installsList
+                          .filter(inst => !searchUser || (inst.deviceId || '').toLowerCase().includes(searchUser.toLowerCase()) || (inst.userEmail || '').toLowerCase().includes(searchUser.toLowerCase()))
+                          .map((inst) => (
+                            <tr key={inst.id || inst.deviceId} className="hover:bg-slate-900/40">
+                              <td className="p-3 font-mono font-bold text-white flex items-center gap-2">
+                                <Smartphone className="w-4 h-4 text-indigo-400 shrink-0" />
+                                <span>{(inst.deviceId || 'Dispositivo').slice(0, 16)}...</span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono text-[10px] font-bold">
+                                  v{inst.appVersion || '1.3.32'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center font-bold text-amber-400">
+                                {inst.totalOpens || 1}
+                              </td>
+                              <td className="p-3 text-slate-400 text-[11px]">
+                                {inst.firstInstalled ? new Date(inst.firstInstalled).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Reciente'}
+                              </td>
+                              <td className="p-3 text-slate-300 text-[11px]">
+                                {inst.lastActive ? new Date(inst.lastActive).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'Reciente'}
+                              </td>
+                              <td className="p-3 text-center">
+                                {inst.isRegistered ? (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-[10px]">
+                                    {inst.userEmail}
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-bold text-[10px]">
+                                    Libre
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, Flame, Clock, Layers, ChevronDown, ChevronUp, 
   Shuffle, Copy, Check, ShieldCheck, Lock, Crown, RefreshCw, Zap,
-  Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink, Share2
+  Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink, Share2,
+  Menu, X
 } from 'lucide-react';
 import { getClientPredictions, SHIFT_DEFINITIONS, getCurrentActiveShift, formatSecondsToHMS } from '../services/clientEngine';
 import { getAffiliateUrl } from '../services/firebaseClient';
@@ -24,6 +25,7 @@ export default function PredictionsTab({
   const [copyStatus, setCopyStatus] = useState('');
   const [liveShiftInfo, setLiveShiftInfo] = useState(() => getCurrentActiveShift());
   const [isEfficiencyModalOpen, setIsEfficiencyModalOpen] = useState(false);
+  const [isShiftMenuOpen, setIsShiftMenuOpen] = useState(false);
 
   // Second-by-second live countdown on every signal
   useEffect(() => {
@@ -166,168 +168,200 @@ export default function PredictionsTab({
 
   const isUrgent = liveShiftInfo.totalSecondsLeft <= 900; // Less than 15 min
 
+  const currentShiftObj = shiftOptions.find(s => s.id === activeShift) || shiftOptions[0];
+
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
-      {/* Shift Selection Pills Bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-        {shiftOptions.map((s) => {
-          const isSelected = activeShift === s.id || (!activeShift && s.id === 'auto');
-          const Icon = s.icon;
-          return (
-            <button
-              key={s.id}
-              onClick={() => onSelectShift && onSelectShift(s.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{s.label}</span>
-            </button>
-          );
-        })}
+    <div className="space-y-3 sm:space-y-4 animate-fadeIn">
+      {/* 1. Barra Sticky Superior de Una Sola Línea con Próximo Sorteo y Menú de Rayitas */}
+      <div className="sticky top-[48px] sm:top-[56px] z-30 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-1.5 bg-slate-950/95 backdrop-blur-md border-b border-amber-500/30 flex items-center justify-between gap-2 shadow-md">
+        {/* Próximo Sorteo Activo en una sola línea */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <span className="text-[11px] sm:text-xs font-black text-amber-300 truncate">
+            Próximo Sorteo Activo: <strong className="text-white">{activePredictions.shift_name || 'En Vivo'}</strong> ({activePredictions.shift_time || '15:00'} hs)
+          </span>
+        </div>
+
+        {/* Menú de Rayitas (☰) para seleccionar turno */}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsShiftMenuOpen(!isShiftMenuOpen)}
+            className="flex items-center gap-1 px-2.5 py-1 bg-slate-900/90 hover:bg-slate-800 border border-amber-500/40 hover:border-amber-400 rounded-xl text-xs font-bold text-white shadow transition-all cursor-pointer"
+            title="Seleccionar Turno del Sorteo"
+          >
+            <Menu className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="text-[11px] font-black text-amber-300 max-w-[110px] truncate">{currentShiftObj.label}</span>
+            <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isShiftMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Desplegable Flotante del Menú de Rayitas */}
+          {isShiftMenuOpen && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setIsShiftMenuOpen(false)} 
+              />
+              <div className="absolute right-0 mt-1.5 w-60 bg-slate-900/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl py-1.5 z-50 animate-fadeIn">
+                <div className="px-3 py-1.5 border-b border-slate-800 text-[10px] font-black text-amber-400 uppercase tracking-wider">
+                  Seleccionar Turno Oficial
+                </div>
+                {shiftOptions.map((s) => {
+                  const isSelected = activeShift === s.id || (!activeShift && s.id === 'auto');
+                  const Icon = s.icon;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectShift && onSelectShift(s.id);
+                        setIsShiftMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 text-xs font-bold flex items-center justify-between gap-2 transition-all cursor-pointer text-left ${
+                        isSelected 
+                          ? 'bg-amber-500 text-slate-950 font-black' 
+                          : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-slate-950' : 'text-amber-400'}`} />
+                        <span className="truncate">{s.label}</span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-slate-950 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Lottery Filter Tabs for Predictions */}
-      <div className="grid grid-cols-3 gap-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow">
+      {/* 2. Título Superior Limpio */}
+      <div className="flex items-center justify-between pt-0.5 px-0.5">
+        <div>
+          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Pronóstico de la Inteligencia Artificial</span>
+          </h2>
+          <p className="text-[10.5px] text-slate-400">
+            Convergencia probabilística y análisis estadístico en tiempo real.
+          </p>
+        </div>
+
+        {/* Botón pequeño de Efectividad */}
+        <button
+          type="button"
+          onClick={() => setIsEfficiencyModalOpen(true)}
+          className="bg-slate-950 hover:bg-slate-900 px-2 py-1 rounded-xl border border-amber-500/30 text-right cursor-pointer hover:border-amber-400 transition-colors shrink-0 shadow"
+          title="Ver auditoría matemática de efectividad"
+        >
+          <div className="text-[9px] text-slate-400 flex items-center gap-0.5 justify-end">
+            <span>Efectividad</span>
+            <Info className="w-2.5 h-2.5 text-amber-400" />
+          </div>
+          <div className="text-xs font-black text-emerald-400 font-mono">74.2%</div>
+        </button>
+      </div>
+
+      {/* 3. Selector de Lotería Compacto (Ambas / Nacional / Provincia) */}
+      <div className="grid grid-cols-3 gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 shadow">
         <button
           onClick={() => setSelectedLottery('all')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
             selectedLottery === 'all'
-              ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+              ? 'bg-amber-500 text-slate-950 shadow font-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>🌟 Ambas Loterías</span>
+          <span>🌟 Ambas</span>
         </button>
 
         <button
           onClick={() => setSelectedLottery('ciudad')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
             selectedLottery === 'ciudad'
-              ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+              ? 'bg-amber-500 text-slate-950 shadow font-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>🏛️ Ciudad (Nacional)</span>
+          <span>🏛️ Nacional</span>
         </button>
 
         <button
           onClick={() => setSelectedLottery('provincia')}
-          className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
             selectedLottery === 'provincia'
-              ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+              ? 'bg-amber-500 text-slate-950 shadow font-black'
               : 'text-slate-400 hover:text-white'
           }`}
         >
-          <span>🌿 Provincia Bs As</span>
+          <span>🌿 Provincia</span>
         </button>
       </div>
 
-      {/* 2 Botones Rápidos para Copiar Todas las Recomendaciones al Portapapeles */}
-      {/* Compact Side-by-Side Copy Action */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-2.5 sm:p-3 shadow-md space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs font-black text-white tracking-wide flex items-center gap-1.5">
-            <Copy className="w-3.5 h-3.5 text-amber-400" /> Copiar jugada
-          </span>
-          {copyStatus && (
-            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/90 px-2 py-0.5 rounded-full border border-emerald-500/50 animate-pulse">
+      {/* 4. Cuatro Botones Compactos al Costado (Copiar y Jugar en Plataforma) */}
+      <div className="space-y-1">
+        {copyStatus && (
+          <div className="text-center">
+            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/90 px-2.5 py-0.5 rounded-full border border-emerald-500/50 shadow animate-fadeIn inline-block">
               {copyStatus}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div className="grid grid-cols-2 gap-2">
-          {/* Botón Nacional */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          {/* Botón 1: Copiar Nacional */}
           <button
             type="button"
             onClick={() => handleCopyAllLottery('ciudad')}
-            className="flex items-center justify-center gap-2 py-2 px-3 bg-gradient-to-r from-blue-950/70 via-slate-900 to-slate-950 hover:from-blue-900/80 border border-blue-500/40 hover:border-blue-400 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow group"
+            className="flex items-center justify-center gap-1 py-2 px-2 bg-slate-900/90 hover:bg-slate-800 border border-blue-500/40 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
+            title="Copiar jugadas recomendadas para Lotería Nacional"
           >
-            <span className="text-sm">🏛️</span>
-            <span className="text-xs font-black text-white group-hover:text-blue-300 transition-colors">
-              Nacional
-            </span>
-            <Copy className="w-3 h-3 text-blue-400 group-hover:text-blue-300 ml-auto shrink-0" />
+            <span className="text-xs">🏛️</span>
+            <span className="text-[11px] font-bold text-white truncate">Copiar Nacional</span>
+            <Copy className="w-3 h-3 text-blue-400 shrink-0 ml-auto" />
           </button>
 
-          {/* Botón Provincia */}
+          {/* Botón 2: Copiar Provincia */}
           <button
             type="button"
             onClick={() => handleCopyAllLottery('provincia')}
-            className="flex items-center justify-center gap-2 py-2 px-3 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-950 hover:from-emerald-900/80 border border-emerald-500/40 hover:border-emerald-400 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow group"
+            className="flex items-center justify-center gap-1 py-2 px-2 bg-slate-900/90 hover:bg-slate-800 border border-emerald-500/40 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
+            title="Copiar jugadas recomendadas para Provincia"
           >
-            <span className="text-sm">🌿</span>
-            <span className="text-xs font-black text-white group-hover:text-emerald-300 transition-colors">
-              Provincia
-            </span>
-            <Copy className="w-3 h-3 text-emerald-400 group-hover:text-emerald-300 ml-auto shrink-0" />
+            <span className="text-xs">🌿</span>
+            <span className="text-[11px] font-bold text-white truncate">Copiar Prov.</span>
+            <Copy className="w-3 h-3 text-emerald-400 shrink-0 ml-auto" />
           </button>
-        </div>
 
-        {/* Botón de Viralización: Copiar Pronóstico del Día para Redes Sociales */}
-        <button
-          type="button"
-          onClick={handleCopyDailySummaryForSocialMedia}
-          className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
-        >
-          <Share2 className="w-3.5 h-3.5 text-slate-950" />
-          <span>📢 Copiar Pronóstico del Día (Para Redes y WhatsApp)</span>
-          <Copy className="w-3.5 h-3.5 ml-auto text-slate-900" />
-        </button>
-
-        {/* Único Botón Oficial para Jugar en Plataforma Oficial */}
-        <a
-          href={getAffiliateUrl()}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50 transition-all cursor-pointer active:scale-98 text-center"
-        >
-          <span>🌐 Jugar en Plataforma Oficial (lotba.bet.ar)</span>
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      </div>
-
-      {/* AI Hub Header with Live Signal Timer and Clickable Efficiency Box */}
-      <div className="bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 shadow-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex-1">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-black uppercase mb-1.5 border border-amber-500/30">
-              <Sparkles className="w-3 h-3" /> Sorteo: {activePredictions.shift_name || 'Próximo Sorteo'} ({activePredictions.shift_time || 'En Vivo'} hs)
-            </div>
-            <h2 className="text-base sm:text-2xl font-black text-white leading-tight">
-              Pronósticos de Inteligencia Artificial
-            </h2>
-            <p className="text-[11px] sm:text-xs text-slate-300 mt-1">
-              {isVip 
-                ? `Acceso VIP Activo: Pronósticos diferenciados por lotería con desglose de 2, 3 y 4 cifras.` 
-                : `Versión Gratuita: 1 Pronóstico AI desbloqueado. Hazte VIP para ver el Top 5 completo.`}
-            </p>
-          </div>
-
-          {/* Clickable Historic Efficiency Box */}
+          {/* Botón 3: Pronóstico del Día (Para WhatsApp y Redes) */}
           <button
             type="button"
-            onClick={() => setIsEfficiencyModalOpen(true)}
-            className="bg-slate-950 hover:bg-slate-900/90 p-3 rounded-2xl border border-amber-500/40 hover:border-amber-400 text-right shrink-0 flex items-center justify-between sm:flex-col sm:items-end w-full sm:w-auto gap-2 transition-all cursor-pointer shadow group"
-            title="Toca para ver la explicación matemática de la efectividad"
+            onClick={handleCopyDailySummaryForSocialMedia}
+            className="flex items-center justify-center gap-1 py-2 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
+            title="Copiar resumen del día organizado para WhatsApp"
           >
-            <div className="text-left sm:text-right">
-              <div className="text-[10px] text-slate-400 flex items-center gap-1 sm:justify-end group-hover:text-amber-300 transition-colors">
-                <span>Efectividad Histórica</span>
-                <Info className="w-3 h-3 text-amber-400" />
-              </div>
-              <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono flex items-center gap-1">
-                <span>74.2%</span>
-              </div>
-            </div>
-            <span className="text-[9px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
-              ¿Por qué? Ver Deducción
-            </span>
+            <Share2 className="w-3 h-3 shrink-0" />
+            <span className="text-[11px] font-black truncate">Pronóstico del Día</span>
+            <Copy className="w-3 h-3 shrink-0 ml-auto" />
           </button>
+
+          {/* Botón 4: Jugar en Plataforma Oficial */}
+          <a
+            href={getAffiliateUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-1 py-2 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
+            title="Abrir plataforma oficial de juego"
+          >
+            <span className="text-xs">🌐</span>
+            <span className="text-[11px] font-black truncate">Jugar Oficial</span>
+            <ExternalLink className="w-3 h-3 shrink-0 ml-auto" />
+          </a>
         </div>
       </div>
 
