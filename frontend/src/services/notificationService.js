@@ -141,7 +141,7 @@ export async function publishBroadcastNotification(announcement) {
     title: announcement.title || '📢 Notificación Oficial',
     message: announcement.message || '',
     category: announcement.category || 'general', // 'update', 'vip_alert', 'ai_hit', 'general', 'promo'
-    is_popup: !!announcement.is_popup,
+    is_popup: Boolean(announcement.is_popup),
     action_text: announcement.action_text || '',
     action_tab: announcement.action_tab || '',
     action_url: announcement.action_url || '',
@@ -154,16 +154,19 @@ export async function publishBroadcastNotification(announcement) {
   saveStoredNotifications(updated);
 
   // 2. Publish to Firebase Firestore collection 'broadcast_announcements'
+  let cloudSuccess = false;
   if (db) {
     try {
       const docRef = doc(db, 'broadcast_announcements', notifId);
       await setDoc(docRef, payload, { merge: true });
+      cloudSuccess = true;
+      console.log("[NotificationService] Anuncio publicado exitosamente en Firestore:", notifId);
     } catch (e) {
-      console.warn("Error publishing notification to Firestore:", e);
+      console.error("[NotificationService] Error al publicar en Firestore:", e);
     }
   }
 
-  return payload;
+  return { success: cloudSuccess, payload };
 }
 
 // ADMIN FUNCTION: Delete broadcast announcement from Firestore
@@ -173,7 +176,60 @@ export async function deleteBroadcastFromCloud(notifId) {
     try {
       const docRef = doc(db, 'broadcast_announcements', notifId);
       await deleteDoc(docRef);
-    } catch (e) {}
+      console.log("[NotificationService] Anuncio eliminado de Firestore:", notifId);
+    } catch (e) {
+      console.warn("Error deleting announcement from Firestore:", e);
+    }
+  }
+}
+
+// Helper to merge and persist cloud notifications
+function mergeCloudNotifications(cloudNotifs, onUpdateCallback) {
+  if (!Array.isArray(cloudNotifs) || cloudNotifs.length === 0) return;
+
+  const deletedIds = getDeletedNotificationIds();
+  const local = getStoredNotifications();
+  const localMap = new Map(local.map(n => [n.id, n]));
+  let hasNew = false;
+
+  cloudNotifs.forEach(cn => {
+    if (!cn || !cn.id) return;
+    if (!deletedIds.includes(cn.id)) {
+      if (!localMap.has(cn.id)) {
+        localMap.set(cn.id, { ...cn, read: false });
+        hasNew = true;
+      } else {
+        const existing = localMap.get(cn.id);
+        localMap.set(cn.id, { ...cn, read: existing.read });
+      }
+    }
+  });
+
+  const merged = Array.from(localMap.values())
+    .filter(n => !deletedIds.includes(n.id))
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+  saveStoredNotifications(merged);
+  if (onUpdateCallback) {
+    onUpdateCallback(merged);
+  }
+  return merged;
+}
+
+// Explicit fetch of broadcast notifications from cloud
+export async function fetchBroadcastNotificationsFromCloud(onUpdateCallback) {
+  if (!db) return null;
+  try {
+    const colRef = collection(db, 'broadcast_announcements');
+    const snapshot = await getDocs(colRef);
+    const cloudNotifs = [];
+    snapshot.forEach(docSnap => {
+      cloudNotifs.push(docSnap.data());
+    });
+    return mergeCloudNotifications(cloudNotifs, onUpdateCallback);
+  } catch (err) {
+    console.warn("[NotificationService] Fallback al consultar anuncios:", err);
+    return null;
   }
 }
 
@@ -190,34 +246,9 @@ export function subscribeToBroadcastNotifications(onUpdateCallback) {
       snapshot.forEach(docSnap => {
         cloudNotifs.push(docSnap.data());
       });
-
-      if (cloudNotifs.length > 0) {
-        const deletedIds = getDeletedNotificationIds();
-        const local = getStoredNotifications();
-        const localMap = new Map(local.map(n => [n.id, n]));
-
-        cloudNotifs.forEach(cn => {
-          if (!deletedIds.includes(cn.id)) {
-            if (!localMap.has(cn.id)) {
-              localMap.set(cn.id, { ...cn, read: false });
-            } else {
-              const existing = localMap.get(cn.id);
-              localMap.set(cn.id, { ...cn, read: existing.read });
-            }
-          }
-        });
-
-        const merged = Array.from(localMap.values())
-          .filter(n => !deletedIds.includes(n.id))
-          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-        saveStoredNotifications(merged);
-        if (onUpdateCallback) {
-          onUpdateCallback(merged);
-        }
-      }
+      mergeCloudNotifications(cloudNotifs, onUpdateCallback);
     }, (err) => {
-      console.warn("Notifications subscription fallback:", err);
+      console.warn("[NotificationService] Subscription fallback:", err);
     });
   } catch (e) {
     return () => {};

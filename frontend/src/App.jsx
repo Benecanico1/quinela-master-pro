@@ -52,6 +52,7 @@ import { registerDeviceSession, syncUserProfileToCloud } from './services/teleme
 import { 
   getStoredNotifications, 
   subscribeToBroadcastNotifications, 
+  fetchBroadcastNotificationsFromCloud,
   getSeenPopupIds 
 } from './services/notificationService';
 
@@ -168,18 +169,37 @@ export default function App() {
       }
     });
 
-    // 2. Periodic background refresh every 45s while app is open
+    // 2. Periodic background refresh every 30s while app is open
     const syncInterval = setInterval(() => {
-      syncRemoteOfficialDraws();
-    }, 45000);
+       syncRemoteOfficialDraws();
+       fetchBroadcastNotificationsFromCloud((liveNotifs) => {
+         setNotifications(liveNotifs);
+         const seenPopups = getSeenPopupIds();
+         const popupCandidate = (liveNotifs || []).find(n => Boolean(n.is_popup) && !seenPopups.includes(n.id));
+         if (popupCandidate) {
+           setActiveBroadcastPopup(popupCandidate);
+         }
+       });
+    }, 30000);
 
     // 3. Real-time broadcast notifications subscription
     let unsubscribeNotifs = () => {};
     try {
+      // Immediate explicit fetch on launch
+      fetchBroadcastNotificationsFromCloud((liveNotifs) => {
+        setNotifications(liveNotifs);
+        const seenPopups = getSeenPopupIds();
+        const popupCandidate = (liveNotifs || []).find(n => Boolean(n.is_popup) && !seenPopups.includes(n.id));
+        if (popupCandidate) {
+          setActiveBroadcastPopup(popupCandidate);
+        }
+      });
+
+      // Real-time snapshot listener
       unsubscribeNotifs = subscribeToBroadcastNotifications((liveNotifs) => {
         setNotifications(liveNotifs);
         const seenPopups = getSeenPopupIds();
-        const popupCandidate = liveNotifs.find(n => n.is_popup && !n.read && !seenPopups.includes(n.id));
+        const popupCandidate = (liveNotifs || []).find(n => Boolean(n.is_popup) && !seenPopups.includes(n.id));
         if (popupCandidate) {
           setActiveBroadcastPopup(popupCandidate);
         }
@@ -190,12 +210,15 @@ export default function App() {
       const stored = getStoredNotifications();
       setNotifications(stored);
       const seenPopups = getSeenPopupIds();
-      const popupCandidate = stored.find(n => n.is_popup && !n.read && !seenPopups.includes(n.id));
+      const popupCandidate = (stored || []).find(n => Boolean(n.is_popup) && !seenPopups.includes(n.id));
       if (popupCandidate) {
         setActiveBroadcastPopup(popupCandidate);
       }
     };
     window.addEventListener('app-notifications-updated', handleNotifsLocalUpdate);
+    window.addEventListener('focus', () => {
+      fetchBroadcastNotificationsFromCloud(handleNotifsLocalUpdate);
+    });
 
     // Initial check for popup
     handleNotifsLocalUpdate();
@@ -204,6 +227,7 @@ export default function App() {
       clearInterval(syncInterval);
       if (unsubscribeNotifs) unsubscribeNotifs();
       window.removeEventListener('app-notifications-updated', handleNotifsLocalUpdate);
+      window.removeEventListener('focus', handleNotifsLocalUpdate);
     };
   }, []);
 
