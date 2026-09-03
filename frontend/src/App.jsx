@@ -16,7 +16,8 @@ import {
   Shield,
   UserPlus,
   MessageSquare,
-  MessageSquareHeart
+  MessageSquareHeart,
+  Bell
 } from 'lucide-react';
 
 import PredictionsTab from './components/PredictionsTab';
@@ -39,6 +40,8 @@ import ContactSupportModal from './components/ContactSupportModal';
 import FeedbackModal from './components/FeedbackModal';
 import UserProfileModal from './components/UserProfileModal';
 import AiAdvisorFloatingModal from './components/AiAdvisorFloatingModal';
+import NotificationsModal from './components/NotificationsModal';
+import BroadcastPopupModal from './components/BroadcastPopupModal';
 
 import { 
   getClientFrequencies, 
@@ -46,6 +49,11 @@ import {
   syncRemoteOfficialDraws
 } from './services/clientEngine';
 import { registerDeviceSession, syncUserProfileToCloud } from './services/telemetryService';
+import { 
+  getStoredNotifications, 
+  subscribeToBroadcastNotifications, 
+  getSeenPopupIds 
+} from './services/notificationService';
 
 // Robust Error Boundary to guarantee app never crashes to black screen
 class ErrorBoundary extends React.Component {
@@ -130,6 +138,11 @@ export default function App() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [promoData, setPromoData] = useState(null);
   const [isPromoOpen, setIsPromoOpen] = useState(false);
+  
+  // Notification Bell & Broadcast Pop-Ups State
+  const [notifications, setNotifications] = useState(() => getStoredNotifications());
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [activeBroadcastPopup, setActiveBroadcastPopup] = useState(null);
 
   const isAdmin = user?.email === 'jesushidalgo25@gmail.com' || user?.role === 'admin';
 
@@ -160,7 +173,38 @@ export default function App() {
       syncRemoteOfficialDraws();
     }, 45000);
 
-    return () => clearInterval(syncInterval);
+    // 3. Real-time broadcast notifications subscription
+    let unsubscribeNotifs = () => {};
+    try {
+      unsubscribeNotifs = subscribeToBroadcastNotifications((liveNotifs) => {
+        setNotifications(liveNotifs);
+        const seenPopups = getSeenPopupIds();
+        const popupCandidate = liveNotifs.find(n => n.is_popup && !n.read && !seenPopups.includes(n.id));
+        if (popupCandidate) {
+          setActiveBroadcastPopup(popupCandidate);
+        }
+      });
+    } catch (e) {}
+
+    const handleNotifsLocalUpdate = () => {
+      const stored = getStoredNotifications();
+      setNotifications(stored);
+      const seenPopups = getSeenPopupIds();
+      const popupCandidate = stored.find(n => n.is_popup && !n.read && !seenPopups.includes(n.id));
+      if (popupCandidate) {
+        setActiveBroadcastPopup(popupCandidate);
+      }
+    };
+    window.addEventListener('app-notifications-updated', handleNotifsLocalUpdate);
+
+    // Initial check for popup
+    handleNotifsLocalUpdate();
+
+    return () => {
+      clearInterval(syncInterval);
+      if (unsubscribeNotifs) unsubscribeNotifs();
+      window.removeEventListener('app-notifications-updated', handleNotifsLocalUpdate);
+    };
   }, []);
 
   const handleWelcomeAuthSuccess = (userData) => {
@@ -324,6 +368,21 @@ export default function App() {
                 <span>+15d VIP</span>
               </button>
             )}
+
+            {/* Notification Bell Button */}
+            <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 text-slate-300 hover:text-white cursor-pointer transition-all relative active:scale-95 shadow"
+              title="Notificaciones y Avisos"
+              aria-label="Abrir centro de notificaciones"
+            >
+              <Bell className="w-4 h-4 text-amber-400" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[9.5px] font-black rounded-full flex items-center justify-center border-2 border-slate-900 shadow-md animate-pulse">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
 
             {/* Settings Button */}
             <button
@@ -694,6 +753,24 @@ export default function App() {
           }
         }}
       />
+
+      {/* User Notifications Inbox Modal */}
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        notifications={notifications}
+        onNotificationsChange={(updated) => setNotifications(updated)}
+        onNavigateTab={(tabId) => setActiveTab(tabId)}
+      />
+
+      {/* Broadcast Announcement Pop-Up Modal */}
+      {activeBroadcastPopup && (
+        <BroadcastPopupModal
+          announcement={activeBroadcastPopup}
+          onClose={() => setActiveBroadcastPopup(null)}
+          onNavigateTab={(tabId) => setActiveTab(tabId)}
+        />
+      )}
     </div>
   );
 }

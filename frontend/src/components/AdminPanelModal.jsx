@@ -9,6 +9,7 @@ import {
 import { getRealOfficialDrawsFromStorage, saveRealOfficialDrawToStorage, SIGNIFICADOS, getLocalDateString } from '../services/clientEngine';
 import { getAffiliateUrl, setAffiliateUrl } from '../services/firebaseClient';
 import { getCloudAdminTelemetry, grantVipDaysInCloud } from '../services/telemetryService';
+import { publishBroadcastNotification, getStoredNotifications, deleteBroadcastFromCloud } from '../services/notificationService';
 
 export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushidalgo25@gmail.com' }) {
   const [adminTab, setAdminTab] = useState('users');
@@ -20,6 +21,16 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
   const [selectedUserModal, setSelectedUserModal] = useState(null);
   const [customVipDays, setCustomVipDays] = useState('30');
   const [userModalMsg, setUserModalMsg] = useState('');
+  
+  // Broadcast Notifications & Pop-Ups State
+  const [notifTitle, setNotifTitle] = useState('');
+  const [notifMessage, setNotifMessage] = useState('');
+  const [notifCategory, setNotifCategory] = useState('update'); // 'update', 'vip_alert', 'ai_hit', 'general', 'promo'
+  const [notifIsPopup, setNotifIsPopup] = useState(true);
+  const [notifActionText, setNotifActionText] = useState('Descargar Actualización');
+  const [notifActionUrl, setNotifActionUrl] = useState('https://ingenieriajh.web.app/quinela');
+  const [broadcastHistory, setBroadcastHistory] = useState(() => getStoredNotifications());
+  const [broadcastMsg, setBroadcastMsg] = useState('');
   const [settings, setSettings] = useState({ mercadopago_alias: 'quiniela.master.pro', usdt_trc20_wallet: 'TQ7x...' });
   const [promo, setPromo] = useState({
     title: '🔥 ¡OFERTA LANZAMIENTO VIP!',
@@ -263,6 +274,44 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
     }
   };
 
+  const handlePublishNotification = async (e) => {
+    e.preventDefault();
+    if (!notifTitle.trim() || !notifMessage.trim()) {
+      setBroadcastMsg('⚠️ Por favor ingresa un título y un mensaje.');
+      setTimeout(() => setBroadcastMsg(''), 3000);
+      return;
+    }
+
+    try {
+      const created = await publishBroadcastNotification({
+        title: notifTitle.trim(),
+        message: notifMessage.trim(),
+        category: notifCategory,
+        is_popup: notifIsPopup,
+        action_text: notifActionText.trim(),
+        action_url: notifActionUrl.trim()
+      });
+
+      setBroadcastHistory(getStoredNotifications());
+      setNotifTitle('');
+      setNotifMessage('');
+      setBroadcastMsg('🚀 ¡Comunicado enviado con éxito a todos los usuarios!');
+      setTimeout(() => setBroadcastMsg(''), 4000);
+    } catch (err) {
+      setBroadcastMsg('✅ Guardado en la bandeja de avisos.');
+      setTimeout(() => setBroadcastMsg(''), 3000);
+    }
+  };
+
+  const handleDeleteBroadcastItem = async (id) => {
+    if (window.confirm('¿Deseas dar de baja este comunicado?')) {
+      await deleteBroadcastFromCloud(id);
+      setBroadcastHistory(getStoredNotifications());
+      setBroadcastMsg('🗑️ Comunicado eliminado.');
+      setTimeout(() => setBroadcastMsg(''), 2500);
+    }
+  };
+
   const filteredUsers = (usersList || []).filter(u => 
     (u?.name || '').toLowerCase().includes((searchUser || '').toLowerCase()) || 
     (u?.email || '').toLowerCase().includes((searchUser || '').toLowerCase())
@@ -329,10 +378,13 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
           </button>
 
           <button
-            onClick={() => setAdminTab('promo')}
+            onClick={() => {
+              setAdminTab('promo');
+              setBroadcastHistory(getStoredNotifications());
+            }}
             className={`pb-2.5 px-3 text-xs font-bold flex items-center gap-1.5 border-b-2 cursor-pointer transition-all shrink-0 ${adminTab === 'promo' ? 'border-amber-500 text-amber-400' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
           >
-            <Megaphone className="w-4 h-4" /> Ofertas Pop-Up
+            <Megaphone className="w-4 h-4" /> Enviar Pop-Ups & Avisos
           </button>
         </div>
 
@@ -820,117 +872,240 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
             </form>
           )}
 
-          {/* PROMOTIONS TAB */}
+          {/* BROADCAST POP-UPS & NOTIFICATIONS CENTER */}
           {!loading && adminTab === 'promo' && (
-            <div className="space-y-6 max-w-lg">
-              <form onSubmit={handleSavePromo} className="space-y-3">
-              <h3 className="text-sm font-bold text-white">Configurar Banner Pop-Up de Oferta VIP</h3>
+            <div className="space-y-6">
               
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Título de la Oferta</label>
-                <input
-                  type="text"
-                  value={promo?.title || ''}
-                  onChange={(e) => setPromo({ ...promo, title: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Subtítulo Descriptivo</label>
-                <input
-                  type="text"
-                  value={promo?.subtitle || ''}
-                  onChange={(e) => setPromo({ ...promo, subtitle: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-300 block mb-1">Texto de Descuento</label>
-                <input
-                  type="text"
-                  value={promo?.discount_text || ''}
-                  onChange={(e) => setPromo({ ...promo, discount_text: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="promoActive"
-                  checked={Boolean(promo?.is_active)}
-                  onChange={(e) => setPromo({ ...promo, is_active: e.target.checked ? 1 : 0 })}
-                  className="w-4 h-4 accent-purple-500 rounded cursor-pointer"
-                />
-                <label htmlFor="promoActive" className="text-xs text-white font-bold cursor-pointer">
-                  Mostrar Pop-Up automático a usuarios no VIP
-                </label>
-              </div>
-
-              {saveStatus && (
-                <div className="text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl text-center">
-                  {saveStatus}
+              {/* COMPOSER FORM */}
+              <div className="bg-slate-950 p-4 sm:p-5 rounded-3xl border border-slate-800 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      <Megaphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-black text-white">
+                        Enviar Comunicado / Pop-Up a Todos los Usuarios
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Los mensajes llegarán en tiempo real a la campanita de los clientes y/o como Pop-Up en pantalla.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              )}
 
-              <button
-                type="submit"
-                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-all"
-              >
-                Guardar Configuración
-              </button>
-            </form>
+                <form onSubmit={handlePublishNotification} className="space-y-3.5">
+                  {/* Categoría Selector */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                      Tipo de Notificación / Categoría:
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      {[
+                        { id: 'update', label: '🚀 Actualización', color: 'border-emerald-500 text-emerald-300 bg-emerald-950/40' },
+                        { id: 'vip_alert', label: '👑 Alerta VIP', color: 'border-amber-500 text-amber-300 bg-amber-950/40' },
+                        { id: 'ai_hit', label: '🎯 Acierto IA', color: 'border-cyan-500 text-cyan-300 bg-cyan-950/40' },
+                        { id: 'general', label: '📢 Comunicado', color: 'border-purple-500 text-purple-300 bg-purple-950/40' },
+                        { id: 'promo', label: '🔥 Oferta VIP', color: 'border-rose-500 text-rose-300 bg-rose-950/40' }
+                      ].map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setNotifCategory(cat.id)}
+                          className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                            notifCategory === cat.id
+                              ? `${cat.color} ring-1 font-black shadow`
+                              : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-            {/* Affiliate Official Link Configuration */}
-            <div className="mt-6 pt-5 border-t border-slate-800 space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
-              <div className="flex items-center gap-2">
-                <ExternalLink className="w-4 h-4 text-emerald-400" />
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">
-                  Enlace de Afiliado Oficial (.bet.ar)
-                </h4>
-              </div>
-              <p className="text-[11px] text-slate-400">
-                Pega aquí tu enlace oficial de Quiniela (portal oficial <strong>lotba.bet.ar</strong> o de redes como <strong>Afiliapub</strong>, <strong>bplay</strong>, <strong>Betsson</strong>). Todos los botones de <em>"🎯 Jugar en Plataforma Oficial"</em> abrirán este enlace para acreditarte comisiones automáticamente.
-              </p>
-              
-              <div className="space-y-2">
-                <input
-                  type="url"
-                  placeholder="https://lotba.bet.ar"
-                  value={affiliateInput}
-                  onChange={(e) => setAffiliateInput(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-emerald-500"
-                />
-                
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] text-slate-500 truncate">
-                    Actual: {affiliateInput || 'https://lotba.bet.ar'}
-                  </span>
+                  {/* Título */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                      Título del Aviso:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 🚀 ¡Nueva Versión 1.3.36 Disponible con Mejoras!"
+                      value={notifTitle}
+                      onChange={(e) => setNotifTitle(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-xs font-bold focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Mensaje */}
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 block mb-1">
+                      Mensaje / Contenido Completo:
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Escribe el mensaje que leerán los usuarios en su pantalla o en la campanita..."
+                      value={notifMessage}
+                      onChange={(e) => setNotifMessage(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-amber-500 leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Opciones de Envío (Checkbox Pop-Up) */}
+                  <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isPopupNotif"
+                        checked={notifIsPopup}
+                        onChange={(e) => setNotifIsPopup(e.target.checked)}
+                        className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
+                      />
+                      <label htmlFor="isPopupNotif" className="text-xs text-slate-200 font-bold cursor-pointer">
+                        Abrir también como Pop-Up en pantalla completa al iniciar la app
+                      </label>
+                    </div>
+                    <span className="text-[10px] text-amber-400 font-mono">
+                      {notifIsPopup ? 'Pop-Up + Campanita' : 'Solo Campanita'}
+                    </span>
+                  </div>
+
+                  {/* Botón de Acción Opcional */}
+                  <div className="grid sm:grid-cols-2 gap-2 pt-1">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 block mb-1">Texto del Botón (Opcional):</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Descargar Actualización"
+                        value={notifActionText}
+                        onChange={(e) => setNotifActionText(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 block mb-1">Enlace / Destino (Opcional):</label>
+                      <input
+                        type="text"
+                        placeholder="https://ingenieriajh.web.app/quinela"
+                        value={notifActionUrl}
+                        onChange={(e) => setNotifActionUrl(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  {broadcastMsg && (
+                    <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-xl text-emerald-300 text-xs font-bold text-center animate-fadeIn">
+                      {broadcastMsg}
+                    </div>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() => {
-                      if (affiliateInput.trim()) {
-                        setAffiliateUrl(affiliateInput.trim());
-                        setAffiliateSaveMsg('¡Enlace de Afiliado guardado con éxito!');
-                        setTimeout(() => setAffiliateSaveMsg(''), 3000);
-                      }
-                    }}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-all active:scale-95 shrink-0"
+                    type="submit"
+                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-lg cursor-pointer transition-all active:scale-98 flex items-center justify-center gap-2"
                   >
-                    Guardar Enlace de Afiliado
+                    <Send className="w-4 h-4" />
+                    <span>🚀 Enviar Comunicado a Todos los Usuarios</span>
                   </button>
-                </div>
+                </form>
+              </div>
 
-                {affiliateSaveMsg && (
-                  <div className="text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl text-center animate-fadeIn">
-                    {affiliateSaveMsg}
+              {/* HISTORIAL DE COMUNICADOS ACTIVOS */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Historial de Comunicados Emitidos ({broadcastHistory.length})</span>
+                </h4>
+
+                {broadcastHistory.length === 0 ? (
+                  <div className="p-6 bg-slate-950 rounded-2xl border border-slate-800 text-center text-slate-500 text-xs">
+                    No hay comunicados activos.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar pr-1">
+                    {broadcastHistory.map((item) => (
+                      <div key={item.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 uppercase">
+                              {item.category}
+                            </span>
+                            {item.is_popup && (
+                              <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                Pop-Up
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {new Date(item.created_at).toLocaleString('es-AR')}
+                            </span>
+                          </div>
+                          <h5 className="font-bold text-white text-xs">{item.title}</h5>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">{item.message}</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteBroadcastItem(item.id)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors cursor-pointer shrink-0"
+                          title="Eliminar comunicado"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
+
+              {/* ENLACE DE AFILIADO OFICIAL */}
+              <div className="pt-4 border-t border-slate-800 space-y-3 bg-slate-950 p-4 rounded-2xl border border-slate-800/80">
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4 text-emerald-400" />
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                    Enlace de Afiliado Oficial (.bet.ar)
+                  </h4>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Pega aquí tu enlace oficial de Quiniela (portal oficial <strong>lotba.bet.ar</strong>). Todos los botones de <em>"🎯 Jugar en Plataforma Oficial"</em> abrirán este enlace.
+                </p>
+                
+                <div className="space-y-2">
+                  <input
+                    type="url"
+                    placeholder="https://lotba.bet.ar"
+                    value={affiliateInput}
+                    onChange={(e) => setAffiliateInput(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                  
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-500 truncate">
+                      Actual: {affiliateInput || 'https://lotba.bet.ar'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (affiliateInput.trim()) {
+                          setAffiliateUrl(affiliateInput.trim());
+                          setAffiliateSaveMsg('¡Enlace de Afiliado guardado con éxito!');
+                          setTimeout(() => setAffiliateSaveMsg(''), 3000);
+                        }
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer transition-all active:scale-95 shrink-0"
+                    >
+                      Guardar Enlace
+                    </button>
+                  </div>
+
+                  {affiliateSaveMsg && (
+                    <div className="text-xs text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-500/40 p-2 rounded-xl text-center animate-fadeIn">
+                      {affiliateSaveMsg}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
           )}
         </div>
       </div>
