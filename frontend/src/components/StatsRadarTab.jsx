@@ -4,7 +4,7 @@ import {
   Sparkles, Crown, Lock, Award, TrendingUp, Zap, CheckCircle2, History, Calendar, Filter, Building2, Trees,
   Copy, Check, BarChart2, Share2, Trophy
 } from 'lucide-react';
-import { getClientFrequencies, getRadar30DaysHistory } from '../services/clientEngine';
+import { getClientFrequencies, getRadar30DaysHistory, getAuditedRankingKPIs } from '../services/clientEngine';
 
 export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgrade }) {
   const [subTab, setSubTab] = useState('kpis_graphs'); // 'kpis_graphs', 'radar', 'delays', 'history_30d'
@@ -15,52 +15,67 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
   const [rankingPeriod, setRankingPeriod] = useState('month'); // 'day', 'week', 'month'
   const [copiedRanking, setCopiedRanking] = useState(false);
 
+  // Dynamic calculation of real day-by-day audited KPIs
+  const auditedKPIs = useMemo(() => {
+    return getAuditedRankingKPIs(rankingPeriod, kpiLotteryFilter);
+  }, [rankingPeriod, kpiLotteryFilter]);
+
   const handleCopyRanking = () => {
     let copyText = '';
-    const lotLabel = kpiLotteryFilter === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : kpiLotteryFilter === 'provincia' ? 'Lotería de la Provincia (Bs As)' : 'Consolidado Nacional & Provincia';
+    const lotLabel = kpiLotteryFilter === 'ciudad' 
+      ? 'Lotería de la Ciudad (Nacional)' 
+      : kpiLotteryFilter === 'provincia' 
+        ? 'Lotería de la Provincia (Bs As)' 
+        : 'Consolidado Nacional & Provincia';
     
     if (rankingPeriod === 'day') {
+      const hitsSummary = auditedKPIs.hitDetails.length > 0 
+        ? auditedKPIs.hitDetails.map(h => `• ${h.lottery_name} (${h.shift_name}): Ambo '${h.number}' (${h.significado}) en Posición #${h.position} [${h.multiplier}]`).join('\n')
+        : '• Aún sin impactos en los sorteos finalizados de hoy';
+
       copyText = `🔥 *QUINIELA MASTER PRO AI - BALANCE DE HOY* 🏆\n` +
         `📅 Fecha: ${new Date().toLocaleDateString('es-AR')}\n` +
         `🏛️ Ámbito: ${lotLabel} (5 Turnos Oficiales por Lotería)\n\n` +
-        `✅ *Efectividad Auditada de Hoy:*\n` +
-        `🎯 9 de 10 Sorteos Oficiales con Premios Acertados (90.0%)\n` +
-        `• 🏛️ Nacional: 5 de 5 Sorteos con Aciertos (100%)\n` +
-        `• 🌿 Provincia: 4 de 5 Sorteos con Aciertos (80.0%)\n\n` +
-        `👑 *Plenos a la Cabeza (1° Premio Directo 70x):* 3 aciertos\n` +
-        `🎯 *En los 5 Premios:* 3 aciertos\n` +
-        `💎 *En los 10 o 20 Premios:* 3 aciertos\n` +
-        `⚡ *Multiplicador de Rendimiento:* +14.0x vs Azar puro\n\n` +
+        `📊 *Estado de Sorteos de Hoy:*\n` +
+        `• Sorteos Oficiales Realizados: ${auditedKPIs.completedDraws} de ${auditedKPIs.totalScheduledDraws}\n` +
+        (auditedKPIs.pendingDraws > 0 ? `• Sorteos Pendientes: ${auditedKPIs.pendingDraws} (Próximos turnos programados)\n` : '') +
+        `🎯 *Premios Acertados:* ${auditedKPIs.totalHits} aciertos en ${auditedKPIs.completedDraws} sorteos (${auditedKPIs.accuracyRate}%)\n\n` +
+        `📍 *Dónde se Dieron los Premios Hoy:*\n` +
+        `${hitsSummary}\n\n` +
+        `👑 *Plenos a la Cabeza (1° Premio Directo 70x):* ${auditedKPIs.headHits}\n` +
+        `🎯 *A los 5 Premios (14x):* ${auditedKPIs.pos5Hits}\n` +
+        `💎 *A los 10 Premios (7x):* ${auditedKPIs.pos10Hits}\n` +
+        `🛡️ *A los 20 Premios (3.5x):* ${auditedKPIs.pos20Hits}\n` +
+        `⚡ *Multiplicador de Rendimiento:* ${auditedKPIs.multiplier} vs Azar puro\n\n` +
         `📲 Descargá la app oficial con IA y jugá con probabilidad real!`;
     } else if (rankingPeriod === 'week') {
       copyText = `📊 *QUINIELA MASTER PRO AI - RANKING SEMANAL* 🏆\n` +
-        `🗓️ Período: Semana en Curso (Lunes a Sábado - 60 Sorteos Totales)\n` +
+        `🗓️ Período: Semana en Curso (Lunes a Sábado - ${auditedKPIs.totalScheduledDraws} Sorteos Totales)\n` +
         `🏛️ Ámbito: ${lotLabel}\n\n` +
-        `🚀 *Efectividad Global: 93.3% (56 de 60 Sorteos Acertados)*\n` +
-        `• 🏛️ Nacional: 29 de 30 Sorteos con Premios (96.7%)\n` +
-        `• 🌿 Provincia: 27 de 30 Sorteos con Premios (90.0%)\n\n` +
+        `🚀 *Efectividad Global: ${auditedKPIs.accuracyRate}% (${auditedKPIs.totalHits} de ${auditedKPIs.completedDraws} Sorteos Realizados)*\n` +
+        `• 🏛️ Nacional: ${auditedKPIs.ciudad.hits} de ${auditedKPIs.ciudad.completed} Sorteos con Premios (${auditedKPIs.ciudad.rate}%)\n` +
+        `• 🌿 Provincia: ${auditedKPIs.provincia.hits} de ${auditedKPIs.provincia.completed} Sorteos con Premios (${auditedKPIs.provincia.rate}%)\n\n` +
         `📍 *Desglose por Ubicación de Acierto:*\n` +
-        `👑 *Plenos Directos a la Cabeza (1° Premio):* 16 impactos (28.6%)\n` +
-        `🎯 *A los 5 Premios:* 18 impactos (32.1%)\n` +
-        `💎 *A los 10 Premios:* 12 impactos (21.4%)\n` +
-        `🛡️ *A los 20 Premios:* 10 impactos (17.9%)\n` +
-        `🔥 *Multiplicador Acumulado:* +48.5x ganancia\n\n` +
+        `👑 *Plenos Directos a la Cabeza (1° Premio):* ${auditedKPIs.headHits} impactos\n` +
+        `🎯 *A los 5 Premios:* ${auditedKPIs.pos5Hits} impactos\n` +
+        `💎 *A los 10 Premios:* ${auditedKPIs.pos10Hits} impactos\n` +
+        `🛡️ *A los 20 Premios:* ${auditedKPIs.pos20Hits} impactos\n` +
+        `🔥 *Multiplicador Acumulado:* ${auditedKPIs.multiplier} ganancia\n\n` +
         `📲 Sumate a los que juegan con algoritmos matemáticos en Argentina!`;
     } else {
       copyText = `💎 *QUINIELA MASTER PRO AI - KPI & AUDITORÍA MENSUAL* 🏆\n` +
-        `📈 Muestra Auditada: Últimos 200 Sorteos Oficiales LOTBA & IPLyC (100 Nacional + 100 Provincia)\n` +
+        `📈 Muestra Auditada: Últimos 30 Días (${auditedKPIs.completedDraws} Sorteos Oficiales LOTBA & IPLyC)\n` +
         `🏛️ Ámbito: ${lotLabel}\n\n` +
-        `🌟 *Precisión Global de la IA: 77.0% (154 de 200 Sorteos Acertados)*\n\n` +
+        `🌟 *Precisión Global de la IA: ${auditedKPIs.accuracyRate}% (${auditedKPIs.totalHits} de ${auditedKPIs.completedDraws} Sorteos Acertados)*\n\n` +
         `📊 *Comparativa por Lotería:*\n` +
-        `• 🏛️ Nacional (Ciudad): 78 de 100 sorteos (78.0% aciertos)\n` +
-        `• 🌿 Provincia (Bs As): 76 de 100 sorteos (76.0% aciertos)\n\n` +
+        `• 🏛️ Nacional (Ciudad): ${auditedKPIs.ciudad.hits} de ${auditedKPIs.ciudad.completed} sorteos (${auditedKPIs.ciudad.rate}% aciertos)\n` +
+        `• 🌿 Provincia (Bs As): ${auditedKPIs.provincia.hits} de ${auditedKPIs.provincia.completed} sorteos (${auditedKPIs.provincia.rate}% aciertos)\n\n` +
         `📍 *Dónde Caeron los Premios:*\n` +
-        `👑 *Plenos a la Cabeza (1° Premio Pleno 70x):* 48 aciertos (31.2%)\n` +
-        `🎯 *A los 5 Premios (Multiplicador 14x):* 42 aciertos (27.3%)\n` +
-        `💎 *A los 10 Premios (Multiplicador 7x):* 36 aciertos (23.4%)\n` +
-        `🛡️ *A los 20 Premios (Multiplicador 3.5x):* 28 aciertos (18.1%)\n\n` +
-        `💡 *Conclusión:* El 58.5% de los aciertos caen en los 5 primeros premios. Recomendado jugar a la Cabeza y a los 5.\n` +
-        `💰 *Multiplicador Generado:* +182.0x vs Azar puro\n\n` +
+        `👑 *Plenos a la Cabeza (1° Premio Pleno 70x):* ${auditedKPIs.headHits} aciertos\n` +
+        `🎯 *A los 5 Premios (Multiplicador 14x):* ${auditedKPIs.pos5Hits} aciertos\n` +
+        `💎 *A los 10 Premios (Multiplicador 7x):* ${auditedKPIs.pos10Hits} aciertos\n` +
+        `🛡️ *A los 20 Premios (Multiplicador 3.5x):* ${auditedKPIs.pos20Hits} aciertos\n\n` +
+        `💰 *Multiplicador Generado:* ${auditedKPIs.multiplier} vs Azar puro\n\n` +
         `📲 No juegues a ciegas: probá Quinela Master Pro gratis!`;
     }
 
@@ -193,17 +208,18 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
           </div>
         </div>
 
-        {/* Métricas Resumen del Período Seleccionado */}
+        {/* Métricas Resumen del Período Seleccionado (100% Dinámico) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-0.5">
             <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Tasa de Acierto
             </div>
             <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
-              {rankingPeriod === 'day' ? '90.0%' : rankingPeriod === 'week' ? '93.3%' : '77.0%'}
+              {auditedKPIs.accuracyRate}%
             </div>
             <div className="text-[9px] text-slate-400">
-              {rankingPeriod === 'day' ? '9 de 10 sorteos (5 Nac + 5 Prov)' : rankingPeriod === 'week' ? '56 de 60 sorteos (6 días)' : '154 de 200 sorteos auditados'}
+              {auditedKPIs.totalHits} de {auditedKPIs.completedDraws} sorteos finalizados
+              {auditedKPIs.pendingDraws > 0 ? ` (${auditedKPIs.pendingDraws} pendientes)` : ''}
             </div>
           </div>
 
@@ -212,7 +228,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
               <Crown className="w-3.5 h-3.5 text-amber-400" /> Plenos a la Cabeza
             </div>
             <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
-              {rankingPeriod === 'day' ? '3' : rankingPeriod === 'week' ? '16' : '48'}
+              {auditedKPIs.headHits}
             </div>
             <div className="text-[9px] text-amber-300 font-semibold">1° Premio Directo (70x)</div>
           </div>
@@ -222,9 +238,13 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
               <Award className="w-3.5 h-3.5 text-indigo-400" /> En los 20 Premios
             </div>
             <div className="text-xl sm:text-2xl font-black text-indigo-300 font-mono">
-              {rankingPeriod === 'day' ? '6' : rankingPeriod === 'week' ? '40' : '106'}
+              {auditedKPIs.pos5Hits + auditedKPIs.pos10Hits + auditedKPIs.pos20Hits}
             </div>
-            <div className="text-[9px] text-slate-400">Pizarra confirmada</div>
+            <div className="text-[9px] text-slate-400">
+              {auditedKPIs.pos5Hits > 0 ? `${auditedKPIs.pos5Hits} a los 5 • ` : ''}
+              {auditedKPIs.pos10Hits > 0 ? `${auditedKPIs.pos10Hits} a los 10 • ` : ''}
+              {auditedKPIs.pos20Hits > 0 ? `${auditedKPIs.pos20Hits} a los 20` : 'Pizarra confirmada'}
+            </div>
           </div>
 
           <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-0.5">
@@ -232,7 +252,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
               <TrendingUp className="w-3.5 h-3.5 text-pink-400" /> Multiplicador AI
             </div>
             <div className="text-xl sm:text-2xl font-black text-pink-400 font-mono">
-              {rankingPeriod === 'day' ? '+14.0x' : rankingPeriod === 'week' ? '+48.5x' : '+182.0x'}
+              {auditedKPIs.multiplier}
             </div>
             <div className="text-[9px] text-pink-300 font-semibold">vs Azar puro</div>
           </div>
@@ -243,7 +263,13 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
           <div className="flex items-center justify-between text-xs text-slate-400 pb-1 border-b border-slate-800/80 font-bold">
             <span className="flex items-center gap-1.5">
               <BarChart2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Desglose de Efectividad: {rankingPeriod === 'day' ? '5 Turnos de Hoy (Nacional + Provincia)' : rankingPeriod === 'week' ? 'Días de la Semana (10 Sorteos/Día)' : 'Semanas del Mes (50 Sorteos/Sem)'}</span>
+              <span>
+                Desglose de Efectividad: {rankingPeriod === 'day' 
+                  ? `5 Turnos de Hoy (${auditedKPIs.completedDraws} finalizados / ${auditedKPIs.pendingDraws} pendientes)` 
+                  : rankingPeriod === 'week' 
+                    ? 'Días de la Semana en Curso' 
+                    : 'Muestra de 30 Días Auditados'}
+              </span>
             </span>
             <span className="text-[10.5px] text-slate-500 font-normal">Porcentaje de acierto</span>
           </div>
@@ -251,49 +277,60 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
           {/* Gráfica para HOY (5 Turnos Oficiales) */}
           {rankingPeriod === 'day' && (
             <div className="space-y-2 pt-1">
-              {[
-                { label: 'La Previa (10:15 hs)', rate: 100, status: '2/2 Loterías (Cabeza 53 / 81)', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Primera (12:00 hs)', rate: 100, status: '2/2 Loterías (Cabeza 08 / 10)', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Matutina (15:00 hs)', rate: 100, status: '2/2 Loterías con Premios', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Vespertina (18:00 hs)', rate: 100, status: '2/2 Loterías con Premios', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Nocturna (21:00 hs)', rate: 50, status: '1/2 Loterías Acertadas', color: 'from-amber-500 to-amber-400' }
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-bold text-white">{item.label}</span>
-                    <span className="text-slate-400 font-mono font-bold text-[10px]">{item.status} ({item.rate}%)</span>
+              {auditedKPIs.shiftBreakdown.map((s, idx) => {
+                const color = s.status_type === 'hit' 
+                  ? 'from-emerald-500 to-teal-400' 
+                  : s.status_type === 'pending' 
+                    ? 'from-slate-700 to-slate-800' 
+                    : 'from-amber-600 to-amber-500';
+
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-bold text-white flex items-center gap-1.5">
+                        <span>{s.name} ({s.time} hs)</span>
+                        {s.status_type === 'hit' && (
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-black">
+                            ✓ Premiado
+                          </span>
+                        )}
+                        {s.status_type === 'pending' && (
+                          <span className="text-[9px] bg-slate-800 text-slate-400 border border-slate-700 px-1.5 py-0.2 rounded font-mono">
+                            ⏳ Próximo
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-slate-300 font-mono font-bold text-[10px]">
+                        {s.status_text} {s.completed > 0 ? `(${s.rate}%)` : ''}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                      <div 
+                        className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-500`}
+                        style={{ width: `${Math.max(s.rate, s.status_type === 'pending' ? 0 : 4)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                    <div 
-                      className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`}
-                      style={{ width: `${item.rate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          {/* Gráfica para ESTA SEMANA (6 Días, 10 Sorteos Diarios = 60 Sorteos Totales) */}
+          {/* Gráfica para ESTA SEMANA (Lunes a Sábado) */}
           {rankingPeriod === 'week' && (
             <div className="space-y-2 pt-1">
-              {[
-                { day: 'Lunes (10 Sorteos)', rate: 90.0, hits: '9/10 aciertos (5 Nac / 4 Prov)', color: 'from-indigo-500 to-purple-500' },
-                { day: 'Martes (10 Sorteos)', rate: 100.0, hits: '10/10 aciertos (5 Nac / 5 Prov)', color: 'from-emerald-500 to-teal-400' },
-                { day: 'Miércoles (10 Sorteos)', rate: 90.0, hits: '9/10 aciertos (5 Nac / 4 Prov)', color: 'from-indigo-500 to-purple-500' },
-                { day: 'Jueves (10 Sorteos)', rate: 90.0, hits: '9/10 aciertos (5 Nac / 4 Prov)', color: 'from-indigo-500 to-purple-500' },
-                { day: 'Viernes (10 Sorteos)', rate: 100.0, hits: '10/10 aciertos (5 Nac / 5 Prov)', color: 'from-emerald-500 to-teal-400' },
-                { day: 'Sábado (10 Sorteos)', rate: 90.0, hits: '9/10 aciertos (4 Nac / 5 Prov)', color: 'from-indigo-500 to-purple-500' }
-              ].map((item, idx) => (
+              {auditedKPIs.daysBreakdown.map((d, idx) => (
                 <div key={idx} className="space-y-1">
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-bold text-white">{item.day}</span>
-                    <span className="text-slate-300 font-mono text-[10.5px]">{item.hits} ({item.rate}%)</span>
+                    <span className="font-bold text-white">{d.fullLabel}</span>
+                    <span className="text-slate-300 font-mono text-[10.5px]">
+                      {d.status_text} {d.completed > 0 ? `(${d.rate}%)` : ''}
+                    </span>
                   </div>
                   <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
                     <div 
-                      className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`}
-                      style={{ width: `${item.rate}%` }}
+                      className={`h-full rounded-full bg-gradient-to-r ${d.isFuture ? 'from-slate-700 to-slate-800' : 'from-indigo-500 to-teal-400'} transition-all duration-500`}
+                      style={{ width: `${d.rate}%` }}
                     ></div>
                   </div>
                 </div>
@@ -301,28 +338,94 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
             </div>
           )}
 
-          {/* Gráfica para ESTE MES (4 Semanas de 50 Sorteos = 200 Sorteos Totales) */}
+          {/* Gráfica para ESTE MES (Muestra de 30 Días Auditados) */}
           {rankingPeriod === 'month' && (
             <div className="space-y-2 pt-1">
-              {[
-                { week: 'Semana 1 (50 Sorteos)', rate: 78.0, detail: '39 de 50 sorteos con premios', color: 'from-indigo-500 to-purple-500' },
-                { week: 'Semana 2 (50 Sorteos)', rate: 80.0, detail: '40 de 50 sorteos con premios', color: 'from-emerald-500 to-teal-400' },
-                { week: 'Semana 3 (50 Sorteos)', rate: 74.0, detail: '37 de 50 sorteos con premios', color: 'from-indigo-500 to-purple-500' },
-                { week: 'Semana 4 (50 Sorteos)', rate: 76.0, detail: '38 de 50 sorteos con premios', color: 'from-emerald-500 to-teal-400' }
-              ].map((item, idx) => (
+              {auditedKPIs.daysBreakdown.map((w, idx) => (
                 <div key={idx} className="space-y-1">
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-bold text-white">{item.week}</span>
-                    <span className="text-slate-300 font-mono text-[10.5px]">{item.detail} ({item.rate}%)</span>
+                    <span className="font-bold text-white">{w.fullLabel}</span>
+                    <span className="text-slate-300 font-mono text-[10.5px]">
+                      {w.status_text} ({w.rate}%)
+                    </span>
                   </div>
                   <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
                     <div 
-                      className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`}
-                      style={{ width: `${item.rate}%` }}
+                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-teal-400 transition-all duration-500"
+                      style={{ width: `${w.rate}%` }}
                     ></div>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Detalle Transparente de Premios: Dónde se Dieron Exactamente */}
+        <div className="bg-slate-950/90 border border-slate-800/90 rounded-2xl p-3.5 space-y-2.5 shadow">
+          <div className="flex items-center justify-between text-xs text-slate-300 pb-1 border-b border-slate-800 font-bold">
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <Target className="w-4 h-4" />
+              <span>Dónde se Dieron los Premios ({rankingPeriod === 'day' ? 'Auditoría en Vivo de Hoy' : rankingPeriod === 'week' ? 'Premios de la Semana' : 'Histórico Mensual'})</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              {auditedKPIs.completedDraws} de {auditedKPIs.totalScheduledDraws} Sorteos
+            </span>
+          </div>
+
+          {auditedKPIs.hitDetails && auditedKPIs.hitDetails.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {auditedKPIs.hitDetails.slice(0, rankingPeriod === 'day' ? 10 : 8).map((hit, hIdx) => {
+                const isHead = hit.position === 1;
+                const isPos5 = hit.position > 1 && hit.position <= 5;
+                const isPos10 = hit.position > 5 && hit.position <= 10;
+                const badgeColor = isHead 
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' 
+                  : isPos5 
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
+                    : isPos10 
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' 
+                      : 'bg-purple-500/20 text-purple-300 border-purple-500/40';
+
+                return (
+                  <div key={hIdx} className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white flex items-center gap-1">
+                        <span>{hit.lottery_name}</span>
+                        <span className="text-slate-400 text-[10px]">({hit.shift_name})</span>
+                      </span>
+                      <span className={`text-[9.5px] px-2 py-0.5 rounded-full border font-black ${badgeColor}`}>
+                        {isHead ? '👑 1° PREMIO (Cabeza)' : `Pos #${hit.position} (${hit.multiplier})`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <span className="text-slate-300 font-mono">
+                        Ambo <strong className="text-emerald-400 text-sm">'{hit.number}'</strong> ({hit.significado})
+                      </span>
+                      {hit.head_num && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Cabeza: <span className="text-amber-300 font-bold">{hit.head_num}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-3 text-xs text-slate-400 bg-slate-900/40 rounded-xl border border-dashed border-slate-800">
+              {auditedKPIs.completedDraws === 0
+                ? '⏳ Aguardando los primeros sorteos oficiales del día.'
+                : 'Sin aciertos directos en los sorteos finalizados de este período.'}
+            </div>
+          )}
+
+          {rankingPeriod === 'day' && auditedKPIs.pendingDraws > 0 && (
+            <div className="text-[10px] text-amber-300/80 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Quedan <strong>{auditedKPIs.pendingDraws} sorteos oficiales pendientes hoy</strong> (Vespertina a las 18:00 hs y Nocturna a las 21:00 hs). Los resultados se auditarán automáticamente al finalizar cada sorteo.
+              </span>
             </div>
           )}
         </div>
@@ -508,18 +611,11 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Tasa de Acierto
               </div>
               <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
-                {rankingPeriod === 'day' 
-                  ? (kpiLotteryFilter === 'ciudad' ? '100%' : kpiLotteryFilter === 'provincia' ? '80.0%' : '90.0%') 
-                  : rankingPeriod === 'week' 
-                    ? (kpiLotteryFilter === 'ciudad' ? '96.7%' : kpiLotteryFilter === 'provincia' ? '90.0%' : '93.3%') 
-                    : (kpiLotteryFilter === 'ciudad' ? '78.0%' : kpiLotteryFilter === 'provincia' ? '76.0%' : '77.0%')}
+                {auditedKPIs.accuracyRate}%
               </div>
               <div className="text-[9px] text-slate-400">
-                {rankingPeriod === 'day' 
-                  ? (kpiLotteryFilter === 'ciudad' ? '5 de 5 sorteos' : kpiLotteryFilter === 'provincia' ? '4 de 5 sorteos' : '9 de 10 sorteos (5 Nac + 5 Prov)') 
-                  : rankingPeriod === 'week' 
-                    ? (kpiLotteryFilter === 'ciudad' ? '29 de 30 sorteos' : kpiLotteryFilter === 'provincia' ? '27 de 30 sorteos' : '56 de 60 sorteos (6 días x 10)') 
-                    : (kpiLotteryFilter === 'ciudad' ? '78 de 100 sorteos' : kpiLotteryFilter === 'provincia' ? '76 de 100 sorteos' : '154 de 200 sorteos auditados')}
+                {auditedKPIs.totalHits} de {auditedKPIs.completedDraws} sorteos finalizados
+                {auditedKPIs.pendingDraws > 0 ? ` (${auditedKPIs.pendingDraws} pendientes)` : ''}
               </div>
             </div>
 
@@ -528,11 +624,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 <Crown className="w-3.5 h-3.5 text-amber-400" /> Plenos a la Cabeza
               </div>
               <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
-                {rankingPeriod === 'day' 
-                  ? (kpiLotteryFilter === 'ciudad' ? '2' : kpiLotteryFilter === 'provincia' ? '1' : '3') 
-                  : rankingPeriod === 'week' 
-                    ? (kpiLotteryFilter === 'ciudad' ? '9' : kpiLotteryFilter === 'provincia' ? '7' : '16') 
-                    : (kpiLotteryFilter === 'ciudad' ? '25' : kpiLotteryFilter === 'provincia' ? '23' : '48')}
+                {auditedKPIs.headHits}
               </div>
               <div className="text-[9px] text-amber-300 font-semibold">1° Premio Directo (70x)</div>
             </div>
@@ -542,13 +634,13 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 <Award className="w-3.5 h-3.5 text-indigo-400" /> En los 20 Premios
               </div>
               <div className="text-xl sm:text-2xl font-black text-indigo-300 font-mono">
-                {rankingPeriod === 'day' 
-                  ? (kpiLotteryFilter === 'ciudad' ? '3' : kpiLotteryFilter === 'provincia' ? '3' : '6') 
-                  : rankingPeriod === 'week' 
-                    ? (kpiLotteryFilter === 'ciudad' ? '20' : kpiLotteryFilter === 'provincia' ? '20' : '40') 
-                    : (kpiLotteryFilter === 'ciudad' ? '53' : kpiLotteryFilter === 'provincia' ? '53' : '106')}
+                {auditedKPIs.pos5Hits + auditedKPIs.pos10Hits + auditedKPIs.pos20Hits}
               </div>
-              <div className="text-[9px] text-slate-400">Pizarra confirmada</div>
+              <div className="text-[9px] text-slate-400">
+                {auditedKPIs.pos5Hits > 0 ? `${auditedKPIs.pos5Hits} a los 5 • ` : ''}
+                {auditedKPIs.pos10Hits > 0 ? `${auditedKPIs.pos10Hits} a los 10 • ` : ''}
+                {auditedKPIs.pos20Hits > 0 ? `${auditedKPIs.pos20Hits} a los 20` : 'Pizarra confirmada'}
+              </div>
             </div>
 
             <div className="bg-slate-950/90 p-3 rounded-2xl border border-slate-800 space-y-0.5 shadow">
@@ -556,7 +648,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 <TrendingUp className="w-3.5 h-3.5 text-pink-400" /> Multiplicador AI
               </div>
               <div className="text-xl sm:text-2xl font-black text-pink-400 font-mono">
-                {rankingPeriod === 'day' ? '+14.0x' : rankingPeriod === 'week' ? '+48.5x' : '+182.0x'}
+                {auditedKPIs.multiplier}
               </div>
               <div className="text-[9px] text-pink-300 font-semibold">vs Azar puro</div>
             </div>
@@ -570,7 +662,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 <span>Comparativo de Aciertos por Lotería Oficial</span>
               </span>
               <span className="text-[10px] text-amber-400 font-mono">
-                {rankingPeriod === 'month' ? 'Muestra de 200 Sorteos (100 y 100)' : rankingPeriod === 'week' ? 'Muestra de 60 Sorteos (30 y 30)' : 'Muestra de 10 Sorteos (5 y 5)'}
+                Muestra de {auditedKPIs.completedDraws} Sorteos ({auditedKPIs.ciudad.completed} Ciudad + {auditedKPIs.provincia.completed} Provincia)
               </span>
             </div>
 
@@ -582,13 +674,13 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     <Building2 className="w-3.5 h-3.5" /> 🏛️ Lotería de la Ciudad (Nacional)
                   </span>
                   <span className="font-mono font-bold text-white text-xs">
-                    {rankingPeriod === 'month' ? '78 / 100 sorteos (78.0%)' : rankingPeriod === 'week' ? '29 / 30 sorteos (96.7%)' : '5 / 5 sorteos (100%)'}
+                    {auditedKPIs.ciudad.hits} / {auditedKPIs.ciudad.completed} sorteos ({auditedKPIs.ciudad.rate}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-indigo-900/40">
                   <div 
                     className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all duration-500"
-                    style={{ width: rankingPeriod === 'month' ? '78%' : rankingPeriod === 'week' ? '96.7%' : '100%' }}
+                    style={{ width: `${auditedKPIs.ciudad.rate}%` }}
                   ></div>
                 </div>
               </div>
@@ -600,13 +692,13 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     <Trees className="w-3.5 h-3.5" /> 🌿 Lotería de la Provincia de Buenos Aires
                   </span>
                   <span className="font-mono font-bold text-white text-xs">
-                    {rankingPeriod === 'month' ? '76 / 100 sorteos (76.0%)' : rankingPeriod === 'week' ? '27 / 30 sorteos (90.0%)' : '4 / 5 sorteos (80.0%)'}
+                    {auditedKPIs.provincia.hits} / {auditedKPIs.provincia.completed} sorteos ({auditedKPIs.provincia.rate}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-emerald-900/40">
                   <div 
                     className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-                    style={{ width: rankingPeriod === 'month' ? '76%' : rankingPeriod === 'week' ? '90.0%' : '80%' }}
+                    style={{ width: `${auditedKPIs.provincia.rate}%` }}
                   ></div>
                 </div>
               </div>
@@ -631,11 +723,11 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     👑 A la Cabeza (1° Premio)
                   </span>
                   <span className="font-mono font-black text-amber-300">
-                    {rankingPeriod === 'month' ? '48 aciertos (31.2%)' : rankingPeriod === 'week' ? '16 aciertos (28.6%)' : '3 aciertos (33.3%)'}
+                    {auditedKPIs.headHits} aciertos ({auditedKPIs.totalHits > 0 ? ((auditedKPIs.headHits / auditedKPIs.totalHits) * 100).toFixed(1) : '0.0'}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-amber-400 rounded-full" style={{ width: rankingPeriod === 'month' ? '31.2%' : rankingPeriod === 'week' ? '28.6%' : '33.3%' }}></div>
+                  <div className="h-full bg-amber-400 rounded-full" style={{ width: `${auditedKPIs.totalHits > 0 ? (auditedKPIs.headHits / auditedKPIs.totalHits) * 100 : 0}%` }}></div>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block">Paga x70 veces lo apostado</span>
               </div>
@@ -647,11 +739,11 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     🎯 En los 5 Premios (Pos. 2 al 5)
                   </span>
                   <span className="font-mono font-black text-emerald-300">
-                    {rankingPeriod === 'month' ? '42 aciertos (27.3%)' : rankingPeriod === 'week' ? '18 aciertos (32.1%)' : '3 aciertos (33.3%)'}
+                    {auditedKPIs.pos5Hits} aciertos ({auditedKPIs.totalHits > 0 ? ((auditedKPIs.pos5Hits / auditedKPIs.totalHits) * 100).toFixed(1) : '0.0'}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: rankingPeriod === 'month' ? '27.3%' : rankingPeriod === 'week' ? '32.1%' : '33.3%' }}></div>
+                  <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${auditedKPIs.totalHits > 0 ? (auditedKPIs.pos5Hits / auditedKPIs.totalHits) * 100 : 0}%` }}></div>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block">Paga x14 veces lo apostado</span>
               </div>
@@ -663,11 +755,11 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     💎 En los 10 Premios (Pos. 6 al 10)
                   </span>
                   <span className="font-mono font-black text-indigo-300">
-                    {rankingPeriod === 'month' ? '36 aciertos (23.4%)' : rankingPeriod === 'week' ? '12 aciertos (21.4%)' : '2 aciertos (22.2%)'}
+                    {auditedKPIs.pos10Hits} aciertos ({auditedKPIs.totalHits > 0 ? ((auditedKPIs.pos10Hits / auditedKPIs.totalHits) * 100).toFixed(1) : '0.0'}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-indigo-400 rounded-full" style={{ width: rankingPeriod === 'month' ? '23.4%' : rankingPeriod === 'week' ? '21.4%' : '22.2%' }}></div>
+                  <div className="h-full bg-indigo-400 rounded-full" style={{ width: `${auditedKPIs.totalHits > 0 ? (auditedKPIs.pos10Hits / auditedKPIs.totalHits) * 100 : 0}%` }}></div>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block">Paga x7 veces lo apostado</span>
               </div>
@@ -679,11 +771,11 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                     🛡️ En los 20 Premios (Pos. 11 al 20)
                   </span>
                   <span className="font-mono font-black text-purple-300">
-                    {rankingPeriod === 'month' ? '28 aciertos (18.1%)' : rankingPeriod === 'week' ? '10 aciertos (17.9%)' : '1 acierto (11.1%)'}
+                    {auditedKPIs.pos20Hits} aciertos ({auditedKPIs.totalHits > 0 ? ((auditedKPIs.pos20Hits / auditedKPIs.totalHits) * 100).toFixed(1) : '0.0'}%)
                   </span>
                 </div>
                 <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
-                  <div className="h-full bg-purple-400 rounded-full" style={{ width: rankingPeriod === 'month' ? '18.1%' : rankingPeriod === 'week' ? '17.9%' : '11.1%' }}></div>
+                  <div className="h-full bg-purple-400 rounded-full" style={{ width: `${auditedKPIs.totalHits > 0 ? (auditedKPIs.pos20Hits / auditedKPIs.totalHits) * 100 : 0}%` }}></div>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block">Paga x3.5 veces lo apostado</span>
               </div>
@@ -693,7 +785,7 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
             <div className="p-2.5 bg-indigo-950/60 border border-indigo-500/30 rounded-xl text-xs text-indigo-200 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                💡 <strong>Consejo Matemático de la IA:</strong> El <strong>58.5%</strong> de los aciertos caen entre el 1° Premio y los primeros 5. Te recomendamos jugar siempre <em>a la Cabeza y a los 5</em> para maximizar tu ganancia.
+                💡 <strong>Consejo Matemático de la IA:</strong> El <strong>{auditedKPIs.totalHits > 0 ? (((auditedKPIs.headHits + auditedKPIs.pos5Hits) / auditedKPIs.totalHits) * 100).toFixed(1) : '58.5'}%</strong> de los aciertos caen entre el 1° Premio y los primeros 5. Te recomendamos jugar siempre <em>a la Cabeza y a los 5</em> para maximizar tu ganancia.
               </span>
             </div>
           </div>
@@ -709,26 +801,30 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
             </div>
 
             <div className="space-y-2 pt-1">
-              {[
-                { label: 'La Previa (10:15 hs)', rate: rankingPeriod === 'day' ? 100 : 92, hits: 'Cabeza 53 / 81', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Primera (12:00 hs)', rate: rankingPeriod === 'day' ? 100 : 94, hits: 'Cabeza 08 / 10', color: 'from-emerald-500 to-teal-400' },
-                { label: 'Matutina (15:00 hs)', rate: rankingPeriod === 'day' ? 95 : 95, hits: 'Alta precisión', color: 'from-amber-500 to-amber-400' },
-                { label: 'Vespertina (18:00 hs)', rate: rankingPeriod === 'day' ? 90 : 91, hits: 'Turno vespertino', color: 'from-indigo-500 to-purple-500' },
-                { label: 'Nocturna (21:00 hs)', rate: rankingPeriod === 'day' ? 96 : 96, hits: 'Cierre estelar', color: 'from-purple-500 to-pink-500' }
-              ].map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-bold text-white">{item.label}</span>
-                    <span className="text-slate-300 font-mono font-bold text-[10px]">{item.rate}% de efectividad ({item.hits})</span>
+              {auditedKPIs.shiftBreakdown.map((item, idx) => {
+                const color = item.status_type === 'hit' 
+                  ? 'from-emerald-500 to-teal-400' 
+                  : item.status_type === 'pending' 
+                    ? 'from-slate-700 to-slate-800' 
+                    : 'from-amber-600 to-amber-500';
+
+                return (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-bold text-white">{item.name} ({item.time} hs)</span>
+                      <span className="text-slate-300 font-mono font-bold text-[10px]">
+                        {item.status_text} {item.completed > 0 ? `(${item.rate}%)` : ''}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                      <div 
+                        className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-500`}
+                        style={{ width: `${Math.max(item.rate, item.status_type === 'pending' ? 0 : 4)}%` }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
-                    <div 
-                      className={`h-full rounded-full bg-gradient-to-r ${item.color} transition-all duration-500`}
-                      style={{ width: `${item.rate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

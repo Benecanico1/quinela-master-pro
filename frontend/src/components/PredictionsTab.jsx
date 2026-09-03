@@ -3,7 +3,7 @@ import {
   Sparkles, Flame, Clock, Layers, ChevronDown, ChevronUp, 
   Shuffle, Copy, Check, ShieldCheck, Lock, Crown, RefreshCw, Zap,
   Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink, Share2,
-  Menu, X
+  Menu, X, Ticket
 } from 'lucide-react';
 import { getClientPredictions, SHIFT_DEFINITIONS, getCurrentActiveShift, formatSecondsToHMS } from '../services/clientEngine';
 import { getAffiliateUrl } from '../services/firebaseClient';
@@ -26,6 +26,8 @@ export default function PredictionsTab({
   const [liveShiftInfo, setLiveShiftInfo] = useState(() => getCurrentActiveShift());
   const [isEfficiencyModalOpen, setIsEfficiencyModalOpen] = useState(false);
   const [isShiftMenuOpen, setIsShiftMenuOpen] = useState(false);
+  const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
+  const [isExtraLargeFont, setIsExtraLargeFont] = useState(false);
 
   // Second-by-second live countdown on every signal
   useEffect(() => {
@@ -312,6 +314,19 @@ export default function PredictionsTab({
             </span>
           </div>
         )}
+
+        {/* Botón Destacado: Cupón Digital para el Agenciero (Letra Grande) */}
+        <button
+          type="button"
+          onClick={() => setIsSlipModalOpen(true)}
+          className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/30 transition-all active:scale-98 cursor-pointer"
+        >
+          <Ticket className="w-4 h-4 text-slate-950" />
+          <span>🎟️ Abrir Cupón para el Agenciero (Letra Grande)</span>
+          <span className="text-[10px] px-2 py-0.5 bg-slate-950 text-amber-300 rounded-full font-bold ml-1">
+            Modo Rápido
+          </span>
+        </button>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           {/* Botón 1: Copiar Nacional */}
@@ -625,6 +640,123 @@ export default function PredictionsTab({
         onClose={() => setIsEfficiencyModalOpen(false)}
         rate="74.2%"
       />
+
+      {/* MODAL CUPÓN DIGITAL PARA EL AGENCIERO (MODO JUGADA RÁPIDA / LETRA GRANDE) */}
+      {isSlipModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-950 border-2 border-amber-400 rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto ring-2 ring-amber-400/40">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <Ticket className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white">
+                    Cupón para el Agenciero
+                  </h3>
+                  <span className="text-xs text-amber-300 font-bold uppercase">
+                    {activePredictions.shift_name || 'Turno Oficial'} • {selectedLottery === 'ciudad' ? 'Lotería Nacional' : selectedLottery === 'provincia' ? 'Lotería Provincia' : 'Nacional y Provincia'}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsSlipModalOpen(false)}
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Selector de Tamaño de Fuente */}
+            <div className="flex items-center justify-between bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
+              <span className="text-slate-400 font-medium">Tamaño de Letra para Mostrar:</span>
+              <button
+                type="button"
+                onClick={() => setIsExtraLargeFont(!isExtraLargeFont)}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  isExtraLargeFont 
+                    ? 'bg-amber-400 text-slate-950 shadow' 
+                    : 'bg-slate-800 text-slate-300 hover:text-white'
+                }`}
+              >
+                {isExtraLargeFont ? '🔍 Letra Normal' : '🔍 Letra Gigante (Fácil)'}
+              </button>
+            </div>
+
+            {/* Tarjeta de Números en Pantalla Completa para Mostrar en Ventanilla */}
+            <div className="bg-slate-900 border-2 border-dashed border-amber-400/60 rounded-2xl p-4 space-y-3 shadow-inner">
+              <div className="text-center pb-2 border-b border-slate-800">
+                <span className="text-[11px] font-mono text-slate-400 block uppercase font-bold">
+                  BOLETA OFICIAL RECOMENDADA
+                </span>
+                <span className="text-xs font-black text-amber-400">
+                  MOSTRAR EN VENTANILLA AL JUGAR
+                </span>
+              </div>
+
+              {/* Números Principales */}
+              <div className="space-y-2">
+                {activePredictions.top_predictions.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-bold text-slate-400">#{idx + 1}</span>
+                      <span className={`font-mono font-black ${isExtraLargeFont ? 'text-4xl' : 'text-2xl'} tracking-wider text-amber-400`}>
+                        {item.number}
+                      </span>
+                      <span className="text-xs text-slate-300 font-semibold">({item.significado})</span>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/30">
+                      {item.recommended_positions || 'Cabeza y a los 5'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Redoblona Sugerida */}
+              {activePredictions.redoblonas && activePredictions.redoblonas.length > 0 && (
+                <div className="bg-slate-950/90 p-2.5 rounded-xl border border-indigo-500/40 text-xs">
+                  <span className="font-bold text-indigo-300 block mb-0.5">REDOBLONA CANDADO:</span>
+                  <span className="text-white font-mono font-bold text-sm">
+                    {activePredictions.redoblonas[0].pair} ({activePredictions.redoblonas[0].significados}) {activePredictions.redoblonas[0].recommended_positions || 'a los 10'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Acciones del Cupón */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const numbersText = activePredictions.top_predictions.slice(0, 3).map((n, i) => `• Ambo *${n.number}* (${n.significado}) -> ${n.recommended_positions || 'Cabeza y 5'}`).join('\n');
+                  const msg = `🎟️ *MI JUGADA DE QUINIELA - ${activePredictions.shift_name?.toUpperCase()}*\n🏛️ Lotería: ${selectedLottery === 'ciudad' ? 'Nacional' : selectedLottery === 'provincia' ? 'Provincia' : 'Nacional y Provincia'}\n\n${numbersText}\n\n📲 Generado con Quinela Master Pro`;
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+                className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Enviar a WhatsApp</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleCopyAllLottery(selectedLottery === 'all' ? 'ciudad' : selectedLottery);
+                  setCopyStatus('¡Copiado para la agencia!');
+                  setTimeout(() => setCopyStatus(''), 2500);
+                }}
+                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5 text-amber-400" />
+                <span>Copiar Texto</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

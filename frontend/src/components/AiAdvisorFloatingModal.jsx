@@ -10,10 +10,14 @@ const SUPPORT_WHATSAPP_URL = `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}`;
 
 const QUICK_TOPICS = [
   { id: 'predictions', label: '🎯 ¿Cómo funcionan los Pronósticos?', query: '¿Cómo funcionan los pronósticos de la IA?' },
-  { id: 'wallet', label: '📷 ¿Cómo escanear mi ticket?', query: '¿Cómo puedo escanear y verificar mi boleto de quiniela?' },
-  { id: 'lotba', label: '🌐 ¿Cómo jugar en lotba.bet.ar?', query: '¿Cómo hago para jugar mis números en la página oficial lotba.bet.ar?' },
+  { id: 'agencies', label: '📍 ¿Dónde hay agencias oficiales cerca?', query: '¿Dónde encuentro agencias oficiales de lotería cercanas y cómo llegar?' },
+  { id: 'slip', label: '🎟️ ¿Cómo usar el Cupón para el Agenciero?', query: '¿Cómo funciona el cupón digital con letra grande para mostrar en la agencia?' },
+  { id: 'audit', label: '🛡️ ¿Cómo se auditan los aciertos en el Radar?', query: '¿Cómo audita la IA los aciertos día por día y dónde caen los premios?' },
+  { id: 'draws', label: '📊 ¿Dónde ver los resultados oficiales?', query: '¿A qué hora son los sorteos y cómo veo los resultados sin complicarme?' },
+  { id: 'strategy', label: '🧮 ¿Cómo calcular Redoblonas y Bankroll?', query: '¿Cómo funciona la calculadora de redoblonas y gestión de saldo?' },
   { id: 'vip', label: '👑 ¿Cómo activar el Pase VIP?', query: '¿Qué incluye el VIP y cómo lo pago por Mercado Pago o USDT?' },
-  { id: 'draws', label: '📊 ¿Dónde ver los resultados oficiales?', query: '¿A qué hora son los sorteos y dónde veo los resultados de hoy y ayer?' },
+  { id: 'wallet', label: '📷 ¿Cómo escanear mi ticket?', query: '¿Cómo puedo escanear y verificar mi boleto de quiniela con la cámara?' },
+  { id: 'notifs', label: '🔔 ¿Cómo funcionan las Notificaciones y Pop-ups?', query: '¿Dónde veo los mensajes y novedades del administrador?' },
   { id: 'dreams', label: '🌙 ¿Cómo buscar mis sueños?', query: '¿Cómo convierto lo que soñé en números de la suerte?' },
   { id: 'whatsapp', label: '💬 Hablar con Soporte Humano', query: 'Quiero hablar con una persona de soporte por WhatsApp' }
 ];
@@ -25,7 +29,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
     {
       id: 'welcome',
       sender: 'bot',
-      text: '👋 ¡Hola! Soy tu **Asesor Virtual de Quinela Master Pro**.\n\n¿En qué te puedo orientar hoy? Puedes hacerme cualquier consulta o elegir un tema rápido:',
+      text: '👋 ¡Hola! Soy tu **Asesor Experto de Quinela Master Pro**.\n\nConozco el funcionamiento completo de la aplicación de punta a punta. ¿En qué te puedo orientar hoy? Puedes hacerme cualquier consulta o elegir un tema rápido:',
       action: null,
       time: 'Ahora'
     }
@@ -49,7 +53,79 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
   const processUserQuery = (query) => {
     const q = query.toLowerCase().trim();
 
-    // 0. Costo / Gastos / Consumo de la IA
+    // 1. Buscador y Mapa de Agencias Cercanas con GPS
+    if (q.includes('agencia') || q.includes('mapa') || q.includes('cercana') || q.includes('cerca') || q.includes('donde jugar') || q.includes('dónde jugar') || q.includes('gps') || q.includes('ubicacion') || q.includes('ubicación') || q.includes('como llegar') || q.includes('cómo llegar')) {
+      return {
+        text: '📍 **Buscador y Mapa de Agencias Oficiales (LOTBA & IPLyC)**:\n\n• En la pestaña **Estrategia** dispones del **Mapa y Buscador de Agencias Cercanas**.\n• **Búsqueda Inteligente:** Puedes escribir tu barrio, calle o localidad (ej. *Palermo, Belgrano, San Isidro, Morón, Quilmes*).\n• **GPS Cerca de Mí:** Al pulsar *"Buscar Cerca de Mí (GPS)"*, la app calcula la distancia exacta en km y te ordena las agencias más próximas.\n• **Ruta en Google Maps:** Cada agencia tiene el botón *"Cómo Llegar"* que abre directamente la ruta paso a paso en Google Maps.\n• **Juego Online:** Si prefieres jugar desde el celular, te provee el acceso oficial a **lotba.bet.ar**.',
+        action: {
+          type: 'tab',
+          tabId: 'bankroll',
+          label: '📍 Ir al Mapa de Agencias'
+        }
+      };
+    }
+
+    // 2. Cupón Digital para el Agenciero / Letra Grande / Modo Jugada Rápida
+    if (q.includes('cupon') || q.includes('cupón') || q.includes('agenciero') || q.includes('boleta') || q.includes('letra grande') || q.includes('adulto') || q.includes('mayor') || q.includes('mostrar') || q.includes('facil') || q.includes('fácil') || q.includes('rapida') || q.includes('rápida')) {
+      return {
+        text: '🎟️ **Cupón Digital para el Agenciero (Modo Jugada Rápida)**:\n\n• En la pestaña de **Pronósticos**, pulsa el botón **"🎟️ Cupón Agenciero (Letra Grande)"**.\n• Te genera una boleta digital en pantalla completa con **números gigantes y de alto contraste**.\n• Diseñado especialmente para **mostrárselo directamente al agenciero en la ventanilla** o para personas mayores sin necesidad de anotar en un papel.\n• Detalla con absoluta claridad qué jugar al 1° Premio (Cabeza), a los 5, a los 10, a los 20 y en Redoblona.',
+        action: {
+          type: 'tab',
+          tabId: 'predictions',
+          label: '🎯 Abrir Pronósticos y Cupón'
+        }
+      };
+    }
+
+    // 3. Auditoría, Radar de Aciertos y Métricas Certeras (Dónde caen los premios)
+    if (q.includes('radar') || q.includes('auditor') || q.includes('ranking') || q.includes('certer') || q.includes('donde cayo') || q.includes('dónde cayeron') || q.includes('pleno') || q.includes('kpi') || q.includes('verdad') || q.includes('estadistica') || q.includes('estadística')) {
+      return {
+        text: '🛡️ **Auditoría Dinámica del Radar (100% Certera Día por Día)**:\n\n• La app audita en vivo cada sorteo oficial completado de LOTBA e IPLyC contra las predicciones emitidas.\n• **Dónde Caeron los Premios:** Te muestra la ubicación exacta del acierto:\n  - 👑 **A la Cabeza (1° Premio Pleno 70x)**\n  - 🎯 **A los 5 Premios (Multiplicador 14x)**\n  - 💎 **A los 10 Premios (Multiplicador 7x)**\n  - 🛡️ **A los 20 Premios (Multiplicador 3.5x)**\n• **Cero Datos Falsos:** Si un turno aún no se jugó (como Vespertina o Nocturna), figura como *"⏳ Programado"* y no inventa números.\n• **Botón de Copiar Informe:** Genera el balance verificado del día para compartir en WhatsApp.',
+        action: {
+          type: 'tab',
+          tabId: 'stats_radar',
+          label: '📊 Ver Radar y Ranking Auditado'
+        }
+      };
+    }
+
+    // 4. Resultados Oficiales Despejados (Menú de 3 Opciones)
+    if (q.includes('resultado') || q.includes('sorteo') || q.includes('horario') || q.includes('pizarra') || q.includes('ayer') || q.includes('hoy') || q.includes('previa') || q.includes('primera') || q.includes('matutina') || q.includes('vespertina') || q.includes('nocturna') || q.includes('extracto') || q.includes('20 numeros') || q.includes('20 premios')) {
+      return {
+        text: '📊 **Resultados Oficiales Organizados y Claros**:\n\nLa pestaña Resultados fue rediseñada para no aturdirte con exceso de datos:\n• **🏆 Sorteos de Hoy:** Muestra directo las pizarras oficiales del día (el sorteo más reciente primero) con botón pop-up para ver los 20 premios completos.\n• **📅 Buscar por Fecha / Turno:** Te permite buscar cualquier día anterior (*Hoy, Ayer o por Calendario*) y filtrar por turno específico (*La Previa, Primera, Matutina, Vespertina, Nocturna*).\n• **📜 Historial Auditado:** Archivo histórico con los aciertos verificados de la IA.\n• **Horarios oficiales:** La Previa 10:15 hs | Primera 12:00 hs | Matutina 15:00 hs | Vespertina 18:00 hs | Nocturna 21:00 hs.',
+        action: {
+          type: 'tab',
+          tabId: 'draws_history',
+          label: '📊 Ver Resultados Oficiales'
+        }
+      };
+    }
+
+    // 5. Calculadora de Redoblonas y Bankroll
+    if (q.includes('redoblona') || q.includes('bankroll') || q.includes('martingala') || q.includes('estrategia') || q.includes('saldo') || q.includes('presupuesto') || q.includes('candado')) {
+      return {
+        text: '🧮 **Calculadora de Redoblonas y Bankroll**:\n\n• **Redoblona Candado (Hasta 700x):** Calcula tu ganancia exacta combinando 2 números en distintas posiciones (ej: Cabeza con 10, a los 5 con los 10, o a los 20).\n• **Simulador de Bankroll:** Aplica progresiones matemáticas (Martingala o Proporcional) para recuperar apuestas y garantizar ganancias netas.\n• En la misma pestaña de **Estrategia** dispones también del mapa de agencias oficiales.',
+        action: {
+          type: 'tab',
+          tabId: 'bankroll',
+          label: '🧮 Ir a Estrategia y Redoblonas'
+        }
+      };
+    }
+
+    // 6. Notificaciones, Campanita y Pop-ups del Administrador
+    if (q.includes('notificacion') || q.includes('notificación') || q.includes('campana') || q.includes('campanita') || q.includes('popup') || q.includes('pop up') || q.includes('mensaje') || q.includes('aviso') || q.includes('actualizacion') || q.includes('actualización')) {
+      return {
+        text: '🔔 **Campanita de Notificaciones y Pop-ups Informativos**:\n\n• En la esquina superior derecha de la app tienes la **Campanita de Notificaciones** con contador de mensajes no leídos.\n• Allí el Administrador te enviará novedades importantes, avisos de sorteos y avisos de nuevas versiones disponibles.\n• **Persistencia:** Los mensajes quedan guardados en tu campanita hasta que decidas borrarlos.\n• **Pop-ups en Pantalla:** Los comunicados urgentes se abrirán automáticamente como aviso destacado.',
+        action: {
+          type: 'tab',
+          tabId: 'predictions',
+          label: '🎯 Volver al Inicio'
+        }
+      };
+    }
+
+    // 7. Costo / Gastos / Consumo de la IA
     if (q.includes('gasto') || q.includes('costo') || q.includes('consume') || q.includes('gasta') || q.includes('cobran') || q.includes('api') || q.includes('gratis')) {
       return {
         text: '💡 **Costo y Consumo de la IA**:\n\n• **¡Consumo $0 (Cero Costo)!** El motor de inteligencia artificial y este Asesor Virtual funcionan de manera 100% local y optimizada dentro de tu aplicación.\n• **No genera ningún cargo extra en tu cuenta ni costos de servidor por consultar.** Puedes preguntar y usar los pronósticos con total tranquilidad.',
@@ -61,10 +137,10 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 1. VIP / Planes / Pago / Suscripción
+    // 8. VIP / Planes / Pago / Suscripción
     if (q.includes('vip') || q.includes('pago') || q.includes('pagar') || q.includes('precio') || q.includes('suscrip') || q.includes('mercado pago') || q.includes('usdt')) {
       return {
-        text: '👑 **Membresía VIP Quinela Master Pro**:\n\n• **Acceso Total:** Desbloquea el Top 5 de Pronósticos de Alta Probabilidad, Cuaternos (3.500x) y Redoblonas Candado (1.280x).\n• **Medios de Pago:** Mercado Pago (Transferencia / Alias) y USDT TRC-20.\n• **Activación:** Se acredita de forma inmediata o enviando tu comprobante a nuestro soporte.',
+        text: '👑 **Membresía VIP Quinela Master Pro**:\n\n• **Acceso Total:** Desbloquea el Top 5 de Pronósticos de Alta Probabilidad, Cuaternos (3.500x) y Redoblonas Candado (700x).\n• **Medios de Pago:** Mercado Pago (Transferencia / Alias) y USDT TRC-20.\n• **Activación:** Se acredita de forma inmediata o enviando tu comprobante a nuestro soporte por WhatsApp.',
         action: {
           type: 'modal',
           label: '👑 Ver Planes y Activar VIP',
@@ -77,10 +153,10 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 2. Premios / Cuánto Paga / Multiplicadores
-    if (q.includes('cuanto paga') || q.includes('cuánto paga') || q.includes('paga') || q.includes('multiplicador') || q.includes('ambo') || q.includes('terno') || q.includes('cuaterno') || q.includes('redoblona')) {
+    // 9. Premios / Cuánto Paga / Multiplicadores
+    if (q.includes('cuanto paga') || q.includes('cuánto paga') || q.includes('paga') || q.includes('multiplicador') || q.includes('ambo') || q.includes('terno') || q.includes('cuaterno')) {
       return {
-        text: '💰 **Tabla Oficial de Premios y Multiplicadores**:\n\n• **Ambo (2 cifras):**\n  - A la Cabeza (1° Premio): Paga **70 veces** lo apostado.\n  - A los 20 Premios: Paga **3.5 veces** lo apostado.\n• **Terno (3 cifras):**\n  - A la Cabeza: Paga **500 veces** lo apostado.\n  - A los 20: Paga **25 veces**.\n• **Cuaterno (4 cifras):**\n  - A la Cabeza: Paga **3.500 veces** lo apostado.\n  - A los 20: Paga **175 veces**.\n• **Redoblona:** Paga hasta **1.280 veces** cuando aciertas ambos números.',
+        text: '💰 **Tabla Oficial de Premios y Multiplicadores**:\n\n• **Ambo (2 cifras):**\n  - A la Cabeza (1° Premio): Paga **70 veces** lo apostado.\n  - A los 5: Paga **14 veces**.\n  - A los 10: Paga **7 veces**.\n  - A los 20: Paga **3.5 veces**.\n• **Terno (3 cifras):**\n  - A la Cabeza: Paga **500 veces** lo apostado.\n  - A los 20: Paga **25 veces**.\n• **Cuaterno (4 cifras):**\n  - A la Cabeza: Paga **3.500 veces** lo apostado.\n  - A los 20: Paga **175 veces**.\n• **Redoblona:** Paga hasta **700 veces** cuando aciertas ambos números.',
         action: {
           type: 'tab',
           tabId: 'predictions',
@@ -89,7 +165,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 3. Escáner / Billetera / Ticket / Controlar
+    // 10. Escáner / Billetera / Ticket / Controlar
     if (q.includes('escan') || q.includes('ticket') || q.includes('boleto') || q.includes('control') || q.includes('billetera') || q.includes('camara') || q.includes('gane') || q.includes('premio')) {
       return {
         text: '📷 **Billetera y Escáner Óptico de Boletos**:\n\n• Puedes enfocar con la cámara de tu celular el código de barras o código QR de tu ticket oficial de lotería.\n• El sistema audita automáticamente el sorteo y la secuencia para verificar si obtuviste aciertos a la Cabeza o en los 20 premios de la pizarra oficial.',
@@ -101,43 +177,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 4. Pronósticos / Inteligencia Artificial / IA / Algoritmo
-    if (q.includes('pronostico') || q.includes('pronóstico') || q.includes('ia') || q.includes('inteligencia') || q.includes('probabil') || q.includes('acierto') || q.includes('numero') || q.includes('número')) {
-      return {
-        text: '🎯 **Motor Predictivo y Algoritmo de IA**:\n\n• Nuestro sistema trabaja en **3 capas matemáticas:**\n  1. Distribución estadística de Poisson para frecuencias.\n  2. Pesos exponenciales por atraso crítico.\n  3. Análisis de rachas y números calientes.\n• Genera recomendaciones clasificadas por nivel de confianza y tiempo restante para apostar.',
-        action: {
-          type: 'tab',
-          tabId: 'predictions',
-          label: '🎯 Ir a Pronósticos IA'
-        }
-      };
-    }
-
-    // 5. Jugar oficial / lotba / apuestas / jugar online
-    if (q.includes('jugar') || q.includes('lotba') || q.includes('apostar') || q.includes('online') || q.includes('agencia') || q.includes('bet.ar')) {
-      return {
-        text: '🌐 **Plataforma Oficial de Juego (lotba.bet.ar)**:\n\n• **Quinela Master Pro** es una herramienta analítica independiente de ayuda al apostador; no captamos apuestas directamente.\n• En cada pantalla encontrarás el botón directo que copia tus números y te lleva a la web oficial autorizada **lotba.bet.ar**.',
-        action: {
-          type: 'url',
-          url: 'https://lotba.bet.ar',
-          label: '🌐 Ir a lotba.bet.ar'
-        }
-      };
-    }
-
-    // 6. Resultados / Sorteos / Horarios / Pizarra / Ayer / Hoy
-    if (q.includes('resultado') || q.includes('sorteo') || q.includes('horario') || q.includes('pizarra') || q.includes('ayer') || q.includes('hoy') || q.includes('previa') || q.includes('primera') || q.includes('matutina') || q.includes('vespertina') || q.includes('nocturna')) {
-      return {
-        text: '📊 **Sorteos y Horarios Oficiales**:\n\n• **La Previa:** 10:15 hs\n• **Primera:** 12:00 hs\n• **Matutina:** 15:00 hs\n• **Vespertina:** 18:00 hs\n• **Nocturna:** 21:00 hs\n\n• En la pestaña de Resultados puedes consultar las 20 posiciones oficiales de Ciudad (LOTBA) y Provincia de Buenos Aires.',
-        action: {
-          type: 'tab',
-          tabId: 'draws',
-          label: '📊 Ver Resultados Oficiales'
-        }
-      };
-    }
-
-    // 7. Sueños / Soñé / Significado / Diccionario
+    // 11. Sueños / Soñé / Significado / Diccionario
     if (q.includes('sueño') || q.includes('sueno') || q.includes('soñe') || q.includes('soñé') || q.includes('significado') || q.includes('diccionario')) {
       return {
         text: '🌙 **Diccionario de Sueños Tradicional**:\n\n• Ingresa una palabra clave de tu sueño (ej: dinero, perro, viaje, familia, agua) y el buscador semántico te indicará el número del 00 al 99 correspondiente con sus jugadas recomendadas.',
@@ -149,10 +189,10 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 8. Copiar / Portapapeles / WhatsApp
-    if (q.includes('copiar') || q.includes('portapapeles') || q.includes('compartir') || q.includes('boton') || q.includes('botones')) {
+    // 12. Copiar / Portapapeles / WhatsApp
+    if (q.includes('copiar') || q.includes('portapapeles') || q.includes('compartir')) {
       return {
-        text: '📋 **Copiado Rápido por Lotería**:\n\n• En la pestaña de Pronósticos dispones de 2 botones dedicados:\n  - **`[ Copiar Todo Ciudad ]`**\n  - **`[ Copiar Todo Provincia ]`**\n• Al tocarlos, se copian al instante todos los Ambos, Ternos, Cuaternos y Redoblonas listos para pegar en WhatsApp o tu bloc de notas.',
+        text: '📋 **Copiado Rápido y Cupón Digital**:\n\n• En Pronósticos tienes los botones **`[ Copiar Ciudad ]`** y **`[ Copiar Provincia ]`** para pegar en WhatsApp.\n• Y tienes el botón **`[ 🎟️ Cupón Agenciero ]`** que abre una boleta digital en letra grande para mostrar directamente en ventanilla.',
         action: {
           type: 'tab',
           tabId: 'predictions',
@@ -161,7 +201,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
       };
     }
 
-    // 9. Soporte Humano / WhatsApp
+    // 13. Soporte Humano / WhatsApp
     if (q.includes('humano') || q.includes('persona') || q.includes('whatsapp') || q.includes('soporte') || q.includes('ayuda') || q.includes('contacto')) {
       return {
         text: '💬 **Contacto con Soporte Humano**:\n\nSi necesitas asistencia personalizada con acreditación de pagos VIP o dudas técnicas, nuestro equipo está a tu disposición en WhatsApp (+54 9 11 5915-8512).',
@@ -176,7 +216,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
 
     // Respuesta Inteligente General
     return {
-      text: '🤖 **Asistente Quinela Master Pro**:\n\nPuedo orientarte sobre:\n• 🎯 **Pronósticos:** Cómo se calculan los Ambos, Ternos y Cuaternos.\n• 💰 **Premios:** Cuánto pagan las 2, 3 y 4 cifras (70x, 500x, 3.500x).\n• 📷 **Billetera:** Cómo escanear boletos con la cámara.\n• 📊 **Resultados:** Horarios de los 5 sorteos diarios.\n• 🌙 **Sueños:** Significado de los números del 00 al 99.\n• 👑 **Pase VIP:** Desbloqueo del Top 5 completo.',
+      text: '🤖 **Asesor Experto Quinela Master Pro**:\n\nConozco todo sobre la app, pregúntame lo que quieras:\n• 📍 **Agencias Oficiales:** Cómo encontrar la agencia LOTBA/IPLyC más cercana con GPS.\n• 🎟️ **Cupón Agenciero:** Cómo ver tu jugada en letra grande para el mostrador.\n• 🛡️ **Radar y Auditoría:** Dónde caen los premios y verificación día a día.\n• 📊 **Resultados:** Cómo ver los 20 premios de hoy o buscar días anteriores.\n• 🧮 **Estrategia:** Redoblonas candado y calculadora de bankroll.\n• 🎯 **Pronósticos:** Cuánto pagan las 2, 3 y 4 cifras (70x, 500x, 3.500x).\n• 👑 **Pase VIP:** Activación y beneficios exclusivos.',
       action: {
         type: 'tab',
         tabId: 'predictions',

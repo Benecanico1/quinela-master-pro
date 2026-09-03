@@ -16,40 +16,22 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   const [selectedLottery, setSelectedLottery] = useState('all'); // 'all', 'ciudad', 'provincia'
   const [selectedShift, setSelectedShift] = useState('all');
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
-  const [activeViewMode, setActiveViewMode] = useState('results'); // 'results' or 'registry'
+  const [resultsMenu, setResultsMenu] = useState('today'); // 'today' | 'search' | 'registry'
   const [loading, setLoading] = useState(false);
   const [justRefreshed, setJustRefreshed] = useState(false);
-  const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString());
+  const [currentTime] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const [selectedHitModal, setSelectedHitModal] = useState(null);
   const [selectedBoardModal, setSelectedBoardModal] = useState(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
-  const [data, setData] = useState(() => getClientDraws('all', 'all', 20, getLocalDateString()));
-  const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+  const effectiveDate = resultsMenu === 'today' ? getLocalDateString() : selectedDate;
+  const effectiveShift = resultsMenu === 'today' ? 'all' : selectedShift;
 
-  // Próximo sorteo y cálculo de tiempo restante
-  const nextShiftInfo = React.useMemo(() => {
-    const now = new Date();
-    const currentMins = now.getHours() * 60 + now.getMinutes();
-    for (const s of OFFICIAL_SHIFTS_SCHEDULE) {
-      const drawMins = s.drawHour * 60 + s.drawMin;
-      if (currentMins < drawMins) {
-        const diff = drawMins - currentMins;
-        const h = Math.floor(diff / 60);
-        const m = diff % 60;
-        const timeLeftStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-        return { name: s.name, time: s.time, timeLeftStr };
-      }
-    }
-    return { name: 'La Previa de Mañana', time: '10:15', timeLeftStr: 'Mañana' };
-  }, [currentTime]);
+  const [data, setData] = useState(() => getClientDraws('all', 'all', 20, getLocalDateString()));
+  const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
   // Real-Time Firebase Firestore Listener & 5-minute Continuous Post-Draw Auto-Sync
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString());
-    }, 1000);
-
     // Auto-sync every 5 minutes
     const autoSyncInterval = setInterval(() => {
       fetchDraws(false);
@@ -60,8 +42,8 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     try {
       unsubscribeFirebase = subscribeToOfficialDraws((liveDraws) => {
         if (liveDraws && liveDraws.length > 0) {
-          setData(getClientDraws(selectedLottery, selectedShift, 20, selectedDate));
-          setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          setData(getClientDraws(selectedLottery, effectiveShift, 20, effectiveDate));
+          setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
       });
     } catch (e) {
@@ -69,11 +51,10 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     }
 
     return () => {
-      clearInterval(timer);
       clearInterval(autoSyncInterval);
       if (unsubscribeFirebase) unsubscribeFirebase();
     };
-  }, [selectedLottery, selectedShift, selectedDate]);
+  }, [selectedLottery, effectiveShift, effectiveDate]);
 
   const [syncResult, setSyncResult] = useState('');
 
@@ -321,32 +302,25 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn pb-8">
-      {/* Header Banner with Real-Time Clock & Compact Next Shift */}
-      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
-              <span>Resultados Oficiales & Registro de la IA</span>
-              <button
-                type="button"
-                onClick={() => setIsInfoOpen(true)}
-                className="text-amber-400 hover:text-amber-300 p-0.5 cursor-pointer transition-colors"
-                title="Ver detalles oficiales"
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
-            </h2>
-          </div>
-          
-          {/* Próximo sorteo compacto */}
-          <div className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10.5px] font-bold">
-            <Clock className="w-3 h-3 text-amber-400 animate-pulse" />
-            <span>Próximo sorteo: <strong>{nextShiftInfo.name}</strong> • Cierra en <strong>{nextShiftInfo.timeLeftStr}</strong></span>
-          </div>
+    <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-8">
+      {/* Header Banner Clean & Direct (Sin Próximo Sorteo) */}
+      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/30 rounded-2xl p-3 sm:p-4 shadow-lg flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
+            <Trophy className="w-5 h-5 text-amber-400" />
+            <span>Resultados Oficiales & Extractos</span>
+            <button
+              type="button"
+              onClick={() => setIsInfoOpen(true)}
+              className="text-amber-400 hover:text-amber-300 p-0.5 cursor-pointer transition-colors"
+              title="Ver detalles oficiales"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </button>
+          </h2>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-2">
           <div className="bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-xl text-right shadow">
             <span className="text-[8.5px] text-slate-400 block font-bold leading-none">HORA OFICIAL</span>
             <span className="text-xs font-mono font-black text-amber-400 flex items-center gap-1 mt-0.5">
@@ -376,42 +350,51 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
         </div>
       </div>
 
-      {/* Mode Switch: Pizarra Oficial vs Registro Histórico */}
-      <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow">
+      {/* Sub-Menú Intuitivo y Despejado de 3 Opciones */}
+      <div className="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow">
         <button
-          onClick={() => setActiveViewMode('results')}
-          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            activeViewMode === 'results'
+          type="button"
+          onClick={() => {
+            setResultsMenu('today');
+            setSelectedDate(todayStr);
+            setSelectedShift('all');
+          }}
+          className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            resultsMenu === 'today'
               ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-              : 'text-slate-400 hover:text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
           <Trophy className="w-3.5 h-3.5" />
-          <span>Pizarra Oficial</span>
+          <span>Sorteos de Hoy</span>
         </button>
 
         <button
-          onClick={() => setActiveViewMode('registry')}
-          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
-            activeViewMode === 'registry'
+          type="button"
+          onClick={() => setResultsMenu('search')}
+          className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            resultsMenu === 'search'
               ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-              : 'text-slate-400 hover:text-white'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Buscar por Fecha / Turno</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setResultsMenu('registry')}
+          className={`flex-1 py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            resultsMenu === 'registry'
+              ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Registro Histórico ({registryList.length})</span>
+          <span>Historial ({registryList.length})</span>
         </button>
       </div>
-
-      {/* Botón directo de Actualizar Resultados Oficiales */}
-      <button
-        onClick={() => fetchDraws(true)}
-        disabled={loading}
-        className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs shadow-md shadow-emerald-950/40 flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
-      >
-        <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-        <span>{loading ? 'Descargando extractos oficiales...' : '⚡ Actualizar Resultados Oficiales'}</span>
-      </button>
 
       {syncResult && (
         <div className="bg-emerald-950/90 border border-emerald-500/50 text-emerald-300 text-xs font-bold px-4 py-2.5 rounded-2xl flex items-center gap-2 shadow-lg animate-fadeIn">
@@ -420,25 +403,25 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
         </div>
       )}
 
-      {activeViewMode === 'results' ? (
+      {resultsMenu !== 'registry' ? (
         <>
           {/* Primary Lottery Tabs: Ciudad vs Provincia vs Todas */}
           <div className="grid grid-cols-3 gap-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow">
             <button
               onClick={() => setSelectedLottery('all')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
+              className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
                 selectedLottery === 'all'
                   ? 'bg-amber-500 text-slate-950 shadow-md scale-100 font-black'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Radio className="w-3.5 h-3.5 shrink-0" />
-              <span>Todas las Loterías</span>
+              <span>Todas</span>
             </button>
 
             <button
               onClick={() => setSelectedLottery('ciudad')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
+              className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
                 selectedLottery === 'ciudad'
                   ? 'bg-amber-500 text-slate-950 shadow-md scale-100 font-black'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -450,7 +433,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
 
             <button
               onClick={() => setSelectedLottery('provincia')}
-              className={`py-2.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
+              className={`py-2 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 text-center ${
                 selectedLottery === 'provincia'
                   ? 'bg-amber-500 text-slate-950 shadow-md scale-100 font-black'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -461,65 +444,72 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
             </button>
           </div>
 
-          {/* Date & Shift Filter Bar */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg flex flex-col sm:flex-row gap-3 items-center justify-between">
-            {/* Quick Date Pills */}
-            <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap">
-              <button
-                onClick={() => setSelectedDate(todayStr)}
-                className={`px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                  selectedDate === todayStr
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow font-black'
-                    : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                Hoy
-              </button>
-              <button
-                onClick={() => setSelectedDate(yesterdayStr)}
-                className={`px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer border ${
-                  selectedDate === yesterdayStr
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow font-black'
-                    : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
-                }`}
-              >
-                Ayer
-              </button>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
-              />
-            </div>
-          </div>
+          {/* Filtros avanzados solo visibles cuando el usuario elige 'Buscar por Fecha / Turno' */}
+          {resultsMenu === 'search' && (
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-lg space-y-3 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <span className="text-xs font-bold text-slate-300">Seleccionar Fecha:</span>
+                <div className="flex items-center gap-1.5 w-full sm:w-auto flex-wrap">
+                  <button
+                    onClick={() => setSelectedDate(todayStr)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      selectedDate === todayStr
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow font-black'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    Hoy
+                  </button>
+                  <button
+                    onClick={() => setSelectedDate(yesterdayStr)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer border ${
+                      selectedDate === yesterdayStr
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow font-black'
+                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    Ayer
+                  </button>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 text-white font-bold rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
 
-          {/* Shift Selection Pills Bar (Botones Rápidos por Turno) */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {[
-              { id: 'all', label: '⚡ Todos los Turnos' },
-              { id: 'previa', label: '🌅 La Previa (10:15)' },
-              { id: 'primera', label: '☀️ Primera (12:00)' },
-              { id: 'matutina', label: '🌤️ Matutina (15:00)' },
-              { id: 'vespertina', label: '🌆 Vespertina (18:00)' },
-              { id: 'nocturna', label: '🌙 Nocturna (21:00)' },
-            ].map((s) => {
-              const isSelected = selectedShift === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setSelectedShift(s.id)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-                      : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
-                  }`}
-                >
-                  <span>{s.label}</span>
-                </button>
-              );
-            })}
-          </div>
+              {/* Shift Selection Pills */}
+              <div className="pt-1 border-t border-slate-800/80">
+                <div className="text-xs font-bold text-slate-400 mb-1.5">Filtrar por Turno:</div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {[
+                    { id: 'all', label: '⚡ Todos los Turnos' },
+                    { id: 'previa', label: '🌅 La Previa (10:15)' },
+                    { id: 'primera', label: '☀️ Primera (12:00)' },
+                    { id: 'matutina', label: '🌤️ Matutina (15:00)' },
+                    { id: 'vespertina', label: '🌆 Vespertina (18:00)' },
+                    { id: 'nocturna', label: '🌙 Nocturna (21:00)' },
+                  ].map((s) => {
+                    const isSelected = selectedShift === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setSelectedShift(s.id)}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                            : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                        }`}
+                      >
+                        <span>{s.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Botón hacia el Ranking de Aciertos en el Radar */}
           <div className="bg-gradient-to-r from-purple-950/60 via-slate-900 to-indigo-950/60 border border-purple-500/40 p-2.5 sm:p-3 rounded-2xl flex items-center justify-between gap-3 shadow">
@@ -530,7 +520,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
               <div>
                 <div className="text-xs font-black text-white flex items-center gap-1.5">
                   <span>🏆 Ranking de Aciertos de la App</span>
-                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">94.8% Eficacia</span>
+                  <span className="text-[10px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">Auditado</span>
                 </div>
                 <p className="text-[10.5px] text-slate-300">
                   Totalidad de aciertos diarios, semanales y mensuales en el Radar.

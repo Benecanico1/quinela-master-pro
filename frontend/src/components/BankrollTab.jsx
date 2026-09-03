@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { 
   Calculator, Layers, TrendingUp, DollarSign, ShieldCheck, Zap,
-  HelpCircle, CheckCircle2, ArrowRight, Play, Sparkles, AlertCircle
+  HelpCircle, CheckCircle2, ArrowRight, Play, Sparkles, AlertCircle,
+  MapPin
 } from 'lucide-react';
 import { simulateClientBankroll } from '../services/clientEngine';
+import AgenciesMapSearch from './AgenciesMapSearch';
 
 export default function BankrollTab({ predictions }) {
+  // Main Sub-Tab navigation: calculator vs agencies
+  const [subTab, setSubTab] = useState('calculator'); // 'calculator' | 'agencies'
+
   // Redoblona state (Parte Principal Superior)
   const [amboA, setAmboA] = useState('28');
   const [posA, setPosA] = useState('1');
@@ -52,16 +57,49 @@ export default function BankrollTab({ predictions }) {
         <div>
           <h2 className="text-lg sm:text-2xl font-black text-white flex items-center gap-2">
             <Calculator className="w-5 h-5 text-emerald-400" />
-            <span>Estrategia de Apuestas y Redoblonas</span>
+            <span>Estrategia, Calculadora & Mapa de Agencias</span>
           </h2>
           <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
-            Cálculo matemático de multiplicadores, redoblonas candado y cobertura inteligente.
+            Cálculo matemático de multiplicadores, cobertura inteligente y ubicación de agencias oficiales.
           </p>
         </div>
       </div>
 
-      {/* 1. CALCULADORA DE REDOBLONAS (Parte Principal Superior) */}
-      <div className="bg-gradient-to-br from-indigo-950/50 via-slate-900 to-slate-900 border border-indigo-500/40 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
+      {/* Sub-Menú Principal de Navegación de Estrategia */}
+      <div className="flex bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow">
+        <button
+          type="button"
+          onClick={() => setSubTab('calculator')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            subTab === 'calculator'
+              ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Calculadora de Redoblonas & Bankroll</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSubTab('agencies')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            subTab === 'agencies'
+              ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <MapPin className="w-3.5 h-3.5" />
+          <span>📍 Mapa y Buscador de Agencias Cercanas</span>
+        </button>
+      </div>
+
+      {subTab === 'agencies' ? (
+        <AgenciesMapSearch />
+      ) : (
+        <>
+          {/* 1. CALCULADORA DE REDOBLONAS (Parte Principal Superior) */}
+          <div className="bg-gradient-to-br from-indigo-950/50 via-slate-900 to-slate-900 border border-indigo-500/40 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
@@ -355,6 +393,8 @@ export default function BankrollTab({ predictions }) {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }
