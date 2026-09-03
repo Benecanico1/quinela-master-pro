@@ -186,13 +186,13 @@ export default function NotificationsModal({
               </div>
             </div>
           ) : (
-            notifications.map((item) => {
-              const badge = getCategoryBadge(item.category);
-              const isUnread = !item.read;
+            (notifications || []).filter(Boolean).map((item) => {
+              const badge = getCategoryBadge(item?.category || 'general');
+              const isUnread = !item?.read;
 
               return (
                 <div
-                  key={item.id}
+                  key={item?.id || Math.random()}
                   onClick={() => handleNotificationClick(item)}
                   className={`p-3.5 rounded-2xl border transition-all cursor-pointer space-y-2 relative group ${
                     isUnread
@@ -216,12 +216,12 @@ export default function NotificationsModal({
                     <div className="flex items-center gap-2">
                       <span className="text-[10.5px] text-slate-500 font-mono flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {formatTimestamp(item.created_at)}
+                        {formatTimestamp(item?.created_at)}
                       </span>
 
                       <button
                         type="button"
-                        onClick={(e) => handleDeleteOne(e, item.id)}
+                        onClick={(e) => handleDeleteOne(e, item?.id)}
                         className="p-1 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
                         title="Borrar mensaje"
                       >
@@ -232,16 +232,16 @@ export default function NotificationsModal({
 
                   {/* Message Title */}
                   <h3 className={`text-xs sm:text-sm font-black leading-snug ${isUnread ? 'text-white' : 'text-slate-200'}`}>
-                    {item.title}
+                    {item?.title || 'Notificación'}
                   </h3>
 
                   {/* Message Body */}
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    {item.message}
+                    {item?.message || ''}
                   </p>
 
                   {/* Action Button if configured */}
-                  {(item.action_text || item.action_tab || item.action_url) && (
+                  {(item?.action_text || item?.action_tab || item?.action_url) && (
                     <div className="pt-1">
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-400 hover:text-amber-300 group-hover:underline">
                         <span>{item.action_text || 'Ver más detalles'}</span>

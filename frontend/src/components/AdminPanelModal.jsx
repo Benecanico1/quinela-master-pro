@@ -4,7 +4,7 @@ import {
   X, Users, CreditCard, Megaphone, Settings, 
   ShieldCheck, Check, Plus, RefreshCw, Crown, AlertCircle,
   Eye, Image as ImageIcon, MessageSquareHeart, Star, ThumbsUp, Lightbulb, AlertTriangle, ChevronRight, Trophy, ExternalLink, Smartphone,
-  Calendar, Clock, UserCheck, Sparkles, Send, ShieldAlert
+  Calendar, Clock, UserCheck, Sparkles, Send, ShieldAlert, Trash2
 } from 'lucide-react';
 import { getRealOfficialDrawsFromStorage, saveRealOfficialDrawToStorage, SIGNIFICADOS, getLocalDateString } from '../services/clientEngine';
 import { getAffiliateUrl, setAffiliateUrl } from '../services/firebaseClient';
@@ -1024,29 +1024,29 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
                   </div>
                 ) : (
                   <div className="space-y-2.5 max-h-72 overflow-y-auto no-scrollbar pr-1">
-                    {broadcastHistory.map((item) => (
-                      <div key={item.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-3">
+                    {(broadcastHistory || []).filter(Boolean).map((item) => (
+                      <div key={item?.id || Math.random()} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 uppercase">
-                              {item.category}
+                              {item?.category || 'General'}
                             </span>
-                            {item.is_popup && (
+                            {item?.is_popup && (
                               <span className="text-[9.5px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                                 Pop-Up
                               </span>
                             )}
                             <span className="text-[10px] text-slate-500 font-mono">
-                              {new Date(item.created_at).toLocaleString('es-AR')}
+                              {item?.created_at ? new Date(item.created_at).toLocaleString('es-AR') : 'Reciente'}
                             </span>
                           </div>
-                          <h5 className="font-bold text-white text-xs">{item.title}</h5>
-                          <p className="text-[11px] text-slate-400 leading-relaxed">{item.message}</p>
+                          <h5 className="font-bold text-white text-xs">{item?.title || 'Sin Título'}</h5>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">{item?.message || ''}</p>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => handleDeleteBroadcastItem(item.id)}
+                          onClick={() => handleDeleteBroadcastItem(item?.id)}
                           className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-slate-900 rounded-lg transition-colors cursor-pointer shrink-0"
                           title="Eliminar comunicado"
                         >
