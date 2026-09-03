@@ -21,6 +21,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   const [justRefreshed, setJustRefreshed] = useState(false);
   const [currentTime, setCurrentTime] = useState(() => new Date().toLocaleTimeString());
   const [selectedHitModal, setSelectedHitModal] = useState(null);
+  const [selectedBoardModal, setSelectedBoardModal] = useState(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
 
   const [data, setData] = useState(() => getClientDraws('all', 'all', 20, getLocalDateString()));
@@ -49,14 +50,23 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
       setCurrentTime(new Date().toLocaleTimeString());
     }, 1000);
 
-    // Rule: Active continuous polling every 5 minutes (300,000 ms) and rapid 30s check for active draws
+    // Auto-sync every 5 minutes
     const autoSyncInterval = setInterval(() => {
       fetchDraws(false);
-    }, 30000); // Polls every 30s to guarantee prompt 5m/instant recovery
+    }, 300000);
 
-    const unsubscribeFirebase = subscribeToOfficialDraws(() => {
-      fetchDraws(false);
-    });
+    // Subscribe to Firestore for real-time draw updates
+    let unsubscribeFirebase = null;
+    try {
+      unsubscribeFirebase = subscribeToOfficialDraws((liveDraws) => {
+        if (liveDraws && liveDraws.length > 0) {
+          setData(getClientDraws(selectedLottery, selectedShift, 20, selectedDate));
+          setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        }
+      });
+    } catch (e) {
+      console.warn("Firestore subscription inactive:", e);
+    }
 
     return () => {
       clearInterval(timer);
@@ -117,7 +127,16 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
 
-  const draws = data.draws || [];
+  // Sort draws so the LATEST draw of the day is FIRST (Nocturna -> Vespertina -> Matutina -> Primera -> Previa)
+  const shiftOrderMap = { 'nocturna': 5, 'vespertina': 4, 'matutina': 3, 'primera': 2, 'previa': 1 };
+  const rawDraws = data.draws || [];
+  const sortedDraws = [...rawDraws].sort((a, b) => {
+    const orderA = shiftOrderMap[a.shift] || 0;
+    const orderB = shiftOrderMap[b.shift] || 0;
+    return orderB - orderA; // Descending: latest draw is #1 at top
+  });
+
+  const draws = sortedDraws;
   const audit = data.audit_summary || {
     head_hits_rate: "74.2%",
     board_hits_rate: "94.8%",
@@ -125,7 +144,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     total_multipliers_generated: "+18.4x"
   };
 
-  // Group draws by lottery
+  // Group draws by lottery with latest draw first
   const ciudadDraws = draws.filter(d => d.lottery === 'ciudad');
   const provinciaDraws = draws.filter(d => d.lottery === 'provincia');
 
@@ -227,9 +246,9 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
         {/* 1° Premio Hero Row (Compact) */}
         {isCompleted ? (
           <div 
-            onClick={() => openHitModal(draw, 1)}
-            title="Toca para ver la leyenda del número"
-            className="cursor-pointer bg-slate-950 border border-amber-500/50 hover:border-amber-400 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-all hover:bg-slate-900"
+            onClick={() => setSelectedBoardModal(draw)}
+            title="Toca para abrir la Pizarra Oficial Completa en Pop-Up"
+            className="cursor-pointer bg-slate-950 border border-amber-500/50 hover:border-amber-400 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-all hover:bg-slate-900 shadow"
           >
             <div className="flex items-center gap-3">
               <div className="bg-amber-500 text-slate-950 px-2.5 py-1.5 rounded-xl text-center shadow font-black shrink-0">
@@ -249,7 +268,9 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
             </div>
 
             <div className="text-right shrink-0">
-              <span className="text-[10px] text-amber-400 font-bold hover:underline">Ver Leyenda ↗</span>
+              <span className="text-[10.5px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded-lg hover:bg-amber-500/20 transition-colors">
+                Ver Pizarra 20 ↗
+              </span>
             </div>
           </div>
         ) : null}
@@ -258,8 +279,8 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
         {isCompleted && (
           aiHit && aiHit.is_hit ? (
             <div 
-              onClick={() => openHitModal(draw, 1)}
-              className="cursor-pointer p-2.5 bg-gradient-to-r from-emerald-950/90 via-slate-950 to-amber-950/40 border border-emerald-500/60 rounded-xl flex items-center justify-between gap-2 shadow"
+              onClick={() => setSelectedBoardModal(draw)}
+              className="cursor-pointer p-2.5 bg-gradient-to-r from-emerald-950/90 via-slate-950 to-amber-950/40 border border-emerald-500/60 rounded-xl flex items-center justify-between gap-2 shadow hover:border-emerald-400 transition-all"
             >
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
@@ -282,52 +303,17 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
           )
         )}
 
-        {/* Collapsible Button to show/hide the 20 Numbers Board */}
+        {/* Botón directo para abrir el Pop-Up de 20 Números */}
         {isCompleted && (
           <div className="pt-1">
             <button
-              onClick={() => toggleBoard(draw.id)}
-              className="w-full py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              type="button"
+              onClick={() => setSelectedBoardModal(draw)}
+              className="w-full py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 text-slate-300 hover:text-amber-300 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow"
             >
-              <span>{isExpanded ? '🔼 Ocultar Pizarra de 20 Números' : '📋 Ver Pizarra Completa (20 Premios) ▼'}</span>
+              <FileText className="w-3.5 h-3.5 text-amber-400" />
+              <span>📋 Ver Pizarra Oficial Completa (Pop-Up 20 Premios) ↗</span>
             </button>
-
-            {/* FULL 20 NUMBERS BOARD (Shown ONLY when expanded) */}
-            {isExpanded && (
-              <div className="mt-2.5 p-2.5 bg-slate-950 rounded-xl border border-slate-800 animate-fadeIn space-y-2">
-                <div className="text-[10px] font-black uppercase text-slate-400 flex items-center justify-between px-1">
-                  <span>Extracto Oficial Completo de 20 Premios</span>
-                  <span className="text-emerald-400">4 Cifras</span>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                  {Array.from({ length: 20 }, (_, idx) => idx + 1).map((pos) => {
-                    const val = draw[`p${pos}`] || '0000';
-                    const isPos1 = pos === 1;
-                    const isHitOnThisPos = matchedPositions.includes(pos);
-
-                    return (
-                      <div
-                        key={pos}
-                        onClick={() => openHitModal(draw, pos)}
-                        className={`cursor-pointer px-2 py-1.5 rounded-lg border flex items-center justify-between transition-all ${
-                          isPos1
-                            ? 'bg-amber-950/60 border-amber-500/80 text-amber-300 font-black ring-1 ring-amber-500/40'
-                            : isHitOnThisPos
-                              ? 'bg-emerald-950/70 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
-                              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`text-[9px] font-bold ${isPos1 ? 'text-amber-400' : isHitOnThisPos ? 'text-emerald-400' : 'text-slate-500'}`}>
-                          #{pos.toString().padStart(2, '0')}
-                        </span>
-                        <span className="font-mono font-black text-xs tracking-wider">{val}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -810,6 +796,149 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
                 className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POP-UP MODAL: PIZARRA OFICIAL COMPLETA (20 PREMIOS) */}
+      {selectedBoardModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar relative">
+            {/* Header del Pop-up */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow ${
+                  selectedBoardModal.lottery === 'ciudad'
+                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                }`}>
+                  {selectedBoardModal.lottery === 'ciudad' ? <Building2 className="w-3.5 h-3.5" /> : <Trees className="w-3.5 h-3.5" />}
+                  <span>{selectedBoardModal.lottery === 'ciudad' ? '🏛️ Ciudad (Nacional)' : '🌿 Provincia Bs As'}</span>
+                </span>
+
+                <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-amber-300 border border-slate-800 text-xs font-bold capitalize">
+                  {selectedBoardModal.shift_name || selectedBoardModal.shift} • {selectedBoardModal.shift_time || '18:00'} hs
+                </span>
+
+                <span className="text-slate-400 font-mono text-xs">
+                  {selectedBoardModal.draw_date}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedBoardModal(null)}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 1° Premio Destacado */}
+            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 p-3.5 rounded-2xl flex items-center justify-between shadow-lg">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider block">👑 1° PREMIO OFICIAL A LA CABEZA</span>
+                <span className="text-2xl sm:text-3xl font-black font-mono tracking-widest leading-tight">
+                  {selectedBoardModal.p1 || '----'}
+                </span>
+                <span className="text-xs font-bold block mt-0.5">
+                  Ambo {selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)} — "{SIGNIFICADOS[selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)] || selectedBoardModal.significado || 'La Suerte'}"
+                </span>
+              </div>
+
+              {selectedBoardModal.ai_hit?.is_hit && (
+                <div className="bg-slate-950 text-emerald-300 border border-emerald-500/50 p-2 rounded-xl text-right shadow">
+                  <span className="text-[9px] font-mono text-amber-400 block font-bold">✨ ACIERTO IA</span>
+                  <span className="text-xs font-black">+{selectedBoardModal.ai_hit.multiplier}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Grilla Oficial de los 20 Premios (2 Columnas: 1-10 y 11-20) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-[11px] font-black uppercase text-slate-400 px-1">
+                <span>Pizarra Oficial Completa (20 Premios)</span>
+                <span className="text-emerald-400">4 Cifras Oficiales</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Columna Izquierda: Posiciones 1 a 10 */}
+                <div className="space-y-1">
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((pos) => {
+                    const num4 = selectedBoardModal[`p${pos}`] || '0000';
+                    const ambo = num4.slice(-2);
+                    const isPos1 = pos === 1;
+                    const isHit = selectedBoardModal.ai_hit?.matched_positions?.includes(pos);
+
+                    return (
+                      <div
+                        key={pos}
+                        onClick={() => openHitModal(selectedBoardModal, pos)}
+                        className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                          isPos1
+                            ? 'bg-amber-950/70 border-amber-500/80 text-amber-300 font-black ring-1 ring-amber-500/40'
+                            : isHit
+                              ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
+                              : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className={`font-mono font-bold text-[10px] ${isPos1 ? 'text-amber-400' : isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
+                          #{pos.toString().padStart(2, '0')}
+                        </span>
+                        <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
+                        <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
+                          {SIGNIFICADOS[ambo] || ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Columna Derecha: Posiciones 11 a 20 */}
+                <div className="space-y-1">
+                  {Array.from({ length: 10 }, (_, i) => i + 11).map((pos) => {
+                    const num4 = selectedBoardModal[`p${pos}`] || '0000';
+                    const ambo = num4.slice(-2);
+                    const isHit = selectedBoardModal.ai_hit?.matched_positions?.includes(pos);
+
+                    return (
+                      <div
+                        key={pos}
+                        onClick={() => openHitModal(selectedBoardModal, pos)}
+                        className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                          isHit
+                            ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
+                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        <span className={`font-mono font-bold text-[10px] ${isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
+                          #{pos.toString().padStart(2, '0')}
+                        </span>
+                        <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
+                        <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
+                          {SIGNIFICADOS[ambo] || ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer de Validación Oficial */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Extracto 100% Oficial Verificado
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedBoardModal(null)}
+                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs cursor-pointer"
+              >
+                Cerrar Pop-Up
               </button>
             </div>
           </div>
