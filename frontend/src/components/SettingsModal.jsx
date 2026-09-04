@@ -41,7 +41,7 @@ export default function SettingsModal({
               <h3 className="text-base font-black text-white flex items-center gap-1.5">
                 Configuración y Perfil
               </h3>
-              <span className="text-[11px] text-slate-400">Quinela Master Pro v1.1.4</span>
+              <span className="text-[11px] text-slate-400">Quinela Master Pro v1.4.5</span>
             </div>
           </div>
 

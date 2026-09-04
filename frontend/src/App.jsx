@@ -14,13 +14,16 @@ import {
   Settings,
   HelpCircle,
   Shield,
+  ShieldCheck,
   UserPlus,
   MessageSquare,
   MessageSquareHeart,
-  Bell
+  Bell,
+  Cpu
 } from 'lucide-react';
 
 import PredictionsTab from './components/PredictionsTab';
+import PredictiveAiDashboardTab from './components/PredictiveAiDashboardTab';
 import DrawsHistoryTab from './components/DrawsHistoryTab';
 import BankrollTab from './components/BankrollTab';
 import DreamsTab from './components/DreamsTab';
@@ -43,6 +46,7 @@ import AiAdvisorFloatingModal from './components/AiAdvisorFloatingModal';
 import NotificationsModal from './components/NotificationsModal';
 import BroadcastPopupModal from './components/BroadcastPopupModal';
 import ResponsibleGamingModal from './components/ResponsibleGamingModal';
+import SplashScreen from './components/SplashScreen';
 
 import { 
   getClientFrequencies, 
@@ -128,6 +132,7 @@ export default function App() {
     };
   });
 
+  const [showSplash, setShowSplash] = useState(true);
   const [isWelcomeAuthOpen, setIsWelcomeAuthOpen] = useState(() => {
     return !localStorage.getItem('has_completed_onboarding');
   });
@@ -324,9 +329,10 @@ export default function App() {
     fetchAllData();
   }, [lottery, shift, target]);
 
-  // 5 Main Intuitive Tabs
+  // 6 Main Intuitive Tabs (incluyendo IA Predictiva ML)
   const tabs = [
     { id: 'predictions', label: 'Pronósticos AI', icon: Sparkles, color: 'text-amber-400', isVipOnly: false },
+    { id: 'ml_ai', label: 'IA Predictiva (ML)', icon: Cpu, color: 'text-indigo-400', isVipOnly: false },
     { id: 'draws_history', label: 'Sorteos & Resultados', icon: Trophy, color: 'text-amber-300', isVipOnly: false },
     { id: 'stats_radar', label: 'Radar & Números', icon: Radio, color: 'text-cyan-400', isVipOnly: false },
     { id: 'dreams', label: 'Libro de Sueños', icon: Moon, color: 'text-purple-400', isVipOnly: false },
@@ -485,6 +491,19 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'ml_ai' && (
+            <PredictiveAiDashboardTab
+              isVip={user?.is_vip}
+              onOpenUpgrade={() => {
+                if (!user?.email || user.email === 'visita@quiniela.com') {
+                  setIsAuthOpen(true);
+                } else {
+                  setIsUpgradeOpen(true);
+                }
+              }}
+            />
+          )}
+
           {activeTab === 'draws_history' && (
             <DrawsHistoryTab onNavigateToRadar={() => setActiveTab('stats_radar')} />
           )}
@@ -624,22 +643,30 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Mobile Sticky Bottom Navigation Bar (5 Touch Buttons) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 py-2 px-2 grid grid-cols-5 sm:hidden shadow-2xl">
+      {/* Mobile Sticky Bottom Navigation Bar (6 Touch Buttons) */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 py-2 px-1 grid grid-cols-6 sm:hidden shadow-2xl">
         <button
           onClick={() => setActiveTab('predictions')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'predictions' ? 'text-amber-400' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'predictions' ? 'text-amber-400 font-black' : 'text-slate-400'}`}
         >
           <Sparkles className="w-4 h-4" />
-          <span className="text-[9px] font-bold">Pronósticos</span>
+          <span className="text-[8.5px] font-bold">Pronósticos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ml_ai')}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'ml_ai' ? 'text-indigo-400 font-black' : 'text-slate-400'}`}
+        >
+          <Cpu className="w-4 h-4" />
+          <span className="text-[8.5px] font-bold">IA ML</span>
         </button>
 
         <button
           onClick={() => setActiveTab('draws_history')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'draws_history' ? 'text-amber-300' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'draws_history' ? 'text-amber-300 font-black' : 'text-slate-400'}`}
         >
           <Trophy className="w-4 h-4" />
-          <span className="text-[9px] font-bold">Resultados</span>
+          <span className="text-[8.5px] font-bold">Resultados</span>
         </button>
 
         <button
@@ -827,6 +854,11 @@ export default function App() {
         isOpen={isResponsibleGamingOpen}
         onClose={() => setIsResponsibleGamingOpen(false)}
       />
+
+      {/* App Launch Splash Screen with New 3D Brand Logo */}
+      {showSplash && (
+        <SplashScreen onFinish={() => setShowSplash(false)} />
+      )}
     </div>
   );
 }

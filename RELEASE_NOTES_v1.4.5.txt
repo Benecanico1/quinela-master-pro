@@ -1,0 +1,9 @@
+=== QUINIELA MASTER PRO v1.4.5 (VersionCode 77) ===
+Fecha: 04/09/2026
+
+NOVEDADES DE LA ACTUALIZACIÓN:
+1. Nueva Pantalla de Inicio (Splash Screen) con Logo 3D Dorado oficial en alta definición.
+2. Cupón para el Agenciero optimizado: Ahora muestra los 5 números oficiales completos (Top 5) en letra grande para mostrar en ventanilla.
+3. Compartir en WhatsApp perfeccionado: Nuevo formato ultra-limpio con corchetes [1] a [5] que evita la creación involuntaria de enlaces o números azules, detallando Ambo, Terno y Cuaterno directos al grano.
+4. Centro de Guías Oficiales: Integración de la Guía Oficial de Machine Learning y Auditoría Criptográfica SHA-256.
+5. Sincronización continua de resultados oficiales y preservación estricta de la Fase 5 de validación prospectiva.

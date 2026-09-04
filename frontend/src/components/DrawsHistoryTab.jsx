@@ -65,7 +65,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
       const syncRes = await syncRemoteOfficialDraws();
       
       // 2. Fetch local client engine with synced storage
-      const clientDraws = getClientDraws(selectedLottery, selectedShift, 20, selectedDate);
+      const clientDraws = getClientDraws(selectedLottery, effectiveShift, 20, effectiveDate);
       setData(clientDraws);
       
       if (showLoading) {
@@ -78,7 +78,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
       }
     } catch (err) {
       console.warn("fetchDraws fallback:", err);
-      const fallbackDraws = getClientDraws(selectedLottery, selectedShift, 20, selectedDate);
+      const fallbackDraws = getClientDraws(selectedLottery, effectiveShift, 20, effectiveDate);
       setData(fallbackDraws);
       if (showLoading) {
         setSyncResult(`✅ Pizarras cargadas (${fallbackDraws.draws.length} sorteos disponibles).`);
@@ -103,7 +103,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
 
     window.addEventListener('quinela-draws-updated', handleExternalUpdate);
     return () => window.removeEventListener('quinela-draws-updated', handleExternalUpdate);
-  }, [selectedLottery, selectedShift, selectedDate]);
+  }, [selectedLottery, effectiveShift, effectiveDate]);
 
   const todayStr = getLocalDateString();
   const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
@@ -123,6 +123,41 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   // Group draws by lottery with latest draw first
   const ciudadDraws = draws.filter(d => d.lottery === 'ciudad');
   const provinciaDraws = draws.filter(d => d.lottery === 'provincia');
+
+  // Upcoming scheduled draws for the target date
+  const upcomingDraws = data.upcoming_draws || [];
+  const ciudadUpcoming = upcomingDraws.filter(d => d.lottery === 'ciudad');
+  const provinciaUpcoming = upcomingDraws.filter(d => d.lottery === 'provincia');
+
+  const renderUpcomingDrawCard = (draw) => (
+    <div
+      key={draw.id}
+      className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 flex items-center justify-between gap-3 shadow"
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+          <Clock className="w-3.5 h-3.5" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs font-black text-white capitalize flex items-center gap-1.5 truncate">
+            <span>{draw.shift_name || draw.shift}</span>
+            <span className="text-[10px] text-amber-300 font-bold bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+              {draw.shift_time || '18:00'} hs
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 truncate mt-0.5">
+            {draw.status === 'IN_PROGRESS' ? 'Extrayendo en vivo...' : 'Sorteo oficial programado'}
+          </p>
+        </div>
+      </div>
+      <div className="shrink-0">
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span>Pendiente</span>
+        </span>
+      </div>
+    </div>
+  );
 
   // Load full prediction registry from localStorage & default archive
   const getFullPredictionRegistryList = () => {
@@ -533,54 +568,148 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
           </div>
 
           {/* DRAWS DISPLAY: DIVIDED BY LOTTERY WHEN 'ALL' IS SELECTED */}
+          {resultsMenu === 'today' && ciudadDraws.length === 0 && provinciaDraws.length === 0 && (
+            <div className="bg-gradient-to-br from-amber-500/10 via-slate-900 to-indigo-500/10 border border-amber-500/30 rounded-3xl p-5 text-center space-y-3 shadow-xl">
+              <div className="inline-flex p-3 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <Clock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-base font-black text-white">
+                  Sorteos Oficiales de Hoy en Preparación ({effectiveDate})
+                </h4>
+                <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                  Las extracciones oficiales comienzan a las 10:15 hs con La Previa. Podés consultar las pizarras oficiales confirmadas del último día hábil.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResultsMenu('search');
+                  setSelectedDate(data.latest_completed_date || yesterdayStr);
+                  setSelectedShift('all');
+                }}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow cursor-pointer transition-all active:scale-95 inline-flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Ver Extractos Oficiales Confirmados ({data.latest_completed_date || yesterdayStr})</span>
+              </button>
+            </div>
+          )}
+
           {selectedLottery === 'all' ? (
             <div className="space-y-8">
               {/* Section 1: Lotería de la Ciudad (Nacional) */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 px-1">
-                  <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    <Building2 className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      <Building2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-white">
+                        Lotería de la Ciudad de Buenos Aires (Nacional - LOTBA)
+                      </h3>
+                      <p className="text-xs text-slate-400">Extractos oficiales de 20 premios para {effectiveDate}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-white">
-                      Lotería de la Ciudad de Buenos Aires (Nacional - LOTBA)
-                    </h3>
-                    <p className="text-xs text-slate-400">Extractos oficiales de 20 premios para la fecha seleccionada ({selectedDate})</p>
-                  </div>
+                  {ciudadDraws.length > 0 && (
+                    <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      {ciudadDraws.length} sorteo{ciudadDraws.length > 1 ? 's' : ''} completado{ciudadDraws.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
                   {ciudadDraws.length === 0 ? (
-                    <div className="p-6 bg-slate-900 rounded-3xl text-center text-xs text-slate-500 border border-slate-800">
-                      No hay sorteos disponibles para los filtros seleccionados.
+                    <div className="p-5 bg-slate-900/90 rounded-2xl text-center text-xs text-slate-400 border border-slate-800 space-y-2">
+                      <p>Aún no hay extractos oficiales completados para Lotería de la Ciudad en esta fecha ({effectiveDate}).</p>
+                      {resultsMenu === 'today' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResultsMenu('search');
+                            setSelectedDate(data.latest_completed_date || yesterdayStr);
+                            setSelectedShift('all');
+                          }}
+                          className="text-xs font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                        >
+                          Ver resultados confirmados de ayer ({data.latest_completed_date || yesterdayStr})
+                        </button>
+                      )}
                     </div>
                   ) : (
                     ciudadDraws.map(renderDrawCard)
+                  )}
+
+                  {/* Upcoming Shifts for Ciudad */}
+                  {ciudadUpcoming.length > 0 && (
+                    <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 sm:p-4 space-y-2.5">
+                      <div className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Próximos turnos programados para hoy (Ciudad):</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {ciudadUpcoming.map(renderUpcomingDrawCard)}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Section 2: Lotería de la Provincia de Buenos Aires */}
               <div className="space-y-4 pt-4 border-t border-slate-800/80">
-                <div className="flex items-center gap-2 px-1">
-                  <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    <Trees className="w-5 h-5" />
+                <div className="flex items-center justify-between gap-2 px-1 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      <Trees className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-white">
+                        Lotería de la Provincia de Buenos Aires (IPLyC)
+                      </h3>
+                      <p className="text-xs text-slate-400">Extractos oficiales de 20 premios para {effectiveDate}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-base sm:text-lg font-black text-white">
-                      Lotería de la Provincia de Buenos Aires (IPLyC)
-                    </h3>
-                    <p className="text-xs text-slate-400">Extractos oficiales de 20 premios para la fecha seleccionada ({selectedDate})</p>
-                  </div>
+                  {provinciaDraws.length > 0 && (
+                    <span className="text-xs font-black px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      {provinciaDraws.length} sorteo{provinciaDraws.length > 1 ? 's' : ''} completado{provinciaDraws.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-4">
                   {provinciaDraws.length === 0 ? (
-                    <div className="p-6 bg-slate-900 rounded-3xl text-center text-xs text-slate-500 border border-slate-800">
-                      No hay sorteos disponibles para los filtros seleccionados.
+                    <div className="p-5 bg-slate-900/90 rounded-2xl text-center text-xs text-slate-400 border border-slate-800 space-y-2">
+                      <p>Aún no hay extractos oficiales completados para Lotería de la Provincia en esta fecha ({effectiveDate}).</p>
+                      {resultsMenu === 'today' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setResultsMenu('search');
+                            setSelectedDate(data.latest_completed_date || yesterdayStr);
+                            setSelectedShift('all');
+                          }}
+                          className="text-xs font-bold text-emerald-400 hover:text-emerald-300 underline cursor-pointer"
+                        >
+                          Ver resultados confirmados de ayer ({data.latest_completed_date || yesterdayStr})
+                        </button>
+                      )}
                     </div>
                   ) : (
                     provinciaDraws.map(renderDrawCard)
+                  )}
+
+                  {/* Upcoming Shifts for Provincia */}
+                  {provinciaUpcoming.length > 0 && (
+                    <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 sm:p-4 space-y-2.5">
+                      <div className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Próximos turnos programados para hoy (Provincia):</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {provinciaUpcoming.map(renderUpcomingDrawCard)}
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>
@@ -588,11 +717,38 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
           ) : (
             <div className="space-y-4">
               {draws.length === 0 ? (
-                <div className="p-8 bg-slate-900 rounded-3xl text-center text-xs text-slate-500 border border-slate-800">
-                  No hay sorteos registrados para este filtro.
+                <div className="p-6 bg-slate-900 rounded-3xl text-center text-xs text-slate-400 border border-slate-800 space-y-3">
+                  <p>No hay sorteos completados para los filtros seleccionados ({effectiveDate}).</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResultsMenu('search');
+                      setSelectedDate(data.latest_completed_date || yesterdayStr);
+                      setSelectedShift('all');
+                    }}
+                    className="px-3.5 py-1.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl shadow cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Ver Últimos Extractos ({data.latest_completed_date || yesterdayStr})</span>
+                  </button>
                 </div>
               ) : (
                 draws.map(renderDrawCard)
+              )}
+
+              {/* Upcoming draws for single lottery view */}
+              {upcomingDraws.filter(d => selectedLottery === 'all' || d.lottery === selectedLottery).length > 0 && (
+                <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-3 sm:p-4 space-y-2.5">
+                  <div className="text-xs font-black text-slate-300 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Turnos pendientes de hoy:</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {upcomingDraws
+                      .filter(d => selectedLottery === 'all' || d.lottery === selectedLottery)
+                      .map(renderUpcomingDrawCard)}
+                  </div>
+                </div>
               )}
             </div>
           )}
