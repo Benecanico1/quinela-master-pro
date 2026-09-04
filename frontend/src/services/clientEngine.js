@@ -208,444 +208,555 @@ export function getCurrentActiveShift() {
 // Persistent Prediction Registry Key
 export const PREDICTIONS_REGISTRY_KEY = 'quinela_predictions_registry_v1';
 
-// Pre-seeded Historical Predictions Archive for authentic audit verification
-export const DEFAULT_PREDICTIONS_ARCHIVE = {
-  "2026-08-24_ciudad_nocturna": {
-    date: "2026-08-24", lottery: "ciudad", shift: "nocturna",
-    predictions: [
-      { number: "69", significado: "La Mudanza", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 91.2, delay: 38, suggested_centenas: ["169", "569"], suggested_millar: ["3169", "8169"], confidence: 91.2 },
-      { number: "31", significado: "La Luz", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 88.5, delay: 27, suggested_centenas: ["631", "231"], suggested_millar: ["3631", "1231"], confidence: 88.5 },
-      { number: "08", significado: "Incendio", target_lottery: "ambas", target_lottery_label: "Ambas Loterías", score: 86.4, delay: 31, suggested_centenas: ["608", "908"], suggested_millar: ["0608", "5608"], confidence: 86.4 }
-    ]
-  },
-  "2026-08-24_provincia_nocturna": {
-    date: "2026-08-24", lottery: "provincia", shift: "nocturna",
-    predictions: [
-      { number: "20", significado: "La Fiesta", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 92.4, delay: 34, suggested_centenas: ["620", "420"], suggested_millar: ["3620", "9620"], confidence: 92.4 },
-      { number: "95", significado: "Anteojos", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 89.9, delay: 38, suggested_centenas: ["295", "795"], suggested_millar: ["1295", "4795"], confidence: 89.9 },
-      { number: "17", significado: "Desgracia", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 88.1, delay: 31, suggested_centenas: ["517", "917"], suggested_millar: ["5517", "3917"], confidence: 88.1 }
-    ]
-  },
-  "2026-08-24_ciudad_vespertina": {
-    date: "2026-08-24", lottery: "ciudad", shift: "vespertina",
-    predictions: [
-      { number: "70", significado: "Muerto Sueño", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 90.1, delay: 29, suggested_centenas: ["170", "470"], suggested_millar: ["3170", "7170"], confidence: 90.1 },
-      { number: "12", significado: "Soldado", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 86.8, delay: 22, suggested_centenas: ["412", "812"], suggested_millar: ["0412", "5412"], confidence: 86.8 }
-    ]
-  },
-  "2026-08-24_provincia_vespertina": {
-    date: "2026-08-24", lottery: "provincia", shift: "vespertina",
-    predictions: [
-      { number: "32", significado: "Dinero", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 91.8, delay: 33, suggested_centenas: ["632", "232"], suggested_millar: ["4632", "8632"], confidence: 91.8 },
-      { number: "06", significado: "Perro", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 87.5, delay: 19, suggested_centenas: ["506", "906"], suggested_millar: ["2506", "7906"], confidence: 87.5 }
-    ]
-  },
-  "2026-08-25_ciudad_primera": {
-    date: "2026-08-25", lottery: "ciudad", shift: "primera",
-    predictions: [
-      { number: "16", significado: "Anillo", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 90.5, delay: 24, suggested_centenas: ["216", "716"], suggested_millar: ["1216", "6216"], confidence: 90.5 },
-      { number: "48", significado: "Muerto Habla", target_lottery: "ciudad", target_lottery_label: "Lotería de la Ciudad (Nacional)", score: 88.0, delay: 49, suggested_centenas: ["848", "348"], suggested_millar: ["8948", "2348"], confidence: 88.0 }
-    ]
-  },
-  "2026-08-25_provincia_primera": {
-    date: "2026-08-25", lottery: "provincia", shift: "primera",
-    predictions: [
-      { number: "04", significado: "La Cama", target_lottery: "provincia", target_lottery_label: "Lotería de la Provincia Bs As", score: 91.0, delay: 38, suggested_centenas: ["604", "104"], suggested_millar: ["8604", "2604"], confidence: 91.0 },
-      { number: "14", significado: "Borracho", target_lottery: "ambas", target_lottery_label: "Ambas Loterías", score: 88.7, delay: 35, suggested_centenas: ["714", "314"], suggested_millar: ["6714", "1314"], confidence: 88.7 }
-    ]
-  }
-};
+// Backwards compatibility export (deprecated in favor of dynamic walk-forward calculations)
+export const DEFAULT_PREDICTIONS_ARCHIVE = {};
 
-export function recordPredictionInRegistry(dateStr, lottery, shift, predictionsList) {
+export function getPredictionsRegistry() {
   try {
-    const registry = JSON.parse(localStorage.getItem(PREDICTIONS_REGISTRY_KEY) || '{}');
-    const key = `${dateStr}_${lottery.toLowerCase()}_${shift.toLowerCase()}`;
-    registry[key] = {
-      date: dateStr,
-      lottery: lottery.toLowerCase(),
-      shift: shift.toLowerCase(),
-      timestamp: new Date().toISOString(),
-      predictions: predictionsList
-    };
-    localStorage.setItem(PREDICTIONS_REGISTRY_KEY, JSON.stringify(registry));
+    const raw = localStorage.getItem(PREDICTIONS_REGISTRY_KEY);
+    return raw ? JSON.parse(raw) : {};
   } catch (e) {
-    // Safe storage fallback
+    return {};
   }
 }
 
-export function getPredictionsFromRegistry(dateStr, lottery, shift) {
+export const getPredictionsFromRegistry = getPredictionsRegistry;
+
+export function recordPredictionInRegistry(dateStr, lottery, shift, predictions) {
   try {
-    const registry = JSON.parse(localStorage.getItem(PREDICTIONS_REGISTRY_KEY) || '{}');
-    const key = `${dateStr}_${lottery.toLowerCase()}_${shift.toLowerCase()}`;
-    if (registry[key]) return registry[key].predictions;
-    if (DEFAULT_PREDICTIONS_ARCHIVE[key]) return DEFAULT_PREDICTIONS_ARCHIVE[key].predictions;
+    const cleanLot = (lottery || 'ciudad').toLowerCase();
+    const cleanShift = (shift || 'primera').toLowerCase();
+    const key = `${dateStr}_${cleanLot}_${cleanShift}`;
+    const registry = getPredictionsRegistry();
+    if (!registry[key]) {
+      registry[key] = {
+        date: dateStr,
+        lottery: cleanLot,
+        shift: cleanShift,
+        predictions: predictions,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem(PREDICTIONS_REGISTRY_KEY, JSON.stringify(registry));
+    }
   } catch (e) {}
-  return null;
 }
 
-export function getClientPredictions(lottery = "all", shift = "auto", topK = 15) {
-  const activeShiftInfo = getCurrentActiveShift();
-  let resolvedShift = shift;
-  if (!resolvedShift || resolvedShift === 'auto' || resolvedShift === 'all') {
-    resolvedShift = activeShiftInfo.id;
+// Dynamic Walk-Forward Prediction Retrieval (Strictly using data available prior to the target draw)
+export function getPredictionsForDraw(dateStr, lottery, shift) {
+  const cleanLot = (lottery || 'ciudad').toLowerCase();
+  const cleanShift = (shift || 'primera').toLowerCase();
+  const key = `${dateStr}_${cleanLot}_${cleanShift}`;
+  const registry = getPredictionsRegistry();
+  if (registry[key] && registry[key].predictions) return registry[key].predictions;
+
+  // Compute walk-forward ranking using only data strictly prior to dateStr
+  const dynamic = getClientPredictions(cleanLot, cleanShift, 5, dateStr);
+  return dynamic.top_predictions || [];
+}
+
+// ============================================================================
+// MOTOR DE ANÁLISIS ESTADÍSTICO REAL QUINIELA MASTER PRO (Auditado v2.0)
+// Cero datos hardcodeados. Cero predicciones fijas. Cero promesas de certeza.
+// ============================================================================
+
+export function computeHistoricalAmboStats(lotteryFilter = 'all', shiftFilter = 'all', beforeDateStr = null) {
+  const realDb = getRealOfficialDrawsFromStorage();
+  const allDraws = Object.values(realDb).filter(d => d && d.board && d.head_ambo);
+
+  // Filtrado temporal estricto (Walk-forward: solo datos ANTERIORES al evento)
+  const filteredDraws = allDraws.filter(d => {
+    if (beforeDateStr && d.draw_date >= beforeDateStr) return false;
+    if (lotteryFilter !== 'all' && d.lottery && d.lottery.toLowerCase() !== lotteryFilter.toLowerCase()) return false;
+    if (shiftFilter !== 'all' && shiftFilter !== 'auto' && d.shift && d.shift.toLowerCase() !== shiftFilter.toLowerCase()) return false;
+    return true;
+  });
+
+  // Ordenamiento cronológico
+  filteredDraws.sort((a, b) => {
+    if (a.draw_date !== b.draw_date) return a.draw_date.localeCompare(b.draw_date);
+    return (a.shift || '').localeCompare(b.shift || '');
+  });
+
+  const totalAnalyzed = filteredDraws.length;
+  if (totalAnalyzed < 5) {
+    return {
+      insufficient_data: true,
+      message: "Datos insuficientes para calcular rankings estadísticos (mínimo 5 sorteos requeridos).",
+      total_draws_analyzed: totalAnalyzed,
+      stats: {}
+    };
   }
 
-  // Multi-Lottery Candidate Matrices
-  const CANDIDATES_DB = {
-    la_previa: {
-      name: 'La Previa',
-      time: '10:15',
-      ciudad: [
-        { num: "68", score: 90.8, delay: 42, target: "ciudad", reasons: ["Sobrinos: ciclo matinal dominante en Lotería de la Ciudad", "Paridad P-P balanceada"] },
-        { num: "28", score: 89.4, delay: 58, target: "ciudad", reasons: ["El Cerro: atraso crítico en Ciudad (ratio 2.58)", "Alta inercia de Markov"] },
-        { num: "03", score: 86.2, delay: 39, target: "ciudad", reasons: ["San Cono: atractor histórico matinal de LOTBA"] },
-        { num: "18", score: 83.5, delay: 31, target: "ciudad", reasons: ["Sangre: terminación 8 con fuerte resonancia"] },
-        { num: "47", score: 81.0, delay: 28, target: "ciudad", reasons: ["Muerto: ciclo de repetición temprano"] }
-      ],
-      provincia: [
-        { num: "89", score: 91.5, delay: 45, target: "provincia", reasons: ["La Rata: terminación 9 de alta frecuencia en Provincia de Bs As", "Aceleración de Poisson"] },
-        { num: "64", score: 88.7, delay: 42, target: "provincia", reasons: ["Llanto: decena 6 con 28% de probabilidad en Provincia"] },
-        { num: "77", score: 85.3, delay: 46, target: "provincia", reasons: ["Piernas: doble cifra líder en apertura bonaerense"] },
-        { num: "12", score: 82.1, delay: 24, target: "provincia", reasons: ["Soldado: paridad I-P con alta inercia"] },
-        { num: "33", score: 79.8, delay: 41, target: "provincia", reasons: ["Cristo: doble cifra en punto de ruptura"] }
-      ],
-      all: [
-        { num: "68", score: 90.8, delay: 42, target: "ciudad", reasons: ["Recomendado especialmente para Ciudad (LOTBA)"] },
-        { num: "89", score: 91.5, delay: 45, target: "provincia", reasons: ["Recomendado especialmente para Provincia de Bs As"] },
-        { num: "28", score: 89.4, delay: 58, target: "ambas", reasons: ["Válido para Ambas Loterías: Atraso crítico de terminación 8"] },
-        { num: "64", score: 88.7, delay: 42, target: "ambas", reasons: ["Válido para Ambas Loterías: Resonancia cruzada Ciudad-Provincia"] },
-        { num: "03", score: 86.2, delay: 39, target: "ciudad", reasons: ["San Cono: apertura de Ciudad"] },
-        { num: "77", score: 85.3, delay: 46, target: "provincia", reasons: ["Piernas: apertura de Provincia"] },
-        { num: "18", score: 83.5, delay: 31, target: "ciudad", reasons: ["Sangre: terminación 8"] },
-        { num: "12", score: 82.1, delay: 24, target: "provincia", reasons: ["Soldado: paridad balanceada"] }
-      ],
-      redoblonas: [
-        { pair: "28 y 64", significados: "El Cerro y Llanto", target: "Ambas Loterías", pair_score: 89.4, recommended_positions: "Al 1° y a los 10" },
-        { pair: "68 y 03", significados: "Sobrinos y San Cono", target: "Ciudad (Nacional)", pair_score: 87.8, recommended_positions: "Al 1° y a los 5" },
-        { pair: "89 y 77", significados: "La Rata y Piernas", target: "Provincia Bs As", pair_score: 88.2, recommended_positions: "Al 1° y a los 5" }
-      ]
-    },
-    primera: {
-      name: 'Primera',
-      time: '12:00',
-      ciudad: [
-        { num: "16", score: 91.0, delay: 24, target: "ciudad", reasons: ["Anillo: ciclo de retorno óptimo en Primera de Ciudad (LOTBA)"] },
-        { num: "63", score: 88.4, delay: 26, target: "ciudad", reasons: ["Casamiento: decena 6 con alta probabilidad en LOTBA"] },
-        { num: "48", score: 86.9, delay: 49, target: "ciudad", reasons: ["Muerto Habla: doble par en zona de ruptura"] },
-        { num: "27", score: 83.2, delay: 29, target: "ciudad", reasons: ["El Peine: patrón Par-Impar consolidado"] }
-      ],
-      provincia: [
-        { num: "04", score: 91.8, delay: 38, target: "provincia", reasons: ["La Cama: número bajo en recuperación de atraso en Provincia"] },
-        { num: "14", score: 89.6, delay: 35, target: "provincia", reasons: ["Borracho: terminación 4 con alta frecuencia en mediodía bonaerense"] },
-        { num: "36", score: 86.5, delay: 27, target: "provincia", reasons: ["Manteca: centro de gravedad 30s en Primera"] },
-        { num: "52", score: 84.1, delay: 33, target: "provincia", reasons: ["Madre: paridad P-P con desvío positivo"] }
-      ],
-      all: [
-        { num: "16", score: 91.0, delay: 24, target: "ciudad", reasons: ["Recomendado para Ciudad (LOTBA)"] },
-        { num: "04", score: 91.8, delay: 38, target: "provincia", reasons: ["Recomendado para Provincia de Bs As"] },
-        { num: "14", score: 89.6, delay: 35, target: "ambas", reasons: ["Válido para Ambas: Paridad I-P dominante del mediodía"] },
-        { num: "48", score: 86.9, delay: 49, target: "ambas", reasons: ["Válido para Ambas: Atracción simbiótica con el 14"] },
-        { num: "63", score: 88.4, delay: 26, target: "ciudad", reasons: ["Casamiento en Ciudad"] },
-        { num: "36", score: 86.5, delay: 27, target: "provincia", reasons: ["Manteca en Provincia"] }
-      ],
-      redoblonas: [
-        { pair: "14 y 48", significados: "Borracho y Muerto Habla", target: "Ambas Loterías", pair_score: 88.6, recommended_positions: "Al 1° y a los 5" },
-        { pair: "16 y 63", significados: "Anillo y Casamiento", target: "Ciudad (Nacional)", pair_score: 87.4, recommended_positions: "Al 1° y a los 10" },
-        { pair: "04 y 36", significados: "La Cama y Manteca", target: "Provincia Bs As", pair_score: 87.9, recommended_positions: "Al 1° y a los 10" }
-      ]
-    },
-    matutina: {
-      name: 'Matutina',
-      time: '15:00',
-      ciudad: [
-        { num: "03", score: 91.4, delay: 39, target: "ciudad", reasons: ["San Cono: atractor masivo en Matutina de Ciudad (LOTBA)"] },
-        { num: "92", score: 88.7, delay: 25, target: "ciudad", reasons: ["Médico: patrón Impar-Par con alta recurrencia"] },
-        { num: "32", score: 87.9, delay: 26, target: "ciudad", reasons: ["Dinero: alta transición en campana de Gauss"] },
-        { num: "45", score: 85.0, delay: 34, target: "ciudad", reasons: ["El Vino: paridad Mixta (P-I)"] }
-      ],
-      provincia: [
-        { num: "87", score: 92.1, delay: 32, target: "provincia", reasons: ["Piojos: terminación 7 madura en Matutina de Provincia"] },
-        { num: "08", score: 89.8, delay: 29, target: "provincia", reasons: ["Incendio: suma de cifras 8 en el centro de Gauss bonaerense"] },
-        { num: "22", score: 86.7, delay: 43, target: "provincia", reasons: ["El Loco: doble par en punto de ruptura"] },
-        { num: "50", score: 84.2, delay: 31, target: "provincia", reasons: ["El Pan: decena 5 activa"] }
-      ],
-      all: [
-        { num: "03", score: 91.4, delay: 39, target: "ciudad", reasons: ["Recomendado para Ciudad (Nacional)"] },
-        { num: "87", score: 92.1, delay: 32, target: "provincia", reasons: ["Recomendado para Provincia de Bs As"] },
-        { num: "32", score: 87.9, delay: 26, target: "ambas", reasons: ["Válido para Ambas: Número atractor de dinero en Matutina"] },
-        { num: "08", score: 89.8, delay: 29, target: "ambas", reasons: ["Válido para Ambas: Alta recurrencia en 15:00 hs"] },
-        { num: "92", score: 88.7, delay: 25, target: "ciudad", reasons: ["Médico en Ciudad"] },
-        { num: "22", score: 86.7, delay: 43, target: "provincia", reasons: ["El Loco en Provincia"] }
-      ],
-      redoblonas: [
-        { pair: "32 y 08", significados: "Dinero e Incendio", target: "Ambas Loterías", pair_score: 89.2, recommended_positions: "Al 1° y a los 5" },
-        { pair: "03 y 92", significados: "San Cono y Médico", target: "Ciudad (Nacional)", pair_score: 88.5, recommended_positions: "Al 1° y a los 10" },
-        { pair: "87 y 22", significados: "Piojos y El Loco", target: "Provincia Bs As", pair_score: 88.1, recommended_positions: "Al 1° y a los 10" }
-      ]
-    },
-    vespertina: {
-      name: 'Vespertina',
-      time: '18:00',
-      ciudad: [
-        { num: "70", score: 90.9, delay: 29, target: "ciudad", reasons: ["Muerto Sueño: rebote vespertino en Ciudad (LOTBA)"] },
-        { num: "93", score: 88.2, delay: 37, target: "ciudad", reasons: ["Enamorado: terminación 3 reactivada"] },
-        { num: "41", score: 85.8, delay: 23, target: "ciudad", reasons: ["Cucho: paridad P-I acelerada"] }
-      ],
-      provincia: [
-        { num: "32", score: 91.5, delay: 33, target: "provincia", reasons: ["Dinero: paridad P-P dominante en Vespertina de Provincia"] },
-        { num: "06", score: 89.7, delay: 19, target: "provincia", reasons: ["Perro: frecuencia sostenida a la cabeza en 18 hs"] },
-        { num: "72", score: 87.6, delay: 27, target: "provincia", reasons: ["Sorpresa: patrón Impar-Par"] }
-      ],
-      all: [
-        { num: "70", score: 90.9, delay: 29, target: "ciudad", reasons: ["Recomendado para Ciudad (LOTBA)"] },
-        { num: "32", score: 91.5, delay: 33, target: "provincia", reasons: ["Recomendado para Provincia de Bs As"] },
-        { num: "06", score: 89.7, delay: 19, target: "ambas", reasons: ["Válido para Ambas: Simpático del 24 y 64"] },
-        { num: "72", score: 87.6, delay: 27, target: "ambas", reasons: ["Válido para Ambas: Atraso medio en salida"] },
-        { num: "93", score: 88.2, delay: 37, target: "ciudad", reasons: ["Enamorado en Ciudad"] }
-      ],
-      redoblonas: [
-        { pair: "06 y 72", significados: "Perro y Sorpresa", target: "Ambas Loterías", pair_score: 88.7, recommended_positions: "Al 1° y a los 5" },
-        { pair: "70 y 93", significados: "Muerto Sueño y Enamorado", target: "Ciudad (Nacional)", pair_score: 87.5, recommended_positions: "Al 1° y a los 10" },
-        { pair: "32 y 06", significados: "Dinero y Perro", target: "Provincia Bs As", pair_score: 89.1, recommended_positions: "Al 1° y a los 5" }
-      ]
-    },
-    nocturna: {
-      name: 'Nocturna',
-      time: '21:00',
-      ciudad: [
-        { num: "69", score: 92.3, delay: 38, target: "ciudad", reasons: ["La Mudanza: terminación 9 de alta cadencia estelar en LOTBA", "Inercia de Markov"] },
-        { num: "31", score: 89.1, delay: 27, target: "ciudad", reasons: ["La Luz: paridad I-I balanceada en sorteo estelar"] },
-        { num: "08", score: 87.4, delay: 31, target: "ciudad", reasons: ["Incendio: suma de cifras 8 en cierre de jornada"] },
-        { num: "53", score: 84.9, delay: 22, target: "ciudad", reasons: ["El Barco: centro de masa estadística"] }
-      ],
-      provincia: [
-        { num: "20", score: 92.8, delay: 34, target: "provincia", reasons: ["La Fiesta: terminación 0 en rebote estelar de Provincia (IPLyC)"] },
-        { num: "95", score: 90.6, delay: 38, target: "provincia", reasons: ["Anteojos: número alto en recuperación de ciclo nocturno bonaerense"] },
-        { num: "17", score: 88.9, delay: 31, target: "provincia", reasons: ["Desgracia: terminación 7 con desvío positivo en 21 hs"] },
-        { num: "88", score: 87.2, delay: 44, target: "provincia", reasons: ["El Papa: doble cifra en umbral de salida"] }
-      ],
-      all: [
-        { num: "69", score: 92.3, delay: 38, target: "ciudad", reasons: ["Recomendado para Ciudad (LOTBA)"] },
-        { num: "20", score: 92.8, delay: 34, target: "provincia", reasons: ["Recomendado para Provincia de Bs As"] },
-        { num: "95", score: 90.6, delay: 38, target: "provincia", reasons: ["Recomendado para Provincia de Bs As"] },
-        { num: "31", score: 89.1, delay: 27, target: "ciudad", reasons: ["Recomendado para Ciudad (LOTBA)"] },
-        { num: "17", score: 88.9, delay: 31, target: "ambas", reasons: ["Válido para Ambas: Alta inercia nocturna"] },
-        { num: "88", score: 87.2, delay: 44, target: "ambas", reasons: ["Válido para Ambas: Doble par en umbral"] },
-        { num: "24", score: 86.0, delay: 28, target: "ambas", reasons: ["Caballo: alta recurrencia en 21:00 hs"] }
-      ],
-      redoblonas: [
-        { pair: "95 y 17", significados: "Anteojos y Desgracia", target: "Provincia Bs As", pair_score: 89.6, recommended_positions: "Al 1° y a los 5" },
-        { pair: "69 y 31", significados: "La Mudanza y La Luz", target: "Ciudad (Nacional)", pair_score: 89.8, recommended_positions: "Al 1° y a los 5" },
-        { pair: "88 y 24", significados: "El Papa y Caballo", target: "Ambas Loterías", pair_score: 87.3, recommended_positions: "Al 1° y a los 10" }
-      ]
-    },
-    todo_el_dia: {
-      name: 'Pronóstico de Todo el Día',
-      time: 'Jornada Completa',
-      ciudad: [
-        { num: "69", score: 94.2, delay: 38, target: "ciudad", reasons: ["La Mudanza: máximo score acumulado de la jornada en LOTBA"] },
-        { num: "16", score: 92.5, delay: 24, target: "ciudad", reasons: ["El Anillo: ciclo armónico sostenido en Ciudad"] },
-        { num: "03", score: 91.8, delay: 39, target: "ciudad", reasons: ["San Cono: atractor masivo para toda la jornada"] },
-        { num: "70", score: 89.4, delay: 29, target: "ciudad", reasons: ["Muerto Sueño: rebote estadístico en Ciudad"] }
-      ],
-      provincia: [
-        { num: "04", score: 94.8, delay: 38, target: "provincia", reasons: ["La Cama: mayor probabilidad acumulada del día en Provincia (IPLyC)"] },
-        { num: "20", score: 93.1, delay: 34, target: "provincia", reasons: ["La Fiesta: terminación cero dominante en la jornada bonaerense"] },
-        { num: "87", score: 91.9, delay: 32, target: "provincia", reasons: ["Piojos: número caliente con alta tasa de repetición"] },
-        { num: "32", score: 90.5, delay: 33, target: "provincia", reasons: ["El Dinero: centro de masa en Provincia"] }
-      ],
-      all: [
-        { num: "04", score: 94.8, delay: 38, target: "provincia", reasons: ["Fijo del Día: La Cama (Provincia de Bs As)"] },
-        { num: "69", score: 94.2, delay: 38, target: "ciudad", reasons: ["Fijo del Día: La Mudanza (Ciudad Nacional)"] },
-        { num: "20", score: 93.1, delay: 34, target: "ambas", reasons: ["Fijo del Día: La Fiesta (Válido para Ambas)"] },
-        { num: "16", score: 92.5, delay: 24, target: "ciudad", reasons: ["Fijo del Día: El Anillo (Ciudad Nacional)"] },
-        { num: "87", score: 91.9, delay: 32, target: "provincia", reasons: ["Fijo del Día: Piojos (Provincia Bs As)"] }
-      ],
-      redoblonas: [
-        { pair: "04 y 69", significados: "La Cama y La Mudanza", target: "Ambas Loterías", pair_score: 93.5, recommended_positions: "Al 1° y a los 5" },
-        { pair: "20 y 87", significados: "La Fiesta y Piojos", target: "Provincia Bs As", pair_score: 92.0, recommended_positions: "Al 1° y a los 10" },
-        { pair: "16 y 03", significados: "El Anillo y San Cono", target: "Ciudad (Nacional)", pair_score: 91.4, recommended_positions: "Al 1° y a los 10" }
-      ]
+  // Inicializar estadísticas de los 100 números (00 al 99)
+  const stats = {};
+  for (let i = 0; i < 100; i++) {
+    const num = i.toString().padStart(2, '0');
+    stats[num] = {
+      num,
+      significado: SIGNIFICADOS[num] || "Ambo",
+      head_count: 0,
+      board_count: 0,
+      shift_count: 0,
+      last_head_idx: -1,
+      last_board_idx: -1,
+      last_head_date: null,
+      last_board_date: null
+    };
+  }
+
+  let lastHeadAmbo = filteredDraws[totalAnalyzed - 1]?.head_ambo || '00';
+  const lastEnding = parseInt(lastHeadAmbo.slice(-1), 10);
+  const markovTransitions = Array(10).fill(0);
+  let markovTotalFromLastEnding = 0;
+
+  for (let idx = 0; idx < totalAnalyzed; idx++) {
+    const d = filteredDraws[idx];
+    const head = d.head_ambo;
+
+    if (stats[head]) {
+      stats[head].head_count++;
+      stats[head].last_head_idx = idx;
+      stats[head].last_head_date = d.draw_date;
+      if (shiftFilter !== 'all' && d.shift === shiftFilter) {
+        stats[head].shift_count++;
+      }
     }
+
+    if (Array.isArray(d.board)) {
+      d.board.forEach(item => {
+        const ambo = (item || '').slice(-2);
+        if (stats[ambo]) {
+          stats[ambo].board_count++;
+          stats[ambo].last_board_idx = idx;
+          stats[ambo].last_board_date = d.draw_date;
+        }
+      });
+    }
+
+    if (idx > 0) {
+      const prevHead = filteredDraws[idx - 1].head_ambo;
+      const prevEnd = parseInt(prevHead.slice(-1), 10);
+      const currEnd = parseInt(head.slice(-1), 10);
+      if (prevEnd === lastEnding) {
+        markovTransitions[currEnd]++;
+        markovTotalFromLastEnding++;
+      }
+    }
+  }
+
+  const startDate = filteredDraws[0].draw_date;
+  const endDate = filteredDraws[totalAnalyzed - 1].draw_date;
+
+  let maxHead = 1;
+  let maxBoard = 1;
+  for (let i = 0; i < 100; i++) {
+    const num = i.toString().padStart(2, '0');
+    if (stats[num].head_count > maxHead) maxHead = stats[num].head_count;
+    if (stats[num].board_count > maxBoard) maxBoard = stats[num].board_count;
+  }
+
+  for (let i = 0; i < 100; i++) {
+    const num = i.toString().padStart(2, '0');
+    const s = stats[num];
+
+    s.head_delay = s.last_head_idx >= 0 ? totalAnalyzed - 1 - s.last_head_idx : totalAnalyzed;
+    s.board_delay = s.last_board_idx >= 0 ? totalAnalyzed - 1 - s.last_board_idx : totalAnalyzed;
+
+    // Componentes del Score Estadístico (Índice relativo 0 a 100)
+    const freqNorm = (s.head_count / maxHead) * 40;
+    const delayNorm = Math.min(30, (s.head_delay / 100) * 30);
+    const boardNorm = (s.board_count / maxBoard) * 15;
+
+    const endingDigit = parseInt(num.slice(-1), 10);
+    const markovProb = markovTotalFromLastEnding > 0 ? (markovTransitions[endingDigit] / markovTotalFromLastEnding) : 0.1;
+    const markovNorm = Math.min(15, markovProb * 15 * 5);
+
+    s.composite_score = Number((15 + freqNorm + delayNorm + boardNorm + markovNorm).toFixed(1));
+    s.poisson_lambda = Number((s.head_count / totalAnalyzed).toFixed(4));
+    s.markov_transition_pct = Number((markovProb * 100).toFixed(1));
+  }
+
+  return {
+    insufficient_data: false,
+    total_draws_analyzed: totalAnalyzed,
+    sample_start_date: startDate,
+    sample_end_date: endDate,
+    stats,
+    last_head_ambo: lastHeadAmbo
   };
+}
 
-  const selectedShiftData = CANDIDATES_DB[resolvedShift] || CANDIDATES_DB.la_previa;
+export function getClientPredictions(lottery = "all", shift = "auto", count = 5, beforeDate = null) {
+  const currentActive = getCurrentActiveShift();
+  const resolvedShift = (shift === 'auto' || !shift) ? currentActive.id : shift;
+  const shiftInfo = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === resolvedShift) || { name: resolvedShift, time: '18:00' };
+
+  const analysis = computeHistoricalAmboStats(lottery, resolvedShift, beforeDate);
+
+  if (analysis.insufficient_data) {
+    return {
+      lottery,
+      shift: resolvedShift,
+      shift_name: shiftInfo.name,
+      shift_time: shiftInfo.time,
+      insufficient_data: true,
+      message: analysis.message,
+      top_predictions: [],
+      numbers: [],
+      suggested_redoblonas: []
+    };
+  }
+
+  const allRanked = Object.values(analysis.stats).sort((a, b) => b.composite_score - a.composite_score);
   const targetLotKey = (lottery === 'ciudad' || lottery === 'provincia') ? lottery : 'all';
-  const candidates = selectedShiftData[targetLotKey] || selectedShiftData.all;
+  const lotLabel = lottery === 'ciudad' 
+    ? 'Lotería de la Ciudad (Nacional)' 
+    : lottery === 'provincia' 
+      ? 'Lotería de la Provincia de Bs As' 
+      : 'Válido para Ambas Loterías (Nacional + Provincia)';
 
-  const topPredictions = candidates.slice(0, topK).map((c, i) => {
-    const lotLabel = c.target === 'ciudad' 
-      ? 'Lotería de la Ciudad (Nacional)' 
-      : c.target === 'provincia' 
-        ? 'Lotería de la Provincia de Bs As' 
-        : 'Válido para Ambas Loterías (Nacional + Provincia)';
-
-    const centena1 = `${(i * 3 + 2) % 10}${c.num}`;
-    const centena2 = `${(i * 3 + 7) % 10}${c.num}`;
+  const topPredictions = allRanked.slice(0, count).map((c, i) => {
+    const centena1 = `${(parseInt(c.num[0], 10) * 3 + 2) % 10}${c.num}`;
+    const centena2 = `${(parseInt(c.num[1], 10) * 3 + 7) % 10}${c.num}`;
     const millar1 = `${(i * 4 + 3) % 9 + 1}${centena1}`;
     const millar2 = `${(i * 4 + 7) % 9 + 1}${centena2}`;
 
     return {
       number: c.num,
-      significado: SIGNIFICADOS[c.num] || "Ambo",
-      target_lottery: c.target,
+      significado: c.significado,
+      target_lottery: targetLotKey,
       target_lottery_label: lotLabel,
-      composite_score: c.score,
-      current_delay: c.delay,
-      confidence: c.score,
-      markov_score: Number((c.score * 0.95).toFixed(1)),
-      reasons: c.reasons || ["Tendencia estadística activa"],
+      composite_score: c.composite_score,
+      current_delay: c.head_delay,
+      confidence: c.composite_score,
+      score_label: `Score Estadístico: ${c.composite_score}/100`,
+      reasons: [
+        `Frecuencia histórica: ${c.head_count} salidas a la cabeza (${c.board_count} en los 20).`,
+        `Atraso registrado: ${c.head_delay} sorteos desde su última aparición a la cabeza.`
+      ],
+      recommended_positions: "A la Cabeza y a los 5",
       suggested_centenas: [centena1, centena2],
       suggested_millar: [millar1, millar2],
+      traceability: {
+        total_draws_analyzed: analysis.total_draws_analyzed,
+        sample_start_date: analysis.sample_start_date,
+        sample_end_date: analysis.sample_end_date,
+        sample_period: `${analysis.sample_start_date} al ${analysis.sample_end_date}`,
+        head_frequency: c.head_count,
+        board_frequency: c.board_count,
+        head_delay: c.head_delay,
+        board_delay: c.board_delay,
+        poisson_lambda: c.poisson_lambda,
+        markov_transition_pct: `${c.markov_transition_pct}%`,
+        formula_explanation: "Score = 40% Frecuencia Normalizada + 30% Atraso Histórico + 15% Frecuencia Pizarra + 15% Transición de Markov",
+        algorithm_version: "Motor Estadístico v2.0 (Auditado)",
+        calculation_timestamp: new Date().toISOString()
+      },
       play_types: [
-        { type: 'ambo', name: 'Terminal de 2 Cifras (Ambo)', code: c.num, multiplier: '70x a la Cabeza' },
-        { type: 'terno', name: 'Terno de 3 Cifras', code: centena1, multiplier: '500x a las 3 Cifras' },
-        { type: 'cuaterno', name: 'Cuaterno de 4 Cifras', code: millar1, multiplier: '3.500x a las 4 Cifras' }
+        { type: 'ambo', name: 'Terminal de 2 Cifras (Ambo)', code: c.num, multiplier: '70x a la Cabeza (Oficial)' },
+        { type: 'terno', name: 'Terno de 3 Cifras', code: centena1, multiplier: '500x a las 3 Cifras (Oficial)' },
+        { type: 'cuaterno', name: 'Cuaterno de 4 Cifras', code: millar1, multiplier: '3.500x a las 4 Cifras (Oficial)' }
       ]
     };
   });
 
+  const suggestedRedoblonas = [];
+  if (topPredictions.length >= 2) {
+    suggestedRedoblonas.push({
+      pair: `${topPredictions[0].number} y ${topPredictions[1].number}`,
+      significados: `${topPredictions[0].significado} y ${topPredictions[1].significado}`,
+      target: lotLabel,
+      pair_score: Number(((topPredictions[0].composite_score + topPredictions[1].composite_score) / 2).toFixed(1)),
+      recommended_positions: "Al 1° y a los 10"
+    });
+  }
+  if (topPredictions.length >= 4) {
+    suggestedRedoblonas.push({
+      pair: `${topPredictions[2].number} y ${topPredictions[3].number}`,
+      significados: `${topPredictions[2].significado} y ${topPredictions[3].significado}`,
+      target: lotLabel,
+      pair_score: Number(((topPredictions[2].composite_score + topPredictions[3].composite_score) / 2).toFixed(1)),
+      recommended_positions: "Al 1° y a los 5"
+    });
+  }
+
   const todayStr = getLocalDateString();
-  recordPredictionInRegistry(todayStr, lottery, resolvedShift, topPredictions);
+  if (!beforeDate) {
+    recordPredictionInRegistry(todayStr, lottery, resolvedShift, topPredictions);
+  }
 
   return {
-    lottery: lottery,
+    lottery,
     shift: resolvedShift,
-    shift_name: selectedShiftData.name,
-    shift_time: selectedShiftData.time,
+    shift_name: shiftInfo.name,
+    shift_time: shiftInfo.time,
     top_predictions: topPredictions,
-    suggested_redoblonas: selectedShiftData.redoblonas
+    numbers: topPredictions,
+    suggested_redoblonas: suggestedRedoblonas,
+    total_draws_analyzed: analysis.total_draws_analyzed,
+    disclaimer: "Este score es un índice matemático relativo de ordenamiento histórico y NO constituye una probabilidad de ganar ni garantiza resultados futuros. Los sorteos son eventos independientes."
   };
 }
 
 export function getClientPatterns(lottery = "all", shift = "all") {
-  const total = 2102;
+  const realDb = getRealOfficialDrawsFromStorage();
+  const draws = Object.values(realDb).filter(d => {
+    if (!d || !d.board || !d.head_ambo) return false;
+    if (lottery !== 'all' && d.lottery && d.lottery.toLowerCase() !== lottery.toLowerCase()) return false;
+    if (shift !== 'all' && d.shift && d.shift.toLowerCase() !== shift.toLowerCase()) return false;
+    return true;
+  });
+
+  const total = draws.length;
+  if (total === 0) {
+    return {
+      insufficient_data: true,
+      message: "Datos insuficientes para calcular patrones estadísticos",
+      total_draws: 0,
+      parity: [], high_low: [], decades: [], endings: [], centenas: [], sums: []
+    };
+  }
+
+  let pp = 0, pi = 0, ip = 0, ii = 0;
+  let bajos = 0, altos = 0;
+  const decadeCounts = Array(10).fill(0);
+  const endingCounts = Array(10).fill(0);
+  const centenaCounts = Array(10).fill(0);
+  const sumCounts = Array(19).fill(0);
+
+  draws.forEach(d => {
+    const head = d.head_ambo || '00';
+    const d1 = parseInt(head[0], 10);
+    const d2 = parseInt(head[1], 10);
+    const val = parseInt(head, 10);
+
+    const p1 = d1 % 2 === 0;
+    const p2 = d2 % 2 === 0;
+    if (p1 && p2) pp++;
+    else if (p1 && !p2) pi++;
+    else if (!p1 && p2) ip++;
+    else ii++;
+
+    if (val < 50) bajos++;
+    else altos++;
+
+    decadeCounts[d1]++;
+    endingCounts[d2]++;
+
+    if (d.head_centena) {
+      const c = parseInt(d.head_centena[0], 10);
+      if (!isNaN(c) && c >= 0 && c <= 9) centenaCounts[c]++;
+    }
+
+    const s = d1 + d2;
+    if (s >= 0 && s <= 18) sumCounts[s]++;
+  });
+
+  const round = (v, dec = 1) => Number(v.toFixed(dec));
+
   const sums = [];
   for (let s = 0; s <= 18; s++) {
     const ways = Math.min(s + 1, 19 - s);
-    const count = Math.round(total * (ways / 100.0));
+    const count = sumCounts[s];
     sums.push({
       sum: s,
       observed: count,
       expected: round(total * (ways / 100.0), 1),
-      percentage: round((count / total) * 100, 2),
+      percentage: round((count / total) * 100, 1),
       theoretical_pct: ways,
-      difference: 0
+      difference: round((count / total) * 100 - ways, 1)
     });
   }
 
-  function round(val, dec = 1) {
-    return Number(val.toFixed(dec));
-  }
-
   return {
+    insufficient_data: false,
     total_draws: total,
     parity: [
-      { pattern: "Par - Par (ej: 24, 88)", count: 546, percentage: 26.0, expected_pct: 25.0 },
-      { pattern: "Par - Impar (ej: 27, 41)", count: 524, percentage: 24.9, expected_pct: 25.0 },
-      { pattern: "Impar - Par (ej: 36, 72)", count: 538, percentage: 25.6, expected_pct: 25.0 },
-      { pattern: "Impar - Impar (ej: 13, 95)", count: 494, percentage: 23.5, expected_pct: 25.0 }
+      { pattern: "Par - Par", count: pp, percentage: round((pp / total) * 100), expected_pct: 25.0 },
+      { pattern: "Par - Impar", count: pi, percentage: round((pi / total) * 100), expected_pct: 25.0 },
+      { pattern: "Impar - Par", count: ip, percentage: round((ip / total) * 100), expected_pct: 25.0 },
+      { pattern: "Impar - Impar", count: ii, percentage: round((ii / total) * 100), expected_pct: 25.0 }
     ],
     high_low: [
-      { category: "Bajos (00-49)", count: 1062, percentage: 50.5, expected_pct: 50.0 },
-      { category: "Altos (50-99)", count: 1040, percentage: 49.5, expected_pct: 50.0 }
+      { category: "Bajos (00-49)", count: bajos, percentage: round((bajos / total) * 100), expected_pct: 50.0 },
+      { category: "Altos (50-99)", count: altos, percentage: round((altos / total) * 100), expected_pct: 50.0 }
     ],
-    decades: [
-      { decade: "00s", count: 212, percentage: 10.1, expected_pct: 10.0 },
-      { decade: "10s", count: 220, percentage: 10.5, expected_pct: 10.0 },
-      { decade: "20s", count: 234, percentage: 11.1, expected_pct: 10.0 },
-      { decade: "30s", count: 205, percentage: 9.8, expected_pct: 10.0 },
-      { decade: "40s", count: 209, percentage: 9.9, expected_pct: 10.0 },
-      { decade: "50s", count: 198, percentage: 9.4, expected_pct: 10.0 },
-      { decade: "60s", count: 228, percentage: 10.8, expected_pct: 10.0 },
-      { decade: "70s", count: 204, percentage: 9.7, expected_pct: 10.0 },
-      { decade: "80s", count: 196, percentage: 9.3, expected_pct: 10.0 },
-      { decade: "90s", count: 196, percentage: 9.3, expected_pct: 10.0 }
-    ],
-    endings: [
-      { ending: "Termina en 0", digit: 0, count: 205, percentage: 9.8, expected_pct: 10.0 },
-      { ending: "Termina en 1", digit: 1, count: 210, percentage: 10.0, expected_pct: 10.0 },
-      { ending: "Termina en 2", digit: 2, count: 224, percentage: 10.7, expected_pct: 10.0 },
-      { ending: "Termina en 3", digit: 3, count: 208, percentage: 9.9, expected_pct: 10.0 },
-      { ending: "Termina en 4", digit: 4, count: 230, percentage: 10.9, expected_pct: 10.0 },
-      { ending: "Termina en 5", digit: 5, count: 202, percentage: 9.6, expected_pct: 10.0 },
-      { ending: "Termina en 6", digit: 6, count: 215, percentage: 10.2, expected_pct: 10.0 },
-      { ending: "Termina en 7", digit: 7, count: 212, percentage: 10.1, expected_pct: 10.0 },
-      { ending: "Termina en 8", digit: 8, count: 238, percentage: 11.3, expected_pct: 10.0 },
-      { ending: "Termina en 9", digit: 9, count: 158, percentage: 7.5, expected_pct: 10.0 }
-    ],
-    centenas: [
-      { centena: "Centena 0xx", digit: 0, count: 210, percentage: 10.0, expected_pct: 10.0 },
-      { centena: "Centena 1xx", digit: 1, count: 205, percentage: 9.8, expected_pct: 10.0 },
-      { centena: "Centena 2xx", digit: 2, count: 220, percentage: 10.5, expected_pct: 10.0 },
-      { centena: "Centena 3xx", digit: 3, count: 215, percentage: 10.2, expected_pct: 10.0 },
-      { centena: "Centena 4xx", digit: 4, count: 218, percentage: 10.4, expected_pct: 10.0 },
-      { centena: "Centena 5xx", digit: 5, count: 200, percentage: 9.5, expected_pct: 10.0 },
-      { centena: "Centena 6xx", digit: 6, count: 212, percentage: 10.1, expected_pct: 10.0 },
-      { centena: "Centena 7xx", digit: 7, count: 225, percentage: 10.7, expected_pct: 10.0 },
-      { centena: "Centena 8xx", digit: 8, count: 202, percentage: 9.6, expected_pct: 10.0 },
-      { centena: "Centena 9xx", digit: 9, count: 195, percentage: 9.3, expected_pct: 10.0 }
-    ],
+    decades: decadeCounts.map((count, dec) => ({
+      decade: `${dec}0s`,
+      count,
+      percentage: round((count / total) * 100),
+      expected_pct: 10.0
+    })),
+    endings: endingCounts.map((count, end) => ({
+      ending: `Termina en ${end}`,
+      digit: end,
+      count,
+      percentage: round((count / total) * 100),
+      expected_pct: 10.0
+    })),
+    centenas: centenaCounts.map((count, cent) => ({
+      centena: `Centena ${cent}xx`,
+      digit: cent,
+      count,
+      percentage: round((count / total) * 100),
+      expected_pct: 10.0
+    })),
     sums: sums
   };
 }
 
 export function getClientMarkov(lottery = "all", shift = "all") {
+  const realDb = getRealOfficialDrawsFromStorage();
+  const draws = Object.values(realDb).filter(d => {
+    if (!d || !d.board || !d.head_ambo) return false;
+    if (lottery !== 'all' && d.lottery && d.lottery.toLowerCase() !== lottery.toLowerCase()) return false;
+    if (shift !== 'all' && d.shift && d.shift.toLowerCase() !== shift.toLowerCase()) return false;
+    return true;
+  });
+
+  draws.sort((a, b) => {
+    if (a.draw_date !== b.draw_date) return a.draw_date.localeCompare(b.draw_date);
+    return (a.shift || '').localeCompare(b.shift || '');
+  });
+
+  const total = draws.length;
+  if (total < 10) {
+    return {
+      insufficient_data: true,
+      message: "Datos insuficientes para calcular cadenas de Markov (mínimo 10 sorteos requeridos).",
+      last_draw_head: "--",
+      next_ending_probabilities: [],
+      next_decade_probabilities: [],
+      top_ambos_markov: []
+    };
+  }
+
+  const lastDraw = draws[total - 1];
+  const lastHead = lastDraw.head_ambo || '00';
+  const lastEnd = parseInt(lastHead.slice(-1), 10);
+  const lastDec = parseInt(lastHead[0], 10);
+
+  const endingTransitions = Array(10).fill(0);
+  const decadeTransitions = Array(10).fill(0);
+  const amboTransitions = {};
+  let totalTransitionsFromLastEnd = 0;
+
+  for (let i = 1; i < total; i++) {
+    const prev = draws[i - 1];
+    const curr = draws[i];
+    const prevEnd = parseInt((prev.head_ambo || '00').slice(-1), 10);
+    const currHead = curr.head_ambo || '00';
+    const currEnd = parseInt(currHead.slice(-1), 10);
+    const currDec = parseInt(currHead[0], 10);
+
+    if (prevEnd === lastEnd) {
+      endingTransitions[currEnd]++;
+      decadeTransitions[currDec]++;
+      amboTransitions[currHead] = (amboTransitions[currHead] || 0) + 1;
+      totalTransitionsFromLastEnd++;
+    }
+  }
+
+  const round = (v, dec = 3) => Number(v.toFixed(dec));
+  const denom = Math.max(1, totalTransitionsFromLastEnd);
+
+  const nextEndingProbs = endingTransitions.map((count, digit) => ({
+    ending: `Terminación ${digit}`,
+    digit,
+    probability: round(count / denom),
+    count
+  })).sort((a, b) => b.count - a.count);
+
+  const nextDecadeProbs = decadeTransitions.map((count, digit) => ({
+    decade: `Decena ${digit}0s`,
+    digit,
+    probability: round(count / denom),
+    count
+  })).sort((a, b) => b.count - a.count);
+
+  const topAmbosMarkov = Object.entries(amboTransitions)
+    .map(([num, count]) => ({
+      number: num,
+      historical_transitions: count,
+      conditional_score: round(count / denom)
+    }))
+    .sort((a, b) => b.historical_transitions - a.historical_transitions)
+    .slice(0, 5);
+
   return {
-    last_draw_head: "28",
+    insufficient_data: false,
+    last_draw_head: lastHead,
     last_draw_info: {
-      date: "2026-08-18",
-      shift: "Nocturna",
-      lottery: "Ciudad"
+      date: lastDraw.draw_date,
+      shift: lastDraw.shift_name || lastDraw.shift,
+      lottery: lastDraw.lottery_name || lastDraw.lottery
     },
-    next_ending_probabilities: [
-      { ending: "Terminación 4", digit: 4, probability: 0.184, count: 42 },
-      { ending: "Terminación 8", digit: 8, probability: 0.162, count: 37 },
-      { ending: "Terminación 2", digit: 2, probability: 0.145, count: 33 },
-      { ending: "Terminación 7", digit: 7, probability: 0.128, count: 29 },
-      { ending: "Terminación 0", digit: 0, probability: 0.114, count: 26 },
-      { ending: "Terminación 1", digit: 1, probability: 0.082, count: 19 },
-      { ending: "Terminación 5", digit: 5, probability: 0.065, count: 15 },
-      { ending: "Terminación 3", digit: 3, probability: 0.051, count: 12 },
-      { ending: "Terminación 6", digit: 6, probability: 0.040, count: 9 },
-      { ending: "Terminación 9", digit: 9, probability: 0.029, count: 7 }
-    ],
-    next_decade_probabilities: [
-      { decade: "Decena 60s", digit: 6, probability: 0.215, count: 49 },
-      { decade: "Decena 20s", digit: 2, probability: 0.188, count: 43 },
-      { decade: "Decena 10s", digit: 1, probability: 0.164, count: 37 },
-      { decade: "Decena 40s", digit: 4, probability: 0.135, count: 31 },
-      { decade: "Decena 00s", digit: 0, probability: 0.112, count: 25 },
-      { decade: "Decena 70s", digit: 7, probability: 0.078, count: 18 },
-      { decade: "Decena 30s", digit: 3, probability: 0.045, count: 10 },
-      { decade: "Decena 50s", digit: 5, probability: 0.031, count: 7 },
-      { decade: "Decena 80s", digit: 8, probability: 0.020, count: 5 },
-      { decade: "Decena 90s", digit: 9, probability: 0.012, count: 3 }
-    ],
-    top_ambos_markov: [
-      { number: "64", historical_transitions: 14, conditional_score: 0.28 },
-      { number: "28", historical_transitions: 11, conditional_score: 0.22 },
-      { number: "14", historical_transitions: 9, conditional_score: 0.18 },
-      { number: "48", historical_transitions: 8, conditional_score: 0.16 },
-      { number: "08", historical_transitions: 7, conditional_score: 0.14 }
-    ]
+    total_transitions_evaluated: totalTransitionsFromLastEnd,
+    next_ending_probabilities: nextEndingProbs,
+    next_decade_probabilities: nextDecadeProbs,
+    top_ambos_markov: topAmbosMarkov
   };
 }
 
 export function getClientCross() {
+  const realDb = getRealOfficialDrawsFromStorage();
+  const allDraws = Object.values(realDb).filter(d => d && d.board && d.head_ambo);
+
+  const byDate = {};
+  allDraws.forEach(d => {
+    if (!byDate[d.draw_date]) byDate[d.draw_date] = [];
+    byDate[d.draw_date].push(d);
+  });
+
+  let sameDayHeadCount = 0;
+  const sameDayMatches = [];
+  let boardToHeadJumps = 0;
+  const recentJumps = [];
+
+  Object.entries(byDate).forEach(([dateStr, list]) => {
+    const ciudad = list.filter(d => d.lottery === 'ciudad');
+    const provincia = list.filter(d => d.lottery === 'provincia');
+
+    ciudad.forEach(c => {
+      provincia.forEach(p => {
+        if (c.head_ambo && p.head_ambo && c.head_ambo === p.head_ambo && c.shift === p.shift) {
+          sameDayHeadCount++;
+          if (sameDayMatches.length < 5) {
+            sameDayMatches.push({
+              date: dateStr,
+              number: c.head_ambo,
+              detail: `Ambo ${c.head_ambo} a la cabeza en Ciudad y Provincia (${c.shift})`
+            });
+          }
+        }
+      });
+    });
+
+    for (let i = 0; i < list.length; i++) {
+      const d1 = list[i];
+      for (let j = i + 1; j < list.length; j++) {
+        const d2 = list[j];
+        if (d1.board && d2.head_ambo && d1.board.some(p => p.slice(-2) === d2.head_ambo)) {
+          boardToHeadJumps++;
+          if (recentJumps.length < 5) {
+            recentJumps.push({
+              date: dateStr,
+              number: d2.head_ambo,
+              lottery: d2.lottery,
+              shift: d2.shift,
+              note: `El ambo ${d2.head_ambo} salió previamente en la pizarra de ${d1.shift} y repitió a la cabeza en ${d2.shift}.`
+            });
+          }
+        }
+      }
+    }
+  });
+
   return {
-    same_day_head_coincidences: 86,
-    recent_same_day_matches: [
-      { date: "2026-08-18", number: "28", detail: "El ambo 28 salió a la cabeza en ambas loterías el mismo día" },
-      { date: "2026-08-17", number: "64", detail: "El ambo 64 salió a la cabeza en ambas loterías el mismo día" },
-      { date: "2026-08-15", number: "14", detail: "El ambo 14 salió a la cabeza en ambas loterías el mismo día" }
-    ],
-    board_to_head_jumps_count: 214,
-    recent_jumps: [
-      { date: "2026-08-18", number: "64", lottery: "provincia", shift: "nocturna", note: "El ambo 64 salió previamente en los 20 de Matutina y saltó a la cabeza en Nocturna de Provincia." },
-      { date: "2026-08-17", number: "28", lottery: "ciudad", shift: "vespertina", note: "El ambo 28 salió previamente en los 20 y saltó a la cabeza en Vespertina de Ciudad." },
-      { date: "2026-08-16", number: "14", lottery: "provincia", shift: "matutina", note: "El ambo 14 salió previamente en los 20 de Primera y saltó a la cabeza en Matutina." }
-    ]
+    same_day_head_coincidences: sameDayHeadCount,
+    recent_same_day_matches: sameDayMatches,
+    board_to_head_jumps_count: boardToHeadJumps,
+    recent_jumps: recentJumps
   };
 }
 
@@ -1193,12 +1304,27 @@ export async function fetchDirectFromLotba() {
   return null;
 }
 
-// Online Hybrid Auto-Sync: 0) Firebase Firestore + 1) Direct LOTBA Extractor + 2) Cloud Repository Fallback
+// Online Hybrid Auto-Sync: 0) Local Bundled draws.json + 1) Firebase Firestore + 2) Direct LOTBA Extractor + 3) Cloud Repository Fallback
 export async function syncRemoteOfficialDraws() {
   let directUpdated = false;
   let totalCount = 0;
 
-  // 0. Try Real-Time Firestore Cloud Database (Instant, Official, No Quotas)
+  // 0. Local Bundled draws.json (Instant offline availability of 2,223+ official draws)
+  try {
+    const localRes = await fetch('/api/draws.json');
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      if (localData && typeof localData === 'object' && Object.keys(localData).length > 0) {
+        const raw = localStorage.getItem(REAL_DRAWS_STORAGE_KEY);
+        const existing = raw ? JSON.parse(raw) : {};
+        const merged = { ...localData, ...existing };
+        localStorage.setItem(REAL_DRAWS_STORAGE_KEY, JSON.stringify(merged));
+        totalCount = Math.max(totalCount, Object.keys(localData).length);
+      }
+    }
+  } catch (e) {}
+
+  // 1. Try Real-Time Firestore Cloud Database (Instant, Official, No Quotas)
   try {
     const { syncDrawsFromFirestore } = await import('./firebaseClient.js');
     const firestoreDraws = await syncDrawsFromFirestore();
@@ -1322,9 +1448,9 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
       position: 1,
       matched_positions: [1],
       ai_rank: rank,
-      confidence: headMatch.confidence || (92 - rank * 1.5).toFixed(1),
+      score: headMatch.composite_score || 0,
       multiplier: prizeMultiplier,
-      details: `${trophyTitle} Pronosticamos el ${predictedType} '${headAmbo}' para ${headMatch.target_lottery_label || lotLabel} (Top #${rank})`
+      details: `${trophyTitle} Coincidencia estadística de '${headAmbo}' para ${headMatch.target_lottery_label || lotLabel} (Ranking #${rank})`
     };
   }
 
@@ -1366,13 +1492,13 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
       position: pos,
       matched_positions: matchedPositions,
       ai_rank: firstBoardHit.rank,
-      confidence: firstBoardHit.predObj.confidence || 85.0,
+      score: firstBoardHit.predObj.composite_score || 0,
       multiplier: mult,
-      details: `✅ Acierto en Pizarra: Pronosticamos el ambo '${firstBoardHit.number}' (${firstBoardHit.significado}) en la Posición #${pos.toString().padStart(2, '0')} (${mult}) para ${firstBoardHit.predObj.target_lottery_label || lotLabel}`
+      details: `✅ Coincidencia en Pizarra: Ambo '${firstBoardHit.number}' (${firstBoardHit.significado}) en Posición #${pos.toString().padStart(2, '0')} (${mult}) para ${firstBoardHit.predObj.target_lottery_label || lotLabel}`
     };
   }
 
-  return { is_hit: false, details: "Sorteo analizado por IA" };
+  return { is_hit: false, details: "Sorteo analizado por motor estadístico" };
 }
 
 // Generate authentic official 20 prizes for any lottery/shift/date
@@ -1510,11 +1636,11 @@ export function getClientDraws(lottery = "all", shift = "all", limit = 15, custo
     total: allDraws.length,
     draws: customDate ? allDraws : allDraws.slice(0, limit || 20),
     audit_summary: {
-      total_draws_audited: 2102,
-      head_hits_rate: "74.2%",
-      board_hits_rate: "94.8%",
-      current_winning_streak: "5 sorteos consecutivos con aciertos",
-      total_multipliers_generated: "+18.4x"
+      total_draws_audited: allDraws.length,
+      head_hits_rate: "Calculado por sorteo",
+      board_hits_rate: "Calculado por sorteo",
+      current_winning_streak: "Verificado contra extracto oficial",
+      total_multipliers_generated: "-"
     }
   };
 }
@@ -1598,8 +1724,8 @@ export function getRadar30DaysHistory(lotteryFilter = 'all', daysCount = 30) {
       total_hits_30d: hits.length,
       head_hits_30d: headHitsCount,
       board_hits_30d: boardHitsCount,
-      accuracy_rate: totalDrawsChecked > 0 ? `${((hits.length / totalDrawsChecked) * 100).toFixed(1)}%` : "89.3%",
-      head_accuracy_rate: totalDrawsChecked > 0 ? `${((headHitsCount / totalDrawsChecked) * 100).toFixed(1)}%` : "74.2%"
+      accuracy_rate: totalDrawsChecked > 0 ? `${((hits.length / totalDrawsChecked) * 100).toFixed(1)}%` : "0.0%",
+      head_accuracy_rate: totalDrawsChecked > 0 ? `${((headHitsCount / totalDrawsChecked) * 100).toFixed(1)}%` : "0.0%"
     }
   };
 
@@ -2244,3 +2370,83 @@ export function interpretDreamWithAI(rawText) {
     suggested_redoblona: { pair: `${ambo1} y ${ambo2}`, note: `${sig1} y ${sig2} (Al 1° y a los 10)` }
   };
 }
+
+// Rigorous Historical Backtesting Engine (Empirical simulation against random baseline)
+export function getClientBacktest(lottery = 'all', shift = 'all', drawsCount = 30) {
+  const realDb = getRealOfficialDrawsFromStorage();
+  const allDrawKeys = Object.keys(realDb);
+  
+  if (allDrawKeys.length < 5) {
+    return {
+      head_hit_rate: 0,
+      board_hit_rate: 0,
+      random_head_baseline: "5.0%",
+      random_board_baseline: "64.2%",
+      performance_lift: "0.0x",
+      total_simulated_draws: 0,
+      disclaimer: "Datos insuficientes para calcular backtesting (muestra menor a 5 sorteos)."
+    };
+  }
+
+  // Filter draws matching lottery and shift if specified
+  const filteredDraws = Object.values(realDb).filter(d => {
+    if (!d || !d.head_millar) return false;
+    const lotMatch = lottery === 'all' || d.lottery === lottery.toLowerCase();
+    const shiftMatch = shift === 'all' || shift === 'auto' || d.shift === shift.toLowerCase();
+    return lotMatch && shiftMatch;
+  });
+
+  // Sort descending by date
+  filteredDraws.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  const testSample = filteredDraws.slice(0, Math.min(drawsCount, filteredDraws.length));
+  if (testSample.length === 0) {
+    return {
+      head_hit_rate: 0,
+      board_hit_rate: 0,
+      random_head_baseline: "5.0%",
+      random_board_baseline: "64.2%",
+      performance_lift: "0.0x",
+      total_simulated_draws: 0,
+      disclaimer: "Datos insuficientes para calcular backtesting con los filtros seleccionados."
+    };
+  }
+
+  let headHits = 0;
+  let boardHits = 0;
+
+  for (const draw of testSample) {
+    const predResult = getClientPredictions(draw.lottery, draw.shift, 5, draw.date);
+    const top5Ambos = (predResult.top_predictions || []).slice(0, 5).map(p => p.number);
+
+    const actualHeadAmbo = (draw.head_ambo || draw.head_millar?.slice(-2) || '').padStart(2, '0');
+    if (top5Ambos.includes(actualHeadAmbo)) {
+      headHits++;
+    }
+
+    const boardAmbos = (draw.board || []).map(num => String(num).slice(-2).padStart(2, '0'));
+    const hasBoardHit = top5Ambos.some(ambo => boardAmbos.includes(ambo));
+    if (hasBoardHit) {
+      boardHits++;
+    }
+  }
+
+  const headRate = parseFloat(((headHits / testSample.length) * 100).toFixed(1));
+  const boardRate = parseFloat(((boardHits / testSample.length) * 100).toFixed(1));
+  const randomHeadBaseline = 5.0; // 5 ambos / 100 = 5%
+  const lift = randomHeadBaseline > 0 ? (headRate / randomHeadBaseline).toFixed(1) : "1.0";
+
+  return {
+    head_hit_rate: headRate,
+    board_hit_rate: boardRate,
+    head_hits_count: headHits,
+    board_hits_count: boardHits,
+    total_simulated_draws: testSample.length,
+    random_head_baseline: "5.0%",
+    random_board_baseline: "64.2%",
+    performance_lift: `+${lift}x vs azar`,
+    sample_period: `${testSample[testSample.length - 1]?.date || ''} a ${testSample[0]?.date || ''}`,
+    disclaimer: "El rendimiento histórico es descriptivo y no garantiza resultados en sorteos futuros. Cada sorteo es independiente."
+  };
+}
+

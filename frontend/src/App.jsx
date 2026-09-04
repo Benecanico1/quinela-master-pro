@@ -42,10 +42,12 @@ import UserProfileModal from './components/UserProfileModal';
 import AiAdvisorFloatingModal from './components/AiAdvisorFloatingModal';
 import NotificationsModal from './components/NotificationsModal';
 import BroadcastPopupModal from './components/BroadcastPopupModal';
+import ResponsibleGamingModal from './components/ResponsibleGamingModal';
 
 import { 
   getClientFrequencies, 
   getClientPredictions,
+  getClientBacktest,
   syncRemoteOfficialDraws
 } from './services/clientEngine';
 import { registerDeviceSession, syncUserProfileToCloud } from './services/telemetryService';
@@ -100,7 +102,8 @@ export default function App() {
   
   const [predictions, setPredictions] = useState(() => getClientPredictions('all', 'auto', 15));
   const [frequencies, setFrequencies] = useState(() => getClientFrequencies('all', 'all', 'head'));
-  const [backtest, setBacktest] = useState({ head_hit_rate: 74.2, performance_lift: "+2.8x vs azar", total_simulated_draws: 50 });
+  const [backtest, setBacktest] = useState(() => getClientBacktest('all', 'auto', 30));
+  const [isResponsibleGamingOpen, setIsResponsibleGamingOpen] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
@@ -310,6 +313,7 @@ export default function App() {
     } catch (err) {
       setPredictions(getClientPredictions(lottery, shift, 15));
       setFrequencies(getClientFrequencies(lottery, shift, target));
+      setBacktest(getClientBacktest(lottery, shift, 30));
       setLastUpdated(new Date().toLocaleTimeString());
     } finally {
       setLoading(false);
@@ -355,6 +359,17 @@ export default function App() {
 
           {/* Action Buttons in Header */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Responsible Gaming Badge (+18) */}
+            <button
+              type="button"
+              onClick={() => setIsResponsibleGamingOpen(true)}
+              className="px-2 py-1 rounded-xl bg-slate-900 border border-amber-500/30 hover:border-amber-400 text-amber-300 text-[10px] font-black tracking-tight flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+              title="Información Importante & Juego Responsable (+18)"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>+18</span>
+            </button>
+
             {/* Quick Wallet Shortcut */}
             <button
               onClick={() => setActiveTab('wallet')}
@@ -550,6 +565,15 @@ export default function App() {
 
           {/* Clean Icon Quick Actions (No weird wrapped text) */}
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setIsResponsibleGamingOpen(true)} 
+              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1.5 shadow"
+              title="Juego Responsable (+18)"
+            >
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <span className="text-[11px] font-black hidden md:inline">Juego Responsable (+18)</span>
+            </button>
+
             <button 
               onClick={() => setIsFeedbackOpen(true)} 
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-pink-400 hover:text-pink-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
@@ -797,6 +821,12 @@ export default function App() {
           onNavigateTab={(tabId) => setActiveTab(tabId)}
         />
       )}
+
+      {/* Responsible Gaming & Transparency Legal Modal */}
+      <ResponsibleGamingModal
+        isOpen={isResponsibleGamingOpen}
+        onClose={() => setIsResponsibleGamingOpen(false)}
+      />
     </div>
   );
 }

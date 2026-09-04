@@ -118,12 +118,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   });
 
   const draws = sortedDraws;
-  const audit = data.audit_summary || {
-    head_hits_rate: "74.2%",
-    board_hits_rate: "94.8%",
-    current_winning_streak: "5 sorteos consecutivos con aciertos",
-    total_multipliers_generated: "+18.4x"
-  };
+  const audit = data.audit_summary || {};
 
   // Group draws by lottery with latest draw first
   const ciudadDraws = draws.filter(d => d.lottery === 'ciudad');

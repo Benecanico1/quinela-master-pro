@@ -8,6 +8,7 @@ import {
 import { getClientPredictions, SHIFT_DEFINITIONS, getCurrentActiveShift, formatSecondsToHMS } from '../services/clientEngine';
 import { getAffiliateUrl } from '../services/firebaseClient';
 import EfficiencyExplanationModal from './EfficiencyExplanationModal';
+import TraceabilityModal from './TraceabilityModal';
 
 export default function PredictionsTab({ 
   predictions, 
@@ -25,6 +26,7 @@ export default function PredictionsTab({
   const [copyStatus, setCopyStatus] = useState('');
   const [liveShiftInfo, setLiveShiftInfo] = useState(() => getCurrentActiveShift());
   const [isEfficiencyModalOpen, setIsEfficiencyModalOpen] = useState(false);
+  const [traceCandidate, setTraceCandidate] = useState(null);
   const [isShiftMenuOpen, setIsShiftMenuOpen] = useState(false);
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
   const [isExtraLargeFont, setIsExtraLargeFont] = useState(false);
@@ -246,26 +248,28 @@ export default function PredictionsTab({
       <div className="flex items-center justify-between pt-0.5 px-0.5">
         <div>
           <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Pronóstico de la Inteligencia Artificial</span>
+            <Activity className="w-4 h-4 text-amber-400" />
+            <span>Motor de Análisis Estadístico</span>
           </h2>
           <p className="text-[10.5px] text-slate-400">
-            Convergencia probabilística y análisis estadístico en tiempo real.
+            Convergencia de frecuencias, atrasos y transiciones en tiempo real.
           </p>
         </div>
 
-        {/* Botón pequeño de Efectividad */}
+        {/* Botón pequeño de Auditoría */}
         <button
           type="button"
           onClick={() => setIsEfficiencyModalOpen(true)}
           className="bg-slate-950 hover:bg-slate-900 px-2 py-1 rounded-xl border border-amber-500/30 text-right cursor-pointer hover:border-amber-400 transition-colors shrink-0 shadow"
-          title="Ver auditoría matemática de efectividad"
+          title="Ver auditoría matemática del motor estadístico"
         >
           <div className="text-[9px] text-slate-400 flex items-center gap-0.5 justify-end">
-            <span>Efectividad</span>
+            <span>Auditoría</span>
             <Info className="w-2.5 h-2.5 text-amber-400" />
           </div>
-          <div className="text-xs font-black text-emerald-400 font-mono">74.2%</div>
+          <div className="text-xs font-black text-emerald-400 font-mono">
+            {backtest?.head_hit_rate !== undefined ? `${backtest.head_hit_rate}%` : '2.223+'}
+          </div>
         </button>
       </div>
 
@@ -507,7 +511,7 @@ export default function PredictionsTab({
 
                   <div className="text-right shrink-0">
                     <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-[10.5px]">
-                      {cand.composite_score}% Conf.
+                      Score: {cand.composite_score}/100
                     </span>
                   </div>
                 </div>
@@ -529,6 +533,19 @@ export default function PredictionsTab({
                     <span className="font-mono font-black text-emerald-400">{cand.suggested_millar?.[0]}</span>
                   </div>
                 </div>
+
+                {/* Botón de Trazabilidad y Transparencia */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setTraceCandidate(cand);
+                  }}
+                  className="mt-2 w-full py-1.5 px-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 text-[10.5px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>¿Por qué aparece este número? (Trazabilidad)</span>
+                </button>
 
                 {/* Free User Informational Banner directly under Top Prediction #1 */}
                 {idx === 0 && !isVip && (
@@ -638,8 +655,19 @@ export default function PredictionsTab({
       <EfficiencyExplanationModal
         isOpen={isEfficiencyModalOpen}
         onClose={() => setIsEfficiencyModalOpen(false)}
-        rate="74.2%"
+        rate={backtest?.head_hit_rate !== undefined ? `${backtest.head_hit_rate}% Aciertos Retrospectivos` : "Base Oficial 2.223 Sorteos"}
       />
+
+      {/* Traceability Modal */}
+      {traceCandidate && (
+        <TraceabilityModal
+          isOpen={!!traceCandidate}
+          onClose={() => setTraceCandidate(null)}
+          prediction={traceCandidate}
+          shiftName={activePredictions?.shift_name}
+          lotteryLabel={traceCandidate.target_lottery_label || selectedLottery}
+        />
+      )}
 
       {/* MODAL CUPÓN DIGITAL PARA EL AGENCIERO (MODO JUGADA RÁPIDA / LETRA GRANDE) */}
       {isSlipModalOpen && (

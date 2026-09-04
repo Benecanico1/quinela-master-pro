@@ -53,6 +53,18 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
   const processUserQuery = (query) => {
     const q = query.toLowerCase().trim();
 
+    // 0. Pronósticos, Motor Estadístico y Trazabilidad Transparente
+    if (q.includes('pronostico') || q.includes('pronóstico') || q.includes('algoritmo') || q.includes('como funciona') || q.includes('cómo funciona') || q.includes('trazabilidad') || q.includes('por que') || q.includes('por qué') || q.includes('matematica') || q.includes('matemática')) {
+      return {
+        text: '🎯 **Motor Estadístico y Trazabilidad Transparente**:\n\n• **100% Basado en Datos Reales:** Los números sugeridos no están prefijados ni inventados. Surgen del análisis dinámico de más de 2.200 sorteos oficiales de Ciudad y Provincia.\n• **Factores Matemáticos:** Combina frecuencia acumulada, atrasos temporales observados, matrices de transición de Markov y distribución de sumas.\n• **🔍 Trazabilidad Completa:** En cada pronóstico puedes tocar el botón *"¿Por qué aparece este número?"* para auditar la muestra, fechas, apariciones y fórmula exacta.\n• **Juego Responsable (+18):** Los sorteos son independientes y aleatorios. El análisis histórico es descriptivo y nunca garantiza resultados futuros.',
+        action: {
+          type: 'tab',
+          tabId: 'predictions',
+          label: '🎯 Ver Pronósticos Auditados'
+        }
+      };
+    }
+
     // 1. Buscador y Mapa de Agencias Cercanas con GPS
     if (q.includes('agencia') || q.includes('mapa') || q.includes('cercana') || q.includes('cerca') || q.includes('donde jugar') || q.includes('dónde jugar') || q.includes('gps') || q.includes('ubicacion') || q.includes('ubicación') || q.includes('como llegar') || q.includes('cómo llegar')) {
       return {
@@ -104,7 +116,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
     // 5. Calculadora de Redoblonas y Bankroll
     if (q.includes('redoblona') || q.includes('bankroll') || q.includes('martingala') || q.includes('estrategia') || q.includes('saldo') || q.includes('presupuesto') || q.includes('candado')) {
       return {
-        text: '🧮 **Calculadora de Redoblonas y Bankroll**:\n\n• **Redoblona Candado (Hasta 700x):** Calcula tu ganancia exacta combinando 2 números en distintas posiciones (ej: Cabeza con 10, a los 5 con los 10, o a los 20).\n• **Simulador de Bankroll:** Aplica progresiones matemáticas (Martingala o Proporcional) para recuperar apuestas y garantizar ganancias netas.\n• En la misma pestaña de **Estrategia** dispones también del mapa de agencias oficiales.',
+        text: '🧮 **Calculadora de Redoblonas y Bankroll**:\n\n• **Redoblona Candado (Hasta 700x):** Calcula el retorno combinando 2 números en distintas posiciones (ej: Cabeza con 10, a los 5 con los 10, o a los 20).\n• **Simulador de Bankroll:** Simula progresiones matemáticas (Martingala o Proporcional) para gestionar tu presupuesto con disciplina.\n• **Aviso (+18):** Ninguna progresión garantiza ganancias; juega siempre con moderación y responsabilidad.',
         action: {
           type: 'tab',
           tabId: 'bankroll',
