@@ -1,0 +1,16 @@
+=== QUINIELA MASTER PRO v1.4.6 (VersionCode 78) ===
+Fecha: 05/09/2026
+
+NOVEDADES DE LA ACTUALIZACIÓN:
+1. Protocolo de Trazabilidad Criptográfica TRACEABILITY_V1:
+   - Eliminación total de recálculos retrospectivos en Resultados e Historial.
+   - Sello criptográfico SHA-256 inmutable de pronósticos pre-sorteo.
+2. Predicciones con Doble Motor de Transparencia:
+   - Fila 1: Motor IA / Machine Learning (Champion ML-FULL v1.0).
+   - Fila 2: Motor Estadístico y Frecuencias Tradicional.
+   - Indicador de bloqueo pre-sorteo 🔒 con ID único de predicción y sellos temporales.
+3. Evaluación Canónica Auditada en Historial y Resultados:
+   - Coincidencia estricta 1:1 entre los números visibles en Pronósticos y los evaluados en Resultados.
+   - Detalle preciso de aciertos a la Cabeza (70x) y a los 20 premios (con multiplicadores oficiales).
+4. Infraestructura de Suite Prospectiva Fase 5 con auditoría anti-filtración (zero leakage).
+5. Optimizaciones de rendimiento, persistencia local segura y renderizado reactivo ultra-fluido.

@@ -1,12 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, Flame, Clock, Layers, ChevronDown, ChevronUp, 
   Shuffle, Copy, Check, ShieldCheck, Lock, Crown, RefreshCw, Zap,
   Activity, Timer, AlertTriangle, HelpCircle, Info, ExternalLink, Share2,
-  Menu, X, Ticket, Cpu, Sliders
+  Menu, X, Ticket, Cpu, Sliders, CheckCircle2, Award, Target
 } from 'lucide-react';
-import { getClientPredictions, SHIFT_DEFINITIONS, getCurrentActiveShift, formatSecondsToHMS } from '../services/clientEngine';
+import { 
+  getClientPredictions, 
+  SHIFT_DEFINITIONS, 
+  getCurrentActiveShift, 
+  formatSecondsToHMS, 
+  getLastClosedShift,
+  getRealOfficialDrawsFromStorage,
+  getLocalDateString,
+  SIGNIFICADOS
+} from '../services/clientEngine';
 import { getMLPredictions, ML_MODEL_METADATA } from '../services/mlPredictionEngine';
+import { 
+  getOrCreateCanonicalPrediction, 
+  getCanonicalPrediction, 
+  recordCouponSnapshot,
+  formatItemsFromTop5,
+  evaluateCanonicalPrediction
+} from '../services/canonicalPredictionsLedger';
+import { 
+  getOrLockUpcomingCanonicalPrediction, 
+  ensureAllUpcomingCanonicalRecords 
+} from '../services/preDrawService';
 import { getAffiliateUrl } from '../services/firebaseClient';
 import EfficiencyExplanationModal from './EfficiencyExplanationModal';
 import TraceabilityModal from './TraceabilityModal';
@@ -21,8 +41,8 @@ export default function PredictionsTab({
   onSelectShift
 }) {
   const [selectedLottery, setSelectedLottery] = useState('all'); // 'all', 'ciudad', 'provincia'
-  const [engineMode, setEngineMode] = useState('ml'); // 'ml' | 'baseline'
-  const [expandedIndex, setExpandedIndex] = useState(0);
+  const [engineFilter, setEngineFilter] = useState('both'); // 'both' | 'ml' | 'baseline'
+  const [expandedIndex, setExpandedIndex] = useState(null);
   const [generatedTicket, setGeneratedTicket] = useState(null);
   const [copied, setCopied] = useState(false);
   const [copyStatus, setCopyStatus] = useState('');
@@ -32,8 +52,9 @@ export default function PredictionsTab({
   const [isShiftMenuOpen, setIsShiftMenuOpen] = useState(false);
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
   const [isExtraLargeFont, setIsExtraLargeFont] = useState(false);
+  const [slipEngineChoice, setSlipEngineChoice] = useState('ml'); // 'ml' | 'baseline'
 
-  // Second-by-second live countdown on every signal
+  // Second-by-second live countdown
   useEffect(() => {
     const timer = setInterval(() => {
       setLiveShiftInfo(getCurrentActiveShift());
@@ -41,19 +62,165 @@ export default function PredictionsTab({
     return () => clearInterval(timer);
   }, []);
 
-  const activePredictions = engineMode === 'ml'
-    ? getMLPredictions(selectedLottery, activeShift || 'auto', 15)
-    : getClientPredictions(selectedLottery, activeShift || 'auto', 15);
-  const top5 = (activePredictions.top_predictions || activePredictions.predictions || []).slice(0, 5);
+  const lastClosed = getLastClosedShift();
+  const todayStr = getLocalDateString(new Date());
 
-  const handleCopyAllLottery = (lotteryKey) => {
-    const lotLabel = lotteryKey === 'ciudad' ? 'CIUDAD (NACIONAL)' : 'PROVINCIA BS AS';
-    const lotData = engineMode === 'ml'
-      ? getMLPredictions(lotteryKey, activeShift || 'auto', 15)
-      : getClientPredictions(lotteryKey, activeShift || 'auto', 15);
+  // Calculations for Active/Upcoming Shift
+  const resolvedActiveShiftId = (activeShift && activeShift !== 'auto') 
+    ? activeShift 
+    : (liveShiftInfo?.id || 'la_previa');
+  const cleanJur = selectedLottery === 'all' ? 'ciudad' : selectedLottery;
+  const cleanActiveShift = resolvedActiveShiftId.toLowerCase().replace('la_', '');
+
+  // Pre-draw lock for active upcoming shift strictly before deadline
+  try {
+    ensureAllUpcomingCanonicalRecords(todayStr, cleanActiveShift);
+  } catch (e) {
+    console.warn("Pre-draw locking error:", e);
+  }
+
+  const rawMLActive = getOrLockUpcomingCanonicalPrediction(todayStr, cleanJur, cleanActiveShift, 'ML-FULL');
+  const rawStatActive = getOrLockUpcomingCanonicalPrediction(todayStr, cleanJur, cleanActiveShift, 'STATISTICAL');
+
+  // STRICT COMPOSITE KEY VALIDATION (date + jurisdiction + shift + engine)
+  // Guarantees zero leakage or carryover from other shifts/jurisdictions
+  const canonicalMLActive = (rawMLActive && 
+    rawMLActive.date === todayStr && 
+    rawMLActive.jurisdiction === cleanJur && 
+    rawMLActive.shift === cleanActiveShift && 
+    rawMLActive.engine_id === 'ML-FULL') ? rawMLActive : null;
+
+  const canonicalStatActive = (rawStatActive && 
+    rawStatActive.date === todayStr && 
+    rawStatActive.jurisdiction === cleanJur && 
+    rawStatActive.shift === cleanActiveShift && 
+    rawStatActive.engine_id === 'STATISTICAL') ? rawStatActive : null;
+
+  const mlPredictionsActive = getMLPredictions(selectedLottery, resolvedActiveShiftId, 15);
+
+  // Strictly source Top 5 from Canonical Prediction Record. Top 5 NEVER falls back to dynamic recalculation or previous shifts.
+  const mlTop5Active = useMemo(() => {
+    if (canonicalMLActive && 
+        canonicalMLActive.status === 'LOCKED' && 
+        canonicalMLActive.shift === cleanActiveShift &&
+        canonicalMLActive.jurisdiction === cleanJur &&
+        canonicalMLActive.date === todayStr &&
+        Array.isArray(canonicalMLActive.top_5) && 
+        canonicalMLActive.top_5.length > 0) {
+      return formatItemsFromTop5(canonicalMLActive.top_5);
+    }
+    return [];
+  }, [canonicalMLActive, cleanActiveShift, cleanJur, todayStr]);
+
+  const statTop5Active = useMemo(() => {
+    if (canonicalStatActive && 
+        canonicalStatActive.status === 'LOCKED' && 
+        canonicalStatActive.shift === cleanActiveShift &&
+        canonicalStatActive.jurisdiction === cleanJur &&
+        canonicalStatActive.date === todayStr &&
+        Array.isArray(canonicalStatActive.top_5) && 
+        canonicalStatActive.top_5.length > 0) {
+      return formatItemsFromTop5(canonicalStatActive.top_5);
+    }
+    return [];
+  }, [canonicalStatActive, cleanActiveShift, cleanJur, todayStr]);
+
+  // Calculations & Official Hits for Last Closed Shift
+  const allDrawsDb = getRealOfficialDrawsFromStorage();
+  const closedShiftId = lastClosed.id;
+
+  // Retrieve official draws for the closed shift
+  const ciudadDrawKey = `${todayStr}_ciudad_${closedShiftId}`;
+  const provinciaDrawKey = `${todayStr}_provincia_${closedShiftId}`;
+  const ciudadDraw = allDrawsDb[ciudadDrawKey] || null;
+  const provinciaDraw = allDrawsDb[provinciaDrawKey] || null;
+
+  // Closed shift predictions strictly sourced from Canonical Records. NO fallback to recalculation.
+  const canonicalClosedML = getCanonicalPrediction(todayStr, cleanJur, closedShiftId, 'ML-FULL');
+  const canonicalClosedStat = getCanonicalPrediction(todayStr, cleanJur, closedShiftId, 'STATISTICAL');
+
+  const mlTop5Closed = useMemo(() => {
+    if (canonicalClosedML && 
+        canonicalClosedML.status === 'LOCKED' && 
+        canonicalClosedML.shift === closedShiftId &&
+        canonicalClosedML.jurisdiction === cleanJur &&
+        canonicalClosedML.date === todayStr &&
+        Array.isArray(canonicalClosedML.top_5) && 
+        canonicalClosedML.top_5.length > 0) {
+      return formatItemsFromTop5(canonicalClosedML.top_5);
+    }
+    return [];
+  }, [canonicalClosedML, closedShiftId, cleanJur, todayStr]);
+
+  const statTop5Closed = useMemo(() => {
+    if (canonicalClosedStat && 
+        canonicalClosedStat.status === 'LOCKED' && 
+        canonicalClosedStat.shift === closedShiftId &&
+        canonicalClosedStat.jurisdiction === cleanJur &&
+        canonicalClosedStat.date === todayStr &&
+        Array.isArray(canonicalClosedStat.top_5) && 
+        canonicalClosedStat.top_5.length > 0) {
+      return formatItemsFromTop5(canonicalClosedStat.top_5);
+    }
+    return [];
+  }, [canonicalClosedStat, closedShiftId, cleanJur, todayStr]);
+
+  const isClosedShiftSealedInLedger = Boolean(canonicalClosedStat && canonicalClosedStat.status === 'LOCKED') ||
+    Boolean(canonicalClosedML && canonicalClosedML.status === 'LOCKED');
+
+  // Unified evaluation for closed shift items using pure evaluateCanonicalPrediction
+  // STRICT JURISDICTION ISOLATION: Ciudad never evaluates with Provincia, Provincia never evaluates with Ciudad
+  const evaluateItemInClosedShift = (candNumber, engineKey) => {
+    const targetDraw = cleanJur === 'provincia' ? provinciaDraw : ciudadDraw;
+    const targetRecord = engineKey === 'ml' ? canonicalClosedML : canonicalClosedStat;
+
+    if (!targetDraw || !targetRecord) {
+      return { is_hit: false, hit_type: 'WAITING_RESULT', label: '⏳ Esperando extracto oficial' };
+    }
+
+    const evaluation = evaluateCanonicalPrediction(targetRecord, targetDraw);
+    if (!evaluation || !evaluation.is_evaluated) {
+      return { is_hit: false, hit_type: 'WAITING_RESULT', label: '⏳ Esperando extracto oficial' };
+    }
+
+    if (evaluation.head_hit && evaluation.official_head_ambo === candNumber) {
+      return {
+        is_hit: true,
+        hit_type: 'CABEZA',
+        label: `👑 CABEZA (${evaluation.head_multiplier || '70x'})`,
+        position: 1,
+        multiplier: '70x Pleno'
+      };
+    }
+
+    const posHit = evaluation.official_positions.find(p => p.number === candNumber);
+    if (posHit) {
+      return {
+        is_hit: true,
+        hit_type: 'PIZARRA',
+        label: `🎯 Posición #${posHit.position} (${posHit.multiplier})`,
+        position: posHit.position,
+        multiplier: posHit.multiplier
+      };
+    }
+
+    return {
+      is_hit: false,
+      hit_type: 'NO_HIT',
+      label: '⚪ No figuró en extracto'
+    };
+  };
+
+  const handleCopyAllLottery = (lotteryKey, chosenEngine = 'ml') => {
+    const lotLabel = lotteryKey === 'ciudad' ? 'CIUDAD (NACIONAL)' : lotteryKey === 'provincia' ? 'PROVINCIA BS AS' : 'NACIONAL Y PROVINCIA';
+    const lotData = chosenEngine === 'ml'
+      ? getMLPredictions(lotteryKey, resolvedActiveShiftId, 15)
+      : getClientPredictions(lotteryKey, resolvedActiveShiftId, 15);
     const predictionsList = isVip ? lotData.top_predictions.slice(0, 5) : [lotData.top_predictions[0]];
+    const engineTag = chosenEngine === 'ml' ? '🧠 Motor IA / ML (Champion)' : '📊 Motor Estadístico (Frecuencias)';
 
-    let text = `🎯 ${lotLabel} - ${lotData.shift_name || 'En Vivo'}\n\n`;
+    let text = `🎯 ${lotLabel} - ${lotData.shift_name || 'En Vivo'}\n`;
+    text += `⚙️ Algoritmo: ${engineTag}\n\n`;
     predictionsList.forEach((pred, idx) => {
       const ambo = pred.number;
       const terno = pred.suggested_centenas?.[0] || `7${ambo}`;
@@ -70,14 +237,16 @@ export default function PredictionsTab({
     text += `Recomendado por Quiniela Master Pro`;
 
     navigator.clipboard.writeText(text);
-    setCopyStatus(`¡Copiadas recomendaciones de ${lotteryKey === 'ciudad' ? 'Nacional' : 'Provincia'}! 📋✨`);
+    setCopyStatus(`¡Copiadas recomendaciones de ${lotteryKey === 'ciudad' ? 'Nacional' : 'Provincia'} (${chosenEngine === 'ml' ? 'IA' : 'Estadístico'})! 📋✨`);
     setTimeout(() => setCopyStatus(''), 2500);
   };
 
   const handleCopyDailySummaryForSocialMedia = () => {
-    const ciudadData = getClientPredictions('ciudad', 'todo_el_dia', 4);
-    const provData = getClientPredictions('provincia', 'todo_el_dia', 4);
-    const allData = getClientPredictions('all', 'todo_el_dia', 5);
+    const ciudadML = getMLPredictions('ciudad', resolvedActiveShiftId, 5);
+    const provML = getMLPredictions('provincia', resolvedActiveShiftId, 5);
+    const ciudadStat = getClientPredictions('ciudad', resolvedActiveShiftId, 5);
+    const provStat = getClientPredictions('provincia', resolvedActiveShiftId, 5);
+    const allData = getClientPredictions('all', resolvedActiveShiftId, 5);
 
     const now = new Date();
     const todayFormatted = now.toLocaleDateString('es-AR', {
@@ -87,72 +256,53 @@ export default function PredictionsTab({
       year: 'numeric'
     });
 
-    let postText = `🔥 *PRONÓSTICO OFICIAL DEL DÍA (Quinela Master Pro)* 🔥\n`;
-    postText += `📅 ${todayFormatted.toUpperCase()}\n\n`;
+    let postText = `🔥 *PRONÓSTICOS OFICIALES DEL DÍA (Quiniela Master Pro)* 🔥\n`;
+    postText += `📅 ${todayFormatted.toUpperCase()}\n`;
+    postText += `⏰ Turno: ${mlPredictionsActive.shift_name || 'En Vivo'} (${mlPredictionsActive.shift_time || '15:00'} hs)\n\n`;
 
-    // 1. Sección Lotería de la Ciudad (Nacional)
-    postText += `🏛️ *LOTERÍA DE LA CIUDAD (NACIONAL) - FIJOS DEL DÍA:*\n`;
-    ciudadData.top_predictions.slice(0, 4).forEach((p, idx) => {
-      const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
-      const terno = p.suggested_centenas?.[0] || `7${p.number}`;
-      const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
-      const posTag = idx === 0 
-        ? '👑 A LA CABEZA (1° Premio Pleno)' 
-        : idx === 1 
-          ? '🎯 Al 1° y a los 5' 
-          : idx === 2 
-            ? '💎 A los 5 o a los 10' 
-            : '🛡️ A los 10 o a los 20';
+    // 1. FILA IA / ML (CHAMPION)
+    postText += `🧠 *FILA 1: MOTOR IA / ML — CHAMPION (ML-FULL):*\n`;
+    postText += `🏛️ *Ciudad (Nacional):* `;
+    postText += ciudadML.top_predictions.slice(0, 5).map((p, i) => `[${i+1}] ${p.number}`).join(' | ');
+    postText += `\n🌿 *Provincia (Bs As):* `;
+    postText += provML.top_predictions.slice(0, 5).map((p, i) => `[${i+1}] ${p.number}`).join(' | ');
+    postText += `\n\n`;
 
-      postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
-      postText += `   ↳ 📍 Jugar: *${posTag}*\n`;
-      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}*\n`;
-    });
-
-    // 2. Sección Lotería de la Provincia (Bs As)
-    postText += `\n🌿 *LOTERÍA DE LA PROVINCIA (BS AS) - FIJOS DEL DÍA:*\n`;
-    provData.top_predictions.slice(0, 4).forEach((p, idx) => {
-      const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐';
-      const terno = p.suggested_centenas?.[0] || `7${p.number}`;
-      const cuaterno = p.suggested_millar?.[0] || `27${p.number}`;
-      const posTag = idx === 0 
-        ? '👑 A LA CABEZA (1° Premio Pleno)' 
-        : idx === 1 
-          ? '🎯 Al 1° y a los 5' 
-          : idx === 2 
-            ? '💎 A los 5 o a los 10' 
-            : '🛡️ A los 10 o a los 20';
-
-      postText += `${icon} *${p.number}* ("${p.significado}") - ${p.composite_score}% Conf.\n`;
-      postText += `   ↳ 📍 Jugar: *${posTag}*\n`;
-      postText += `   ↳ Terno: *${terno}* | Cuaterno: *${cuaterno}*\n`;
-    });
+    // 2. FILA MOTOR ESTADÍSTICO
+    postText += `📊 *FILA 2: MOTOR ESTADÍSTICO (FRECUENCIAS & ATRASOS):*\n`;
+    postText += `🏛️ *Ciudad (Nacional):* `;
+    postText += ciudadStat.top_predictions.slice(0, 5).map((p, i) => `[${i+1}] ${p.number}`).join(' | ');
+    postText += `\n🌿 *Provincia (Bs As):* `;
+    postText += provStat.top_predictions.slice(0, 5).map((p, i) => `[${i+1}] ${p.number}`).join(' | ');
+    postText += `\n\n`;
 
     // 3. Sección Redoblonas Candado del Día
     if (allData.suggested_redoblonas && allData.suggested_redoblonas.length > 0) {
-      postText += `\n🔒 *REDOBLONAS CANDADO DEL DÍA:*\n`;
-      allData.suggested_redoblonas.forEach((redo) => {
-        postText += `💎 Pareja: *${redo.pair}* (${redo.significados})\n`;
-        postText += `   ↳ Modalidad: ${redo.recommended_positions} (${redo.target})\n`;
+      postText += `🔒 *REDOBLONAS CANDADO SUGERIDAS:*\n`;
+      allData.suggested_redoblonas.slice(0, 2).forEach((redo) => {
+        postText += `💎 Pareja: *${redo.pair}* (${redo.significados}) ↳ ${redo.recommended_positions}\n`;
       });
+      postText += `\n`;
     }
 
-    postText += `\n📲 *Generado con Inteligencia Artificial por Quinela Master Pro*\n`;
+    postText += `📲 *Generado por Quiniela Master Pro con Transparencia Total*\n`;
     postText += `🎁 *Probá la app con 15 DÍAS VIP GRATIS acá:* 👇\n`;
     postText += `https://ingenieriajh.com/quinela.html`;
 
     navigator.clipboard.writeText(postText);
-    setCopyStatus('¡Pronóstico del Día copiado separado por Lotería! 📢✨');
+    setCopyStatus('¡Pronósticos de Ambas Filas copiados para WhatsApp! 📢✨');
     setTimeout(() => setCopyStatus(''), 3000);
   };
 
   const handleQuickGenerate = () => {
-    const randomPick = isVip ? top5[Math.floor(Math.random() * top5.length)] : top5[0];
+    const list = slipEngineChoice === 'ml' ? mlTop5Active : statTop5Active;
+    const randomPick = isVip ? list[Math.floor(Math.random() * list.length)] : list[0];
     setGeneratedTicket({
       ambo: randomPick.number,
       significado: randomPick.significado,
       target_lottery_label: randomPick.target_lottery_label,
       score: randomPick.composite_score,
+      engine: slipEngineChoice === 'ml' ? 'ML-FULL (IA)' : 'Estadístico Base',
       terno: randomPick.suggested_centenas?.[0] || `7${randomPick.number}`,
       cuaterno: randomPick.suggested_millar?.[0] || `17${randomPick.number}`
     });
@@ -160,7 +310,7 @@ export default function PredictionsTab({
 
   const copyToClipboard = () => {
     if (!generatedTicket) return;
-    const text = `🎯 Pronóstico Recomendado (${activePredictions.shift_name || 'Quinela Master Pro'}):\n🏛️ Lotería: ${generatedTicket.target_lottery_label || 'Ambas Loterías'}\nAmbo (2 cifras): ${generatedTicket.ambo} ("${generatedTicket.significado}") (70x)\nTerno (3 cifras): ${generatedTicket.terno} (500x)\nCuaterno (4 cifras): ${generatedTicket.cuaterno} (3.500x)\n⏳ Validez: ${liveShiftInfo.formattedTimeLeft}`;
+    const text = `🎯 Pronóstico Recomendado (${generatedTicket.engine} - ${mlPredictionsActive.shift_name || 'Quiniela Master Pro'}):\n🏛️ Lotería: ${generatedTicket.target_lottery_label || 'Ambas Loterías'}\nAmbo (2 cifras): ${generatedTicket.ambo} ("${generatedTicket.significado}") (70x)\nTerno (3 cifras): ${generatedTicket.terno} (500x)\nCuaterno (4 cifras): ${generatedTicket.cuaterno} (3.500x)\n⏳ Validez: ${liveShiftInfo.formattedTimeLeft}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -176,26 +326,237 @@ export default function PredictionsTab({
     { id: 'nocturna', label: 'Nocturna (21:00)', icon: Clock }
   ];
 
-  const isUrgent = liveShiftInfo.totalSecondsLeft <= 900; // Less than 15 min
-
   const currentShiftObj = shiftOptions.find(s => s.id === activeShift) || shiftOptions[0];
 
+  // Helper to render an Engine Row (Top 5 cards)
+  const renderEngineRow = ({
+    engineKey,
+    title,
+    subtitle,
+    tag,
+    tagColor,
+    statusText,
+    statusColor,
+    timestampText,
+    isSealed = false,
+    canonicalRecord = null,
+    predictionsList,
+    isClosedSection = false
+  }) => {
+    return (
+      <div className="space-y-2 p-3 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
+        {/* Row Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-800">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-base">{engineKey === 'ml' ? '🧠' : '📊'}</span>
+            <span className="text-xs sm:text-sm font-black text-white">{title}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold ${tagColor}`}>
+              {tag}
+            </span>
+            {isSealed && (
+              <span className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5" /> 🔒 LOCKED (TRACEABILITY_V1)
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-mono">
+            <span className={`px-2 py-0.5 rounded-md ${statusColor} font-bold flex items-center gap-1`}>
+              <Lock className="w-2.5 h-2.5" />
+              {statusText}
+            </span>
+            <span>•</span>
+            <span className="truncate">{timestampText}</span>
+          </div>
+        </div>
+
+        {/* Traceability Metadata Bar (Required for Pre-Draw Auditing) */}
+        {canonicalRecord && (
+          <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 text-[10px] font-mono text-slate-300 space-y-1.5 shadow-inner">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="text-amber-400 font-bold flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/30">
+                <Lock className="w-3 h-3 text-amber-400" /> ESTADO: {canonicalRecord.status}
+              </span>
+              <span>•</span>
+              <span>🏛️ JURISDICCIÓN: <strong className="text-white font-bold">{canonicalRecord.jurisdiction?.toUpperCase()}</strong></span>
+              <span>•</span>
+              <span>📅 FECHA: <strong className="text-white font-bold">{canonicalRecord.date}</strong></span>
+              <span>•</span>
+              <span>⏰ TURNO: <strong className="text-white font-bold">{canonicalRecord.shift?.toUpperCase()}</strong></span>
+              <span>•</span>
+              <span>🕒 HORARIO: <strong className="text-white font-bold">{canonicalRecord.draw_time} hs</strong></span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] text-slate-400">
+              <span className="truncate">PREDICTION_ID: <strong className="text-indigo-300 font-mono">{canonicalRecord.prediction_id}</strong></span>
+              <span>•</span>
+              <span>CREATED: <strong className="text-slate-300">{canonicalRecord.created_at || 'N/A'}</strong></span>
+              <span>•</span>
+              <span>LOCKED: <strong className="text-slate-300">{canonicalRecord.locked_at || 'N/A'}</strong></span>
+              <span>•</span>
+              <span>DEADLINE: <strong className="text-amber-300 font-bold">{canonicalRecord.deadline}</strong></span>
+            </div>
+            {canonicalRecord.prediction_hash && (
+              <div className="text-[9px] text-slate-400 truncate flex items-center gap-1">
+                <span>HASH SHA-256:</span>
+                <strong className="text-emerald-400 font-mono select-all bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  {canonicalRecord.prediction_hash}
+                </strong>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 5 Cards Grid or Loading/Unregistered State */}
+        {(!predictionsList || predictionsList.length === 0) ? (
+          <div className="p-4 text-center rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 font-mono text-xs space-y-1">
+            <div className="flex items-center justify-center gap-1.5 text-amber-400">
+              <Lock className="w-4 h-4" />
+              <span className="font-bold">
+                {isClosedSection 
+                  ? 'SIN PREDICCIÓN REGISTRADA' 
+                  : (loading ? 'Cargando pronóstico sellado...' : `SIN PRONÓSTICO SELLADO PARA ${(canonicalRecord?.shift || cleanActiveShift || 'ESTE TURNO').toUpperCase()}`)}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-500">
+              {isClosedSection 
+                ? 'No existía snapshot sellado en Ledger previo a este sorteo. Generación retrospectiva deshabilitada.'
+                : 'No existe registro canónico sellado antes del deadline para este turno y jurisdicción.'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+            {predictionsList.map((cand, idx) => {
+              const isLocked = !isVip && idx > 0;
+              const hitInfo = isClosedSection ? evaluateItemInClosedShift(cand.number, engineKey) : null;
+
+              if (isLocked) {
+                return (
+                  <div
+                    key={`${engineKey}-${cand.number}-${idx}`}
+                    onClick={onOpenUpgrade}
+                    className="relative rounded-xl p-3 bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between overflow-hidden cursor-pointer group hover:border-amber-500/50 transition-all min-h-[120px]"
+                  >
+                    <div className="filter blur-sm select-none opacity-20 text-center">
+                      <span className="text-2xl font-black font-mono">{cand.number}</span>
+                    </div>
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-2 bg-slate-950/85 backdrop-blur-xs text-center space-y-1">
+                      <Crown className="w-3.5 h-3.5 text-amber-400" />
+                      <div className="text-[11px] font-black text-white">Top #{idx + 1} (VIP)</div>
+                      <span className="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30">
+                        Desbloquear
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              const isExpanded = expandedIndex === `${engineKey}-${idx}`;
+
+              return (
+                <div
+                  key={`${engineKey}-${cand.number}-${idx}`}
+                  onClick={() => setExpandedIndex(isExpanded ? null : `${engineKey}-${idx}`)}
+                  className={`rounded-xl p-2.5 transition-all border cursor-pointer relative ${
+                    hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                      ? 'bg-gradient-to-b from-amber-950/60 to-slate-950 border-amber-400 shadow-md ring-1 ring-amber-400/50'
+                      : hitInfo?.is_hit
+                        ? 'bg-gradient-to-b from-emerald-950/50 to-slate-950 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
+                        : idx === 0 && !isClosedSection
+                          ? 'bg-gradient-to-b from-slate-900 to-slate-950 border-amber-500/40'
+                          : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {/* Header of Card */}
+                  <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-800/80 text-[9.5px]">
+                    <span className="font-mono font-bold text-slate-400">
+                      #{idx + 1} • {idx === 0 ? 'Cabeza' : idx === 1 ? '1° y 5' : idx < 4 ? 'A los 10' : 'A los 20'}
+                    </span>
+                    <span className="font-mono text-emerald-400 font-bold">
+                      {cand.composite_score || cand.predictive_score}%
+                    </span>
+                  </div>
+
+                  {/* Main Number & Meaning */}
+                  <div className="flex items-center justify-between gap-1.5 my-1">
+                    <div>
+                      <span className={`text-2xl font-black font-mono tracking-tight ${
+                        hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                          ? 'text-amber-300'
+                          : hitInfo?.is_hit
+                            ? 'text-emerald-300'
+                            : idx === 0 && !isClosedSection
+                              ? 'text-amber-400'
+                              : 'text-white'
+                      }`}>
+                        {cand.number}
+                      </span>
+                      <span className="text-[10px] text-slate-300 block truncate max-w-[95px]">
+                        "{cand.significado}"
+                      </span>
+                    </div>
+
+                    <div className="text-right text-[9px] font-mono text-slate-400">
+                      <div>T: <strong className="text-slate-200">{cand.suggested_centenas?.[0] || `7${cand.number}`}</strong></div>
+                      <div>C: <strong className="text-slate-200">{cand.suggested_millar?.[0] || `17${cand.number}`}</strong></div>
+                    </div>
+                  </div>
+
+                  {/* Hit Result Badge in Closed Section */}
+                  {isClosedSection && (
+                    <div className="mt-1.5 pt-1 border-t border-slate-800/80">
+                      <span className={`w-full block text-center text-[9.5px] font-mono font-bold px-1 py-0.5 rounded ${
+                        hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                          ? 'bg-amber-500 text-slate-950 font-black shadow'
+                          : hitInfo?.is_hit
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-slate-900 text-slate-500'
+                      }`}>
+                        {hitInfo?.label}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Traceability Trigger */}
+                  {!isClosedSection && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setTraceCandidate(cand);
+                      }}
+                      className="mt-1 w-full py-1 text-[9px] font-bold text-slate-400 hover:text-amber-300 flex items-center justify-center gap-1 border-t border-slate-800/80 cursor-pointer"
+                    >
+                      <HelpCircle className="w-2.5 h-2.5 text-amber-400" />
+                      <span>¿Por qué?</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-3 sm:space-y-4 animate-fadeIn">
-      {/* 1. Barra Sticky Superior de Una Sola Línea con Próximo Sorteo y Menú de Rayitas */}
+    <div className="space-y-4 animate-fadeIn">
+      {/* 1. Barra Sticky Superior con Próximo Sorteo y Menú de Rayitas */}
       <div className="sticky top-[48px] sm:top-[56px] z-30 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-1.5 bg-slate-950/95 backdrop-blur-md border-b border-amber-500/30 flex items-center justify-between gap-2 shadow-md">
-        {/* Próximo Sorteo Activo en una sola línea */}
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="relative flex h-2 w-2 shrink-0">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
           </span>
           <span className="text-[11px] sm:text-xs font-black text-amber-300 truncate">
-            Próximo Sorteo Activo: <strong className="text-white">{activePredictions.shift_name || 'En Vivo'}</strong> ({activePredictions.shift_time || '15:00'} hs)
+            Próximo Sorteo Activo: <strong className="text-white">{mlPredictionsActive.shift_name || 'En Vivo'}</strong> ({mlPredictionsActive.shift_time || '15:00'} hs)
+          </span>
+          <span className="text-[10px] font-mono text-amber-400 font-bold bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 ml-1 shrink-0">
+            ⏳ {liveShiftInfo.formattedTimeLeft}
           </span>
         </div>
 
-        {/* Menú de Rayitas (☰) para seleccionar turno */}
+        {/* Menú de Rayitas (☰) */}
         <div className="relative shrink-0">
           <button
             type="button"
@@ -208,13 +569,9 @@ export default function PredictionsTab({
             <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${isShiftMenuOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Desplegable Flotante del Menú de Rayitas */}
           {isShiftMenuOpen && (
             <>
-              <div 
-                className="fixed inset-0 z-40" 
-                onClick={() => setIsShiftMenuOpen(false)} 
-              />
+              <div className="fixed inset-0 z-40" onClick={() => setIsShiftMenuOpen(false)} />
               <div className="absolute right-0 mt-1.5 w-60 bg-slate-900/95 backdrop-blur-xl border border-amber-500/30 rounded-2xl shadow-2xl py-1.5 z-50 animate-fadeIn">
                 <div className="px-3 py-1.5 border-b border-slate-800 text-[10px] font-black text-amber-400 uppercase tracking-wider">
                   Seleccionar Turno Oficial
@@ -250,133 +607,134 @@ export default function PredictionsTab({
         </div>
       </div>
 
-      {/* 2. Título Superior Dinámico (ML vs Baseline) */}
-      <div className="flex items-center justify-between pt-0.5 px-0.5">
+      {/* 2. Título & Selector de Lotería */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
-            {engineMode === 'ml' ? (
-              <>
-                <Cpu className="w-4 h-4 text-indigo-400" />
-                <span>Predicciones Machine Learning</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">v1.0 ML</span>
-              </>
-            ) : (
-              <>
-                <Activity className="w-4 h-4 text-amber-400" />
-                <span>Motor Estadístico Base</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40">Baseline</span>
-              </>
-            )}
+          <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+            <Layers className="w-4 h-4 text-amber-400" />
+            <span>Pronósticos Oficiales Dual-Engine</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              Transparencia Total
+            </span>
           </h2>
-          <p className="text-[10.5px] text-slate-400">
-            {engineMode === 'ml' 
-              ? 'Regresión Logística L2 con 22 features temporales (Inferencia 100% Offline).'
-              : 'Convergencia de frecuencias, atrasos y cadenas de Markov (Baseline descriptivo).'}
+          <p className="text-[11px] text-slate-400">
+            Comparativa simultánea: Motor IA (ML-FULL Champion) y Motor Estadístico Base.
           </p>
         </div>
 
-        {/* Botón de Auditoría / Benchmark */}
         <button
           type="button"
           onClick={() => setIsEfficiencyModalOpen(true)}
-          className="bg-slate-950 hover:bg-slate-900 px-2.5 py-1 rounded-xl border border-amber-500/30 text-right cursor-pointer hover:border-amber-400 transition-colors shrink-0 shadow"
-          title="Ver auditoría y benchmark out-of-sample"
+          className="bg-slate-950 hover:bg-slate-900 px-3 py-1 rounded-xl border border-amber-500/30 text-right cursor-pointer hover:border-amber-400 transition-colors shrink-0 shadow self-start sm:self-auto"
         >
           <div className="text-[9px] text-slate-400 flex items-center gap-0.5 justify-end">
-            <span>Auditoría</span>
+            <span>Auditoría Out-of-Sample</span>
             <Info className="w-2.5 h-2.5 text-amber-400" />
           </div>
           <div className="text-xs font-black text-emerald-400 font-mono">
-            {engineMode === 'ml' ? '74.25%' : (backtest?.head_hit_rate !== undefined ? `${backtest.head_hit_rate}%` : '61.25%')}
+            74.25% Acierto en 20 Pzas
           </div>
         </button>
       </div>
 
-      {/* 3. Selector de Lotería Compacto (Ambas / Nacional / Provincia) */}
-      <div className="grid grid-cols-3 gap-1.5 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 shadow">
-        <button
-          onClick={() => setSelectedLottery('all')}
-          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
-            selectedLottery === 'all'
-              ? 'bg-amber-500 text-slate-950 shadow font-black'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <span>🌟 Ambas</span>
-        </button>
-
-        <button
-          onClick={() => setSelectedLottery('ciudad')}
-          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
-            selectedLottery === 'ciudad'
-              ? 'bg-amber-500 text-slate-950 shadow font-black'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <span>🏛️ Nacional</span>
-        </button>
-
-        <button
-          onClick={() => setSelectedLottery('provincia')}
-          className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
-            selectedLottery === 'provincia'
-              ? 'bg-amber-500 text-slate-950 shadow font-black'
-              : 'text-slate-400 hover:text-white'
-          }`}
-        >
-          <span>🌿 Provincia</span>
-        </button>
-      </div>
-
-      {/* 3.1 Selector de Motor: Machine Learning vs Estadístico Base */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-2xl bg-slate-900/90 border border-slate-800 shadow">
-        <div className="flex items-center gap-1.5">
-          <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="text-[11px] font-bold text-slate-300">Algoritmo Activo:</span>
-        </div>
-        <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+      {/* 3. Selector de Lotería y Selector de Visualización */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {/* Selector de Lotería */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 shadow">
           <button
-            type="button"
-            onClick={() => setEngineMode('ml')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              engineMode === 'ml'
-                ? 'bg-indigo-600 text-white shadow font-black'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <span>🧠 ML v1.0 (Regresión)</span>
-            <span className="text-[9px] px-1 py-0.2 bg-indigo-500/30 text-indigo-200 rounded font-mono">
-              74.3%
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setEngineMode('baseline')}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              engineMode === 'baseline'
+            onClick={() => setSelectedLottery('all')}
+            className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              selectedLottery === 'all'
                 ? 'bg-amber-500 text-slate-950 shadow font-black'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <span>⚡ Estadístico Base</span>
+            <span>🌟 Ambas</span>
+          </button>
+          <button
+            onClick={() => setSelectedLottery('ciudad')}
+            className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              selectedLottery === 'ciudad'
+                ? 'bg-amber-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🏛️ Nacional</span>
+          </button>
+          <button
+            onClick={() => setSelectedLottery('provincia')}
+            className={`py-1.5 px-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              selectedLottery === 'provincia'
+                ? 'bg-amber-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🌿 Provincia</span>
+          </button>
+        </div>
+
+        {/* Selector de Modo de Visualización (Ambos / Solo ML / Solo Estadístico) */}
+        <div className="grid grid-cols-3 gap-1 bg-slate-900/90 p-1 rounded-2xl border border-slate-800 shadow">
+          <button
+            onClick={() => setEngineFilter('both')}
+            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              engineFilter === 'both'
+                ? 'bg-indigo-600 text-white shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>✨ 2 Filas (Ambos)</span>
+          </button>
+          <button
+            onClick={() => setEngineFilter('ml')}
+            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              engineFilter === 'ml'
+                ? 'bg-indigo-600 text-white shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🧠 Solo IA</span>
+          </button>
+          <button
+            onClick={() => setEngineFilter('baseline')}
+            className={`py-1.5 px-2 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              engineFilter === 'baseline'
+                ? 'bg-amber-500 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>📊 Solo Estadístico</span>
           </button>
         </div>
       </div>
 
-      {/* 4. Cuatro Botones Compactos al Costado (Copiar y Jugar en Plataforma) */}
-      <div className="space-y-1">
+      {/* 4. Botones de Acción (Cupón Digital, Copiar WhatsApp, Jugar) */}
+      <div className="space-y-1.5">
         {copyStatus && (
           <div className="text-center">
-            <span className="text-[10px] font-bold text-emerald-300 bg-emerald-950/90 px-2.5 py-0.5 rounded-full border border-emerald-500/50 shadow animate-fadeIn inline-block">
+            <span className="text-[10.5px] font-bold text-emerald-300 bg-emerald-950/90 px-3 py-1 rounded-full border border-emerald-500/50 shadow inline-block">
               {copyStatus}
             </span>
           </div>
         )}
 
-        {/* Botón Destacado: Cupón Digital para el Agenciero (Letra Grande) */}
         <button
           type="button"
-          onClick={() => setIsSlipModalOpen(true)}
+          onClick={() => {
+            setIsSlipModalOpen(true);
+            try {
+              const currentEngine = slipEngineChoice === 'ml' ? 'ML-FULL' : 'STATISTICAL';
+              const activeRecord = getOrCreateCanonicalPrediction(todayStr, selectedLottery === 'all' ? 'ciudad' : selectedLottery, resolvedActiveShiftId, currentEngine);
+              const top5 = (slipEngineChoice === 'ml' ? mlTop5Active : statTop5Active).map(p => p.number);
+              recordCouponSnapshot({
+                prediction_id: activeRecord.prediction_id,
+                exact_top5_displayed: top5,
+                engine: currentEngine,
+                jurisdiction: selectedLottery,
+                shift: resolvedActiveShiftId
+              });
+            } catch (e) {}
+          }}
           className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/30 transition-all active:scale-98 cursor-pointer"
         >
           <Ticket className="w-4 h-4 text-slate-950" />
@@ -387,49 +745,41 @@ export default function PredictionsTab({
         </button>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-          {/* Botón 1: Copiar Nacional */}
           <button
             type="button"
-            onClick={() => handleCopyAllLottery('ciudad')}
+            onClick={() => handleCopyAllLottery('ciudad', 'ml')}
             className="flex items-center justify-center gap-1 py-2 px-2 bg-slate-900/90 hover:bg-slate-800 border border-blue-500/40 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
-            title="Copiar jugadas recomendadas para Lotería Nacional"
           >
             <span className="text-xs">🏛️</span>
             <span className="text-[11px] font-bold text-white truncate">Copiar Nacional</span>
             <Copy className="w-3 h-3 text-blue-400 shrink-0 ml-auto" />
           </button>
 
-          {/* Botón 2: Copiar Provincia */}
           <button
             type="button"
-            onClick={() => handleCopyAllLottery('provincia')}
+            onClick={() => handleCopyAllLottery('provincia', 'ml')}
             className="flex items-center justify-center gap-1 py-2 px-2 bg-slate-900/90 hover:bg-slate-800 border border-emerald-500/40 rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
-            title="Copiar jugadas recomendadas para Provincia"
           >
             <span className="text-xs">🌿</span>
             <span className="text-[11px] font-bold text-white truncate">Copiar Prov.</span>
             <Copy className="w-3 h-3 text-emerald-400 shrink-0 ml-auto" />
           </button>
 
-          {/* Botón 3: Pronóstico del Día (Para WhatsApp y Redes) */}
           <button
             type="button"
             onClick={handleCopyDailySummaryForSocialMedia}
             className="flex items-center justify-center gap-1 py-2 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
-            title="Copiar resumen del día organizado para WhatsApp"
           >
             <Share2 className="w-3 h-3 shrink-0" />
-            <span className="text-[11px] font-black truncate">Pronóstico del Día</span>
+            <span className="text-[11px] font-black truncate">Pronóstico Día</span>
             <Copy className="w-3 h-3 shrink-0 ml-auto" />
           </button>
 
-          {/* Botón 4: Jugar en Plataforma Oficial */}
           <a
             href={getAffiliateUrl()}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-1 py-2 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-xl text-center transition-all active:scale-95 cursor-pointer shadow"
-            title="Abrir plataforma oficial de juego"
           >
             <span className="text-xs">🌐</span>
             <span className="text-[11px] font-black truncate">Jugar Oficial</span>
@@ -438,218 +788,152 @@ export default function PredictionsTab({
         </div>
       </div>
 
-      {/* Top 5 Highlight Cards with Countdown on Each Signal */}
-      <div className="space-y-3">
+      {/* ========================================================================= */}
+      {/* BLOQUE 1: PRÓXIMO SORTEO (ACTIVO) */}
+      {/* ========================================================================= */}
+      <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-            <Activity className="w-4 h-4 text-amber-400 animate-pulse" /> Top 5 Recomendaciones de la IA
-          </h3>
-          {!isVip && (
-            <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
-              <Lock className="w-3 h-3" /> 1 Libre / 4 VIP
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
+            <h3 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider">
+              1. Próximo Sorteo a Jugar: <span className="text-amber-400">{mlPredictionsActive.shift_name}</span> ({mlPredictionsActive.shift_time || '15:00'} hs)
+            </h3>
+          </div>
+          <div className="text-[10px] font-mono text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">
+            ⏳ Cierra en: {liveShiftInfo.formattedTimeLeft}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {top5.map((cand, idx) => {
-            const isLocked = !isVip && idx > 0;
-            const isExpanded = expandedIndex === idx;
+        {/* FILA 1: IA / ML — Champion (ML-FULL) */}
+        {(engineFilter === 'both' || engineFilter === 'ml') && renderEngineRow({
+          engineKey: 'ml',
+          title: 'Fila 1: Motor IA / Machine Learning — Champion (ML-FULL)',
+          subtitle: 'Regresión Logística L2 + 22 Features Causales',
+          tag: 'Champion v1.0',
+          tagColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+          statusText: 'LOCKED',
+          statusColor: 'bg-emerald-950 text-emerald-400 border border-emerald-500/30',
+          timestampText: `Deadline: ${canonicalMLActive?.draw_time || '10:15'} hs`,
+          isSealed: true,
+          canonicalRecord: canonicalMLActive,
+          predictionsList: mlTop5Active,
+          isClosedSection: false
+        })}
 
-            if (isLocked) {
-              return (
-                <div
-                  key={cand.number}
-                  onClick={onOpenUpgrade}
-                  className="relative rounded-2xl p-4 bg-slate-900/60 border border-slate-800 flex flex-col justify-between overflow-hidden cursor-pointer group hover:border-amber-500/50 transition-all min-h-[155px]"
-                >
-                  {/* Blurred Background Fake Content */}
-                  <div className="filter blur-sm select-none opacity-25">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-3xl font-black font-mono px-3 py-1 bg-slate-950 rounded-xl">
-                        {cand.number}
-                      </span>
-                      <div className="text-[10px] font-mono text-amber-400">
-                        ⏳ {liveShiftInfo.formattedTimeLeft}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Golden VIP Lock Overlay */}
-                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-3 bg-slate-950/80 backdrop-blur-xs text-center space-y-1.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shadow">
-                      <Crown className="w-4 h-4" />
-                    </div>
-                    <div className="text-xs font-black text-white">
-                      Pronóstico #{idx + 1} (VIP)
-                    </div>
-                    <div className="text-[10px] font-mono text-amber-300 font-bold flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Vence en: {liveShiftInfo.formattedTimeLeft}
-                    </div>
-                    <span className="text-[10px] text-amber-300 font-bold bg-amber-950/80 px-2.5 py-0.5 rounded-full border border-amber-500/30">
-                      Tocar para Desbloquear
-                    </span>
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={cand.number}
-                className={`rounded-2xl p-3 sm:p-3.5 transition-all border cursor-pointer ${
-                  idx === 0
-                    ? 'bg-gradient-to-b from-amber-950/50 to-slate-900 border-amber-500/60 shadow-md ring-1 ring-amber-500/30'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                }`}
-                onClick={() => setExpandedIndex(isExpanded ? null : idx)}
-              >
-                {/* Header of Signal: Target Lottery Badge, Position Badge & Live Countdown Timer */}
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800/80">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
-                      cand.target_lottery === 'ciudad' 
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                        : cand.target_lottery === 'provincia'
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                          : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                    }`}>
-                      {cand.target_lottery === 'ciudad' ? '🏛️ Ciudad' : cand.target_lottery === 'provincia' ? '🌿 Provincia' : '🌟 Ambas'}
-                    </span>
-
-                    {/* Insignia de Posición Sugerida para Jugar */}
-                    <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase flex items-center gap-1 ${
-                      idx === 0 
-                        ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-xs' 
-                        : idx === 1 
-                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' 
-                          : idx < 4 
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                            : 'bg-slate-800 text-slate-300 border border-slate-700'
-                    }`}>
-                      {idx === 0 
-                        ? '👑 A la Cabeza' 
-                        : idx === 1 
-                          ? '🎯 Al 1° y a los 5' 
-                          : idx < 4 
-                            ? '💎 A los 5 o a los 10' 
-                            : '🛡️ A los 10 o a los 20'}
-                    </span>
-                  </div>
-
-                  {/* Individual Live Timer Badge */}
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-lg bg-slate-950 border border-slate-800 text-[9.5px] font-mono font-bold text-amber-400 shrink-0">
-                    <Clock className="w-2.5 h-2.5 text-amber-400" />
-                    <span>{liveShiftInfo.formattedTimeLeft}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className={`text-2xl sm:text-3xl font-black font-mono tracking-tight px-2.5 py-0.5 rounded-xl border shadow-inner ${
-                      idx === 0
-                        ? 'bg-slate-950 text-amber-400 border-amber-500/50'
-                        : 'bg-slate-950 text-white border-slate-800'
-                    }`}>
-                      {cand.number}
-                    </span>
-                    <div>
-                      <div className="text-xs sm:text-sm font-black text-white leading-tight">
-                        "{cand.significado}"
-                      </div>
-                      <div className="text-[9.5px] text-slate-400">
-                        {cand.target_lottery_label}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-black text-[10.5px]">
-                      Score: {cand.composite_score}/100
-                    </span>
-                  </div>
-                </div>
-
-                {/* Explicit Play Type Breakdown (2 cifras, 3 cifras, 4 cifras) - Compact */}
-                <div className="mt-2 pt-1.5 border-t border-slate-800/80 grid grid-cols-3 gap-1 text-[10.5px] bg-slate-950/80 p-2 rounded-xl border border-slate-800/50 text-center">
-                  <div>
-                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Ambo (2c)</span>
-                    <span className="font-mono font-black text-amber-300">{cand.number}</span>
-                  </div>
-
-                  <div className="border-x border-slate-800/80">
-                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Terno (3c)</span>
-                    <span className="font-mono font-black text-slate-200">{cand.suggested_centenas?.[0]}</span>
-                  </div>
-
-                  <div>
-                    <span className="text-[8.5px] text-slate-500 block uppercase font-bold">Cuaterno (4c)</span>
-                    <span className="font-mono font-black text-emerald-400">{cand.suggested_millar?.[0]}</span>
-                  </div>
-                </div>
-
-                {/* Botón de Trazabilidad y Transparencia */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setTraceCandidate(cand);
-                  }}
-                  className="mt-2 w-full py-1.5 px-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 text-[10.5px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                >
-                  <HelpCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>¿Por qué aparece este número? (Trazabilidad)</span>
-                </button>
-
-                {/* Free User Informational Banner directly under Top Prediction #1 */}
-                {idx === 0 && !isVip && (
-                  <div className="mt-3 p-3 rounded-xl bg-gradient-to-r from-amber-500/15 via-slate-900 to-amber-500/10 border border-amber-500/30 text-xs flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-inner">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span className="text-slate-300 text-[11px]">
-                        <strong>Cuenta Gratuita:</strong> Tienes desbloqueado el pronóstico #1 de mayor probabilidad. Para desbloquear el Top 5 completo, Redoblonas Candado y alertas en tiempo real, activa tu suscripción VIP.
-                      </span>
-                    </div>
-                    {onOpenUpgrade && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenUpgrade();
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0 cursor-pointer shadow active:scale-95 transition-all"
-                      >
-                        Activar VIP
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Expanded Details */}
-                {isExpanded && (
-                  <div className="mt-3 pt-2.5 border-t border-slate-800 text-xs space-y-1.5 animate-fadeIn">
-                    <div className="text-[11px] font-bold text-slate-300">
-                      Fundamento Estadístico Integrado:
-                    </div>
-                    {cand.reasons?.map((r, ridx) => (
-                      <div key={ridx} className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
-                        {r}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {/* FILA 2: Motor Estadístico Base (Frecuencias & Atrasos) */}
+        {(engineFilter === 'both' || engineFilter === 'baseline') && renderEngineRow({
+          engineKey: 'baseline',
+          title: 'Fila 2: Motor Estadístico (Frecuencias, Atrasos & Markov)',
+          subtitle: 'Baseline Descriptivo con 2.223 Sorteos Verificados',
+          tag: 'Baseline Estadístico',
+          tagColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+          statusText: 'LOCKED',
+          statusColor: 'bg-blue-950 text-blue-400 border border-blue-500/30',
+          timestampText: `Deadline: ${canonicalStatActive?.draw_time || '10:15'} hs`,
+          isSealed: true,
+          canonicalRecord: canonicalStatActive,
+          predictionsList: statTop5Active,
+          isClosedSection: false
+        })}
       </div>
 
-      {/* Suggested Redoblonas Candado for this shift with Live Clock */}
-      {activePredictions.suggested_redoblonas && activePredictions.suggested_redoblonas.length > 0 && (
+      {/* ========================================================================= */}
+      {/* BLOQUE 2: ÚLTIMO SORTEO CERRADO (NO OCULTAR NUNCA) */}
+      {/* ========================================================================= */}
+      <div className="space-y-3 pt-3 border-t-2 border-slate-800">
+        <div className="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-400" />
+              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+                2. Último Sorteo Cerrado: <span className="text-amber-300">{lastClosed.name} ({lastClosed.timeStr} hs)</span>
+              </h3>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Auditoría de pronósticos recomendados vs extractos oficiales recién extraídos de la pizarra.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {ciudadDraw && ciudadDraw.status === 'PUBLISHED' && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 font-bold">
+                🏛️ Ciudad Cabeza: <strong className="text-white">{ciudadDraw.p1 || ciudadDraw.head_millar}</strong> ({ciudadDraw.head_ambo || (ciudadDraw.p1 || ciudadDraw.head_millar || '').slice(-2)})
+              </span>
+            )}
+            {provinciaDraw && provinciaDraw.status === 'PUBLISHED' && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold">
+                🌿 Prov. Cabeza: <strong className="text-white">{provinciaDraw.p1 || provinciaDraw.head_millar}</strong> ({provinciaDraw.head_ambo || (provinciaDraw.p1 || provinciaDraw.head_millar || '').slice(-2)})
+              </span>
+            )}
+            {(!ciudadDraw || ciudadDraw.status !== 'PUBLISHED') && (!provinciaDraw || provinciaDraw.status !== 'PUBLISHED') && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-300 font-bold flex items-center gap-1">
+                ⏳ Esperando resultado oficial de lotería
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Nota de proveniencia de auditoría */}
+        <div className="text-[10.5px] px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>
+            {isClosedShiftSealedInLedger
+              ? '🛡️ Estado de Auditoría: PRONOSTICADO ANTES DEL SORTEO (Bloqueo criptográfico Fase 5 verificado en Ledger).'
+              : 'ℹ️ Estado de Auditoría: COINCIDENCIA DETERMINISTA — Las predicciones se calculan estrictamente con datos previos al sorteo pero no contaban con snapshot sellado en Ledger.'}
+          </span>
+        </div>
+
+        {/* Fila 1 Cerrada: IA / ML */}
+        {(() => {
+          const targetClosedDraw = cleanJur === 'provincia' ? provinciaDraw : ciudadDraw;
+          const evalClosedML = targetClosedDraw && canonicalClosedML ? evaluateCanonicalPrediction(canonicalClosedML, targetClosedDraw) : null;
+          const isClosedMLEvaluated = Boolean(evalClosedML && evalClosedML.is_evaluated);
+
+          return (engineFilter === 'both' || engineFilter === 'ml') && renderEngineRow({
+            engineKey: 'ml',
+            title: `Resultados Fila 1: Motor IA (ML-FULL) en ${lastClosed.name}`,
+            subtitle: 'Verificación de aciertos del modelo Champion',
+            tag: 'ML-FULL Auditado',
+            tagColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
+            statusText: isClosedMLEvaluated ? 'EVALUADO' : '⏳ Sorteo cerrado — esperando resultado oficial',
+            statusColor: isClosedMLEvaluated ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40',
+            timestampText: isClosedShiftSealedInLedger ? 'Sellado: 16:51 ART' : `Cerrado: ${lastClosed.timeStr} hs`,
+            isSealed: isClosedShiftSealedInLedger,
+            canonicalRecord: canonicalClosedML,
+            predictionsList: mlTop5Closed,
+            isClosedSection: true
+          });
+        })()}
+
+        {/* Fila 2 Cerrada: Motor Estadístico */}
+        {(() => {
+          const targetClosedDraw = cleanJur === 'provincia' ? provinciaDraw : ciudadDraw;
+          const evalClosedStat = targetClosedDraw && canonicalClosedStat ? evaluateCanonicalPrediction(canonicalClosedStat, targetClosedDraw) : null;
+          const isClosedStatEvaluated = Boolean(evalClosedStat && evalClosedStat.is_evaluated);
+
+          return (engineFilter === 'both' || engineFilter === 'baseline') && renderEngineRow({
+            engineKey: 'baseline',
+            title: `Resultados Fila 2: Motor Estadístico en ${lastClosed.name}`,
+            subtitle: 'Verificación de aciertos de frecuencias y atrasos',
+            tag: 'Estadístico Auditado',
+            tagColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+            statusText: isClosedStatEvaluated ? 'EVALUADO' : '⏳ Sorteo cerrado — esperando resultado oficial',
+            statusColor: isClosedStatEvaluated ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/30' : 'bg-amber-950/80 text-amber-300 border border-amber-500/40',
+            timestampText: `Cerrado: ${lastClosed.timeStr} hs`,
+            isSealed: Boolean(canonicalClosedStat && canonicalClosedStat.status === 'LOCKED'),
+            canonicalRecord: canonicalClosedStat,
+            predictionsList: statTop5Closed,
+            isClosedSection: true
+          });
+        })()}
+      </div>
+
+      {/* Suggested Redoblonas Candado */}
+      {mlPredictionsActive.suggested_redoblonas && mlPredictionsActive.suggested_redoblonas.length > 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs sm:text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-              <Flame className="w-4 h-4 text-rose-400" /> Redoblonas Candado del Turno ({activePredictions.shift_name})
+              <Flame className="w-4 h-4 text-rose-400" /> Redoblonas Candado del Turno ({mlPredictionsActive.shift_name})
             </h3>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-[10px] font-mono font-bold text-amber-400">
               <Clock className="w-3 h-3" />
@@ -658,7 +942,7 @@ export default function PredictionsTab({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {activePredictions.suggested_redoblonas.map((redo, ridx) => (
+            {mlPredictionsActive.suggested_redoblonas.map((redo, ridx) => (
               <div key={ridx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="font-mono font-black text-amber-400 text-sm">{redo.pair}</span>
@@ -672,7 +956,7 @@ export default function PredictionsTab({
         </div>
       )}
 
-      {/* Quick Generator & Copy Box */}
+      {/* Generador Rápido de Jugada */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -680,7 +964,7 @@ export default function PredictionsTab({
           </div>
           <div>
             <div className="font-bold text-white text-xs sm:text-sm">Generador Rápido de Jugada</div>
-            <div className="text-[10px] text-slate-400">Arma Ambo, Terno y Cuaterno para {activePredictions.shift_name} (⏳ {liveShiftInfo.formattedTimeLeft})</div>
+            <div className="text-[10px] text-slate-400">Arma Ambo, Terno y Cuaterno para {mlPredictionsActive.shift_name} (⏳ {liveShiftInfo.formattedTimeLeft})</div>
           </div>
         </div>
 
@@ -705,25 +989,24 @@ export default function PredictionsTab({
         </div>
       </div>
 
-      {/* Explanatory Modal for Efficiency */}
+      {/* Modales */}
       <EfficiencyExplanationModal
         isOpen={isEfficiencyModalOpen}
         onClose={() => setIsEfficiencyModalOpen(false)}
         rate={backtest?.head_hit_rate !== undefined ? `${backtest.head_hit_rate}% Aciertos Retrospectivos` : "Base Oficial 2.223 Sorteos"}
       />
 
-      {/* Traceability Modal */}
       {traceCandidate && (
         <TraceabilityModal
           isOpen={!!traceCandidate}
           onClose={() => setTraceCandidate(null)}
           prediction={traceCandidate}
-          shiftName={activePredictions?.shift_name}
+          shiftName={mlPredictionsActive?.shift_name}
           lotteryLabel={traceCandidate.target_lottery_label || selectedLottery}
         />
       )}
 
-      {/* MODAL CUPÓN DIGITAL PARA EL AGENCIERO (MODO JUGADA RÁPIDA / LETRA GRANDE) */}
+      {/* MODAL CUPÓN DIGITAL PARA EL AGENCIERO */}
       {isSlipModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
           <div className="bg-slate-950 border-2 border-amber-400 rounded-3xl max-w-md w-full p-4 sm:p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto ring-2 ring-amber-400/40">
@@ -738,7 +1021,7 @@ export default function PredictionsTab({
                     Cupón para el Agenciero
                   </h3>
                   <span className="text-xs text-amber-300 font-bold uppercase">
-                    {activePredictions.shift_name || 'Turno Oficial'} • {selectedLottery === 'ciudad' ? 'Lotería Nacional' : selectedLottery === 'provincia' ? 'Lotería Provincia' : 'Nacional y Provincia'}
+                    {mlPredictionsActive.shift_name || 'Turno Oficial'} • {selectedLottery === 'ciudad' ? 'Lotería Nacional' : selectedLottery === 'provincia' ? 'Lotería Provincia' : 'Nacional y Provincia'}
                   </span>
                 </div>
               </div>
@@ -749,6 +1032,32 @@ export default function PredictionsTab({
                 className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Selector de Motor dentro del Cupón */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-900 rounded-xl border border-slate-800 text-xs">
+              <button
+                type="button"
+                onClick={() => setSlipEngineChoice('ml')}
+                className={`py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                  slipEngineChoice === 'ml'
+                    ? 'bg-indigo-600 text-white font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🧠 Fila 1: Motor IA (ML-FULL)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSlipEngineChoice('baseline')}
+                className={`py-1.5 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                  slipEngineChoice === 'baseline'
+                    ? 'bg-amber-500 text-slate-950 font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                📊 Fila 2: Estadístico Base
               </button>
             </div>
 
@@ -768,20 +1077,20 @@ export default function PredictionsTab({
               </button>
             </div>
 
-            {/* Tarjeta de Números en Pantalla Completa para Mostrar en Ventanilla */}
+            {/* Tarjeta de Números en Pantalla Completa para Ventanilla */}
             <div className="bg-slate-900 border-2 border-dashed border-amber-400/60 rounded-2xl p-4 space-y-3 shadow-inner">
               <div className="text-center pb-2 border-b border-slate-800">
                 <span className="text-[11px] font-mono text-slate-400 block uppercase font-bold">
-                  BOLETA OFICIAL RECOMENDADA
+                  BOLETA OFICIAL RECOMENDADA ({slipEngineChoice === 'ml' ? 'IA ML-FULL' : 'ESTADÍSTICO'})
                 </span>
                 <span className="text-xs font-black text-amber-400">
                   MOSTRAR EN VENTANILLA AL JUGAR
                 </span>
               </div>
 
-              {/* Números Principales (Top 5 Pronósticos) */}
+              {/* Números Principales */}
               <div className="space-y-2">
-                {activePredictions.top_predictions.slice(0, 5).map((item, idx) => (
+                {(slipEngineChoice === 'ml' ? mlTop5Active : statTop5Active).map((item, idx) => (
                   <div key={idx} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className="text-xs font-bold text-slate-400">[{idx + 1}]</span>
@@ -796,16 +1105,6 @@ export default function PredictionsTab({
                   </div>
                 ))}
               </div>
-
-              {/* Redoblona Sugerida */}
-              {activePredictions.redoblonas && activePredictions.redoblonas.length > 0 && (
-                <div className="bg-slate-950/90 p-2.5 rounded-xl border border-indigo-500/40 text-xs">
-                  <span className="font-bold text-indigo-300 block mb-0.5">REDOBLONA CANDADO:</span>
-                  <span className="text-white font-mono font-bold text-sm">
-                    {activePredictions.redoblonas[0].pair} ({activePredictions.redoblonas[0].significados}) {activePredictions.redoblonas[0].recommended_positions || 'a los 10'}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Acciones del Cupón */}
@@ -813,7 +1112,20 @@ export default function PredictionsTab({
               <button
                 type="button"
                 onClick={() => {
-                  const numbersText = activePredictions.top_predictions.slice(0, 5).map((n, i) => {
+                  const targetList = slipEngineChoice === 'ml' ? mlTop5Active : statTop5Active;
+                  try {
+                    const currentEngine = slipEngineChoice === 'ml' ? 'ML-FULL' : 'STATISTICAL';
+                    const activeRecord = getOrCreateCanonicalPrediction(todayStr, selectedLottery === 'all' ? 'ciudad' : selectedLottery, resolvedActiveShiftId, currentEngine);
+                    recordCouponSnapshot({
+                      prediction_id: activeRecord.prediction_id,
+                      exact_top5_displayed: targetList.map(p => p.number),
+                      engine: currentEngine,
+                      jurisdiction: selectedLottery,
+                      shift: resolvedActiveShiftId
+                    });
+                  } catch (e) {}
+
+                  const numbersText = targetList.map((n, i) => {
                     const ambo = n.number;
                     const terno = n.suggested_centenas?.[0] || `7${ambo}`;
                     const cuaterno = n.suggested_millar?.[0] || `17${ambo}`;
@@ -827,7 +1139,8 @@ export default function PredictionsTab({
                     return `[${i + 1}] ${posTag}\n• Ambo: ${ambo}\n• Terno: ${terno}\n• Cuaterno: ${cuaterno}`;
                   }).join('\n\n');
                   const lotTitle = selectedLottery === 'ciudad' ? 'CIUDAD (NACIONAL)' : selectedLottery === 'provincia' ? 'PROVINCIA BS AS' : 'NACIONAL Y PROVINCIA';
-                  const msg = `🎯 *${lotTitle} - ${activePredictions.shift_name?.toUpperCase() || 'EN VIVO'}*\n\n${numbersText}\n\nRecomendado por Quiniela Master Pro`;
+                  const engineTitle = slipEngineChoice === 'ml' ? 'MOTOR IA (ML-FULL)' : 'MOTOR ESTADÍSTICO';
+                  const msg = `🎯 *${lotTitle} - ${mlPredictionsActive.shift_name?.toUpperCase() || 'EN VIVO'}*\n⚙️ ${engineTitle}\n\n${numbersText}\n\nRecomendado por Quiniela Master Pro`;
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
                 }}
                 className="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
@@ -839,7 +1152,20 @@ export default function PredictionsTab({
               <button
                 type="button"
                 onClick={() => {
-                  handleCopyAllLottery(selectedLottery === 'all' ? 'ciudad' : selectedLottery);
+                  try {
+                    const currentEngine = slipEngineChoice === 'ml' ? 'ML-FULL' : 'STATISTICAL';
+                    const activeRecord = getOrCreateCanonicalPrediction(todayStr, selectedLottery === 'all' ? 'ciudad' : selectedLottery, resolvedActiveShiftId, currentEngine);
+                    const targetList = slipEngineChoice === 'ml' ? mlTop5Active : statTop5Active;
+                    recordCouponSnapshot({
+                      prediction_id: activeRecord.prediction_id,
+                      exact_top5_displayed: targetList.map(p => p.number),
+                      engine: currentEngine,
+                      jurisdiction: selectedLottery,
+                      shift: resolvedActiveShiftId
+                    });
+                  } catch (e) {}
+
+                  handleCopyAllLottery(selectedLottery === 'all' ? 'ciudad' : selectedLottery, slipEngineChoice);
                   setCopyStatus('¡Copiado para la agencia!');
                   setTimeout(() => setCopyStatus(''), 2500);
                 }}

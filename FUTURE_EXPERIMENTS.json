@@ -1,0 +1,23 @@
+[
+  {
+    "experiment_id": "EXP-2026-001",
+    "description": "Explorar regularización ElasticNet (L1+L2) para selección esparsa de transiciones de Markov",
+    "reason": "Reducir dimensionalidad en matriz de transición de segundo orden",
+    "date_proposed": "2026-09-04",
+    "status": "NOT_TESTED"
+  },
+  {
+    "experiment_id": "EXP-2026-002",
+    "description": "Ventanas de decaimiento temporal exponencial en lugar de ventanas fijas",
+    "reason": "Mayor ponderación a dinámicas de extracción ultra recientes",
+    "date_proposed": "2026-09-04",
+    "status": "NOT_TESTED"
+  },
+  {
+    "experiment_id": "EXP-2026-003",
+    "description": "Análisis de clustering de ternos y cuaternos asociados por afinidad de decenas",
+    "reason": "Evaluar correlación en sub-premios del tablero oficial",
+    "date_proposed": "2026-09-04",
+    "status": "NOT_TESTED"
+  }
+]

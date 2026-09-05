@@ -1,0 +1,1524 @@
+{
+  "protocol": "ABLATION_TEST_V1",
+  "freeze_set": "HISTORICAL_TEST_V1",
+  "total_draws": 400,
+  "results_table": [
+    {
+      "system_key": "REF-RANDOM",
+      "label": "Azar Monte Carlo (seed 42)",
+      "category": "REFERENCIA",
+      "head_hits": 8,
+      "head_rate_pct": 2.0,
+      "head_ci95": [
+        1.02,
+        3.9
+      ],
+      "hit_rate_20_pct": 98.25,
+      "hit_rate_20_count": 393,
+      "hit_rate_20_ci95": [
+        96.43,
+        99.15
+      ],
+      "hit_rate_10_pct": 86.25,
+      "hit_rate_10_count": 345,
+      "hit_rate_10_ci95": [
+        82.53,
+        89.28
+      ],
+      "hit_rate_5_pct": 62.5,
+      "hit_rate_5_count": 250,
+      "hit_rate_5_ci95": [
+        57.66,
+        67.1
+      ],
+      "precision_at_5": 0.1735,
+      "precision_at_10": 0.172,
+      "precision_at_20": 0.1847
+    },
+    {
+      "system_key": "REF-FREQ-SIMPLE",
+      "label": "Frecuencia Simple (Acumulada)",
+      "category": "REFERENCIA",
+      "head_hits": 4,
+      "head_rate_pct": 1.0,
+      "head_ci95": [
+        0.39,
+        2.54
+      ],
+      "hit_rate_20_pct": 99.0,
+      "hit_rate_20_count": 396,
+      "hit_rate_20_ci95": [
+        97.46,
+        99.61
+      ],
+      "hit_rate_10_pct": 86.0,
+      "hit_rate_10_count": 344,
+      "hit_rate_10_ci95": [
+        82.26,
+        89.06
+      ],
+      "hit_rate_5_pct": 59.25,
+      "hit_rate_5_count": 237,
+      "hit_rate_5_ci95": [
+        54.37,
+        63.96
+      ],
+      "precision_at_5": 0.178,
+      "precision_at_10": 0.1798,
+      "precision_at_20": 0.1807
+    },
+    {
+      "system_key": "REF-DELAY-SIMPLE",
+      "label": "Atraso Simple (Sin Salir)",
+      "category": "REFERENCIA",
+      "head_hits": 4,
+      "head_rate_pct": 1.0,
+      "head_ci95": [
+        0.39,
+        2.54
+      ],
+      "hit_rate_20_pct": 95.5,
+      "hit_rate_20_count": 382,
+      "hit_rate_20_ci95": [
+        93.0,
+        97.13
+      ],
+      "hit_rate_10_pct": 81.0,
+      "hit_rate_10_count": 324,
+      "hit_rate_10_ci95": [
+        76.87,
+        84.54
+      ],
+      "hit_rate_5_pct": 58.5,
+      "hit_rate_5_count": 234,
+      "hit_rate_5_ci95": [
+        53.61,
+        63.23
+      ],
+      "precision_at_5": 0.16,
+      "precision_at_10": 0.1598,
+      "precision_at_20": 0.1661
+    },
+    {
+      "system_key": "REF-MARKOV-PURO",
+      "label": "Markov Puro 1er Orden",
+      "category": "REFERENCIA",
+      "head_hits": 9,
+      "head_rate_pct": 2.25,
+      "head_ci95": [
+        1.19,
+        4.22
+      ],
+      "hit_rate_20_pct": 98.5,
+      "hit_rate_20_count": 394,
+      "hit_rate_20_ci95": [
+        96.77,
+        99.31
+      ],
+      "hit_rate_10_pct": 86.25,
+      "hit_rate_10_count": 345,
+      "hit_rate_10_ci95": [
+        82.53,
+        89.28
+      ],
+      "hit_rate_5_pct": 64.25,
+      "hit_rate_5_count": 257,
+      "hit_rate_5_ci95": [
+        59.44,
+        68.79
+      ],
+      "precision_at_5": 0.1835,
+      "precision_at_10": 0.1787,
+      "precision_at_20": 0.1802
+    },
+    {
+      "system_key": "REF-BASELINE",
+      "label": "Baseline Estadistico (Actual)",
+      "category": "REFERENCIA",
+      "head_hits": 1,
+      "head_rate_pct": 0.25,
+      "head_ci95": [
+        0.04,
+        1.4
+      ],
+      "hit_rate_20_pct": 98.25,
+      "hit_rate_20_count": 393,
+      "hit_rate_20_ci95": [
+        96.43,
+        99.15
+      ],
+      "hit_rate_10_pct": 84.75,
+      "hit_rate_10_count": 339,
+      "hit_rate_10_ci95": [
+        80.9,
+        87.94
+      ],
+      "hit_rate_5_pct": 61.25,
+      "hit_rate_5_count": 245,
+      "hit_rate_5_ci95": [
+        56.39,
+        65.9
+      ],
+      "precision_at_5": 0.1615,
+      "precision_at_10": 0.164,
+      "precision_at_20": 0.1735
+    },
+    {
+      "system_key": "ML-FULL",
+      "label": "ML Completo (22 variables)",
+      "category": "ABLACION",
+      "head_hits": 6,
+      "head_rate_pct": 1.5,
+      "head_ci95": [
+        0.69,
+        3.23
+      ],
+      "hit_rate_20_pct": 98.5,
+      "hit_rate_20_count": 394,
+      "hit_rate_20_ci95": [
+        96.77,
+        99.31
+      ],
+      "hit_rate_10_pct": 91.75,
+      "hit_rate_10_count": 367,
+      "hit_rate_10_ci95": [
+        88.64,
+        94.07
+      ],
+      "hit_rate_5_pct": 74.25,
+      "hit_rate_5_count": 297,
+      "hit_rate_5_ci95": [
+        69.75,
+        78.29
+      ],
+      "precision_at_5": 0.229,
+      "precision_at_10": 0.218,
+      "precision_at_20": 0.202
+    },
+    {
+      "system_key": "ML-NO-MARKOV",
+      "label": "ML sin Markov (21 variables)",
+      "category": "ABLACION",
+      "head_hits": 5,
+      "head_rate_pct": 1.25,
+      "head_ci95": [
+        0.54,
+        2.89
+      ],
+      "hit_rate_20_pct": 98.75,
+      "hit_rate_20_count": 395,
+      "hit_rate_20_ci95": [
+        97.11,
+        99.46
+      ],
+      "hit_rate_10_pct": 92.0,
+      "hit_rate_10_count": 368,
+      "hit_rate_10_ci95": [
+        88.92,
+        94.28
+      ],
+      "hit_rate_5_pct": 74.0,
+      "hit_rate_5_count": 296,
+      "hit_rate_5_ci95": [
+        69.49,
+        78.06
+      ],
+      "precision_at_5": 0.2275,
+      "precision_at_10": 0.2178,
+      "precision_at_20": 0.2034
+    },
+    {
+      "system_key": "ML-FREQUENCY",
+      "label": "ML solo Frecuencia (10 variables)",
+      "category": "ABLACION",
+      "head_hits": 5,
+      "head_rate_pct": 1.25,
+      "head_ci95": [
+        0.54,
+        2.89
+      ],
+      "hit_rate_20_pct": 98.0,
+      "hit_rate_20_count": 392,
+      "hit_rate_20_ci95": [
+        96.1,
+        98.98
+      ],
+      "hit_rate_10_pct": 92.25,
+      "hit_rate_10_count": 369,
+      "hit_rate_10_ci95": [
+        89.21,
+        94.49
+      ],
+      "hit_rate_5_pct": 73.75,
+      "hit_rate_5_count": 295,
+      "hit_rate_5_ci95": [
+        69.23,
+        77.82
+      ],
+      "precision_at_5": 0.229,
+      "precision_at_10": 0.2108,
+      "precision_at_20": 0.2024
+    },
+    {
+      "system_key": "ML-DELAY",
+      "label": "ML solo Atraso (4 variables)",
+      "category": "ABLACION",
+      "head_hits": 2,
+      "head_rate_pct": 0.5,
+      "head_ci95": [
+        0.14,
+        1.8
+      ],
+      "hit_rate_20_pct": 99.0,
+      "hit_rate_20_count": 396,
+      "hit_rate_20_ci95": [
+        97.46,
+        99.61
+      ],
+      "hit_rate_10_pct": 91.0,
+      "hit_rate_10_count": 364,
+      "hit_rate_10_ci95": [
+        87.79,
+        93.43
+      ],
+      "hit_rate_5_pct": 69.0,
+      "hit_rate_5_count": 276,
+      "hit_rate_5_ci95": [
+        64.3,
+        73.33
+      ],
+      "precision_at_5": 0.2145,
+      "precision_at_10": 0.2063,
+      "precision_at_20": 0.195
+    },
+    {
+      "system_key": "ML-TREND",
+      "label": "ML solo Tendencia (3 variables)",
+      "category": "ABLACION",
+      "head_hits": 6,
+      "head_rate_pct": 1.5,
+      "head_ci95": [
+        0.69,
+        3.23
+      ],
+      "hit_rate_20_pct": 98.0,
+      "hit_rate_20_count": 392,
+      "hit_rate_20_ci95": [
+        96.1,
+        98.98
+      ],
+      "hit_rate_10_pct": 92.25,
+      "hit_rate_10_count": 369,
+      "hit_rate_10_ci95": [
+        89.21,
+        94.49
+      ],
+      "hit_rate_5_pct": 77.25,
+      "hit_rate_5_count": 309,
+      "hit_rate_5_ci95": [
+        72.89,
+        81.09
+      ],
+      "precision_at_5": 0.2325,
+      "precision_at_10": 0.221,
+      "precision_at_20": 0.2035
+    },
+    {
+      "system_key": "ML-POSITION",
+      "label": "ML solo Posicion (4 variables)",
+      "category": "ABLACION",
+      "head_hits": 5,
+      "head_rate_pct": 1.25,
+      "head_ci95": [
+        0.54,
+        2.89
+      ],
+      "hit_rate_20_pct": 99.0,
+      "hit_rate_20_count": 396,
+      "hit_rate_20_ci95": [
+        97.46,
+        99.61
+      ],
+      "hit_rate_10_pct": 87.0,
+      "hit_rate_10_count": 348,
+      "hit_rate_10_ci95": [
+        83.35,
+        89.95
+      ],
+      "hit_rate_5_pct": 63.0,
+      "hit_rate_5_count": 252,
+      "hit_rate_5_ci95": [
+        58.17,
+        67.59
+      ],
+      "precision_at_5": 0.1685,
+      "precision_at_10": 0.1743,
+      "precision_at_20": 0.1794
+    }
+  ],
+  "statistical_contrasts": {
+    "REF-FREQ-SIMPLE": {
+      "comparison_label": "ML vs Frecuencia Simple",
+      "head": {
+        "diff_abs_pct": "+0.5%",
+        "diff_rel_pct": "+50.0%",
+        "mcnemar_stat": 0.1,
+        "p_value": 0.7518,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "-0.5%",
+        "diff_rel_pct": "-0.51%",
+        "mcnemar_stat": 0.1,
+        "p_value": 0.7518,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+15.0%",
+        "diff_rel_pct": "+25.32%",
+        "mcnemar_stat": 20.2384,
+        "p_value": 0.0,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.051,
+        "ci95_diff": [
+          0.0264,
+          0.0756
+        ],
+        "t_stat": 4.0782,
+        "p_value": 0.0001,
+        "significant": true
+      }
+    },
+    "REF-DELAY-SIMPLE": {
+      "comparison_label": "ML vs Atraso Simple",
+      "head": {
+        "diff_abs_pct": "+0.5%",
+        "diff_rel_pct": "+50.0%",
+        "mcnemar_stat": 0.1,
+        "p_value": 0.7518,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "+3.0%",
+        "diff_rel_pct": "+3.14%",
+        "mcnemar_stat": 5.0417,
+        "p_value": 0.0247,
+        "significant": true
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+15.75%",
+        "diff_rel_pct": "+26.92%",
+        "mcnemar_stat": 20.1257,
+        "p_value": 0.0,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.069,
+        "ci95_diff": [
+          0.0443,
+          0.0937
+        ],
+        "t_stat": 5.4895,
+        "p_value": 0.0,
+        "significant": true
+      }
+    },
+    "REF-MARKOV-PURO": {
+      "comparison_label": "ML vs Markov Puro",
+      "head": {
+        "diff_abs_pct": "-0.75%",
+        "diff_rel_pct": "-33.33%",
+        "mcnemar_stat": 0.3077,
+        "p_value": 0.5791,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "0.0%",
+        "diff_rel_pct": "0.0%",
+        "mcnemar_stat": 0.0833,
+        "p_value": 0.7728,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+10.0%",
+        "diff_rel_pct": "+15.56%",
+        "mcnemar_stat": 8.9471,
+        "p_value": 0.0028,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0455,
+        "ci95_diff": [
+          0.0213,
+          0.0697
+        ],
+        "t_stat": 3.6911,
+        "p_value": 0.0003,
+        "significant": true
+      }
+    },
+    "REF-BASELINE": {
+      "comparison_label": "ML vs Baseline Estadistico",
+      "head": {
+        "diff_abs_pct": "+1.25%",
+        "diff_rel_pct": "+500.0%",
+        "mcnemar_stat": 2.2857,
+        "p_value": 0.1306,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+0.25%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+13.0%",
+        "diff_rel_pct": "+21.22%",
+        "mcnemar_stat": 14.2912,
+        "p_value": 0.0002,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0675,
+        "ci95_diff": [
+          0.0443,
+          0.0907
+        ],
+        "t_stat": 5.721,
+        "p_value": 0.0,
+        "significant": true
+      }
+    },
+    "REF-RANDOM": {
+      "comparison_label": "ML vs Azar Monte Carlo",
+      "head": {
+        "diff_abs_pct": "-0.5%",
+        "diff_rel_pct": "-25.0%",
+        "mcnemar_stat": 0.0714,
+        "p_value": 0.7893,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+0.25%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+11.75%",
+        "diff_rel_pct": "+18.8%",
+        "mcnemar_stat": 12.5207,
+        "p_value": 0.0004,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0555,
+        "ci95_diff": [
+          0.0313,
+          0.0797
+        ],
+        "t_stat": 4.5176,
+        "p_value": 0.0,
+        "significant": true
+      }
+    },
+    "ML-NO-MARKOV": {
+      "comparison_label": "ML Completo vs ML sin Markov",
+      "head": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+20.0%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "-0.25%",
+        "diff_rel_pct": "-0.25%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+0.34%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0015,
+        "ci95_diff": [
+          -0.0018,
+          0.0048
+        ],
+        "t_stat": 0.9043,
+        "p_value": 0.3664,
+        "significant": false
+      }
+    },
+    "ML-FREQUENCY": {
+      "comparison_label": "ML Completo vs ML solo Frecuencia",
+      "head": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+20.0%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "+0.5%",
+        "diff_rel_pct": "+0.51%",
+        "mcnemar_stat": 0.1667,
+        "p_value": 0.6831,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+0.5%",
+        "diff_rel_pct": "+0.68%",
+        "mcnemar_stat": 0.1,
+        "p_value": 0.7518,
+        "significant": false
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0,
+        "ci95_diff": [
+          -0.0056,
+          0.0056
+        ],
+        "t_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      }
+    },
+    "ML-DELAY": {
+      "comparison_label": "ML Completo vs ML solo Atraso",
+      "head": {
+        "diff_abs_pct": "+1.0%",
+        "diff_rel_pct": "+200.0%",
+        "mcnemar_stat": 1.125,
+        "p_value": 0.2888,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "-0.5%",
+        "diff_rel_pct": "-0.51%",
+        "mcnemar_stat": 0.125,
+        "p_value": 0.7237,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+5.25%",
+        "diff_rel_pct": "+7.61%",
+        "mcnemar_stat": 2.7211,
+        "p_value": 0.099,
+        "significant": false
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0145,
+        "ci95_diff": [
+          -0.0095,
+          0.0385
+        ],
+        "t_stat": 1.1875,
+        "p_value": 0.2357,
+        "significant": false
+      }
+    },
+    "ML-TREND": {
+      "comparison_label": "ML Completo vs ML solo Tendencia",
+      "head": {
+        "diff_abs_pct": "0.0%",
+        "diff_rel_pct": "0.0%",
+        "mcnemar_stat": 0.1667,
+        "p_value": 0.6831,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "+0.5%",
+        "diff_rel_pct": "+0.51%",
+        "mcnemar_stat": 0.25,
+        "p_value": 0.6171,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "-3.0%",
+        "diff_rel_pct": "-3.88%",
+        "mcnemar_stat": 1.5513,
+        "p_value": 0.2129,
+        "significant": false
+      },
+      "precision_at_5": {
+        "diff_mean": -0.0035,
+        "ci95_diff": [
+          -0.0204,
+          0.0134
+        ],
+        "t_stat": -0.4071,
+        "p_value": 0.6841,
+        "significant": false
+      }
+    },
+    "ML-POSITION": {
+      "comparison_label": "ML Completo vs ML solo Posicion",
+      "head": {
+        "diff_abs_pct": "+0.25%",
+        "diff_rel_pct": "+20.0%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "significant": false
+      },
+      "hit_rate_at_20": {
+        "diff_abs_pct": "-0.5%",
+        "diff_rel_pct": "-0.51%",
+        "mcnemar_stat": 0.1,
+        "p_value": 0.7518,
+        "significant": false
+      },
+      "hit_rate_at_5": {
+        "diff_abs_pct": "+11.25%",
+        "diff_rel_pct": "+17.86%",
+        "mcnemar_stat": 10.3529,
+        "p_value": 0.0013,
+        "significant": true
+      },
+      "precision_at_5": {
+        "diff_mean": 0.0605,
+        "ci95_diff": [
+          0.0372,
+          0.0838
+        ],
+        "t_stat": 5.0959,
+        "p_value": 0.0,
+        "significant": true
+      }
+    }
+  },
+  "robustness_summary": {
+    "REF-RANDOM": {
+      "label": "Azar Monte Carlo (seed 42)",
+      "window_hit20_rates": [
+        99.0,
+        100.0,
+        97.0,
+        97.0
+      ],
+      "sigma_hit20": 1.5,
+      "window_hit5_rates": [
+        69.0,
+        57.0,
+        63.0,
+        61.0
+      ],
+      "sigma_hit5": 5.0,
+      "window_prec5": [
+        0.186,
+        0.152,
+        0.182,
+        0.174
+      ],
+      "sigma_prec5": 0.0152
+    },
+    "REF-FREQ-SIMPLE": {
+      "label": "Frecuencia Simple (Acumulada)",
+      "window_hit20_rates": [
+        100.0,
+        99.0,
+        100.0,
+        97.0
+      ],
+      "sigma_hit20": 1.41,
+      "window_hit5_rates": [
+        61.0,
+        62.0,
+        55.0,
+        59.0
+      ],
+      "sigma_hit5": 3.1,
+      "window_prec5": [
+        0.162,
+        0.198,
+        0.164,
+        0.188
+      ],
+      "sigma_prec5": 0.0178
+    },
+    "REF-DELAY-SIMPLE": {
+      "label": "Atraso Simple (Sin Salir)",
+      "window_hit20_rates": [
+        98.0,
+        99.0,
+        96.0,
+        89.0
+      ],
+      "sigma_hit20": 4.51,
+      "window_hit5_rates": [
+        65.0,
+        61.0,
+        57.0,
+        51.0
+      ],
+      "sigma_hit5": 5.97,
+      "window_prec5": [
+        0.172,
+        0.164,
+        0.154,
+        0.15
+      ],
+      "sigma_prec5": 0.0099
+    },
+    "REF-MARKOV-PURO": {
+      "label": "Markov Puro 1er Orden",
+      "window_hit20_rates": [
+        97.0,
+        98.0,
+        99.0,
+        100.0
+      ],
+      "sigma_hit20": 1.29,
+      "window_hit5_rates": [
+        64.0,
+        69.0,
+        61.0,
+        63.0
+      ],
+      "sigma_hit5": 3.4,
+      "window_prec5": [
+        0.19,
+        0.2,
+        0.17,
+        0.174
+      ],
+      "sigma_prec5": 0.014
+    },
+    "REF-BASELINE": {
+      "label": "Baseline Estadistico (Actual)",
+      "window_hit20_rates": [
+        100.0,
+        99.0,
+        97.0,
+        97.0
+      ],
+      "sigma_hit20": 1.5,
+      "window_hit5_rates": [
+        60.0,
+        61.0,
+        60.0,
+        64.0
+      ],
+      "sigma_hit5": 1.89,
+      "window_prec5": [
+        0.166,
+        0.15,
+        0.166,
+        0.164
+      ],
+      "sigma_prec5": 0.0077
+    },
+    "ML-FULL": {
+      "label": "ML Completo (22 variables)",
+      "window_hit20_rates": [
+        98.0,
+        99.0,
+        100.0,
+        97.0
+      ],
+      "sigma_hit20": 1.29,
+      "window_hit5_rates": [
+        76.0,
+        75.0,
+        76.0,
+        70.0
+      ],
+      "sigma_hit5": 2.87,
+      "window_prec5": [
+        0.23,
+        0.238,
+        0.242,
+        0.206
+      ],
+      "sigma_prec5": 0.0161
+    },
+    "ML-NO-MARKOV": {
+      "label": "ML sin Markov (21 variables)",
+      "window_hit20_rates": [
+        98.0,
+        99.0,
+        100.0,
+        98.0
+      ],
+      "sigma_hit20": 0.96,
+      "window_hit5_rates": [
+        76.0,
+        74.0,
+        77.0,
+        69.0
+      ],
+      "sigma_hit5": 3.56,
+      "window_prec5": [
+        0.226,
+        0.236,
+        0.246,
+        0.202
+      ],
+      "sigma_prec5": 0.0189
+    },
+    "ML-FREQUENCY": {
+      "label": "ML solo Frecuencia (10 variables)",
+      "window_hit20_rates": [
+        99.0,
+        98.0,
+        99.0,
+        96.0
+      ],
+      "sigma_hit20": 1.41,
+      "window_hit5_rates": [
+        76.0,
+        75.0,
+        76.0,
+        68.0
+      ],
+      "sigma_hit5": 3.86,
+      "window_prec5": [
+        0.232,
+        0.234,
+        0.244,
+        0.206
+      ],
+      "sigma_prec5": 0.0162
+    },
+    "ML-DELAY": {
+      "label": "ML solo Atraso (4 variables)",
+      "window_hit20_rates": [
+        99.0,
+        98.0,
+        100.0,
+        99.0
+      ],
+      "sigma_hit20": 0.82,
+      "window_hit5_rates": [
+        67.0,
+        69.0,
+        67.0,
+        73.0
+      ],
+      "sigma_hit5": 2.83,
+      "window_prec5": [
+        0.214,
+        0.204,
+        0.208,
+        0.232
+      ],
+      "sigma_prec5": 0.0124
+    },
+    "ML-TREND": {
+      "label": "ML solo Tendencia (3 variables)",
+      "window_hit20_rates": [
+        98.0,
+        99.0,
+        99.0,
+        96.0
+      ],
+      "sigma_hit20": 1.41,
+      "window_hit5_rates": [
+        80.0,
+        82.0,
+        79.0,
+        68.0
+      ],
+      "sigma_hit5": 6.29,
+      "window_prec5": [
+        0.244,
+        0.262,
+        0.226,
+        0.198
+      ],
+      "sigma_prec5": 0.0273
+    },
+    "ML-POSITION": {
+      "label": "ML solo Posicion (4 variables)",
+      "window_hit20_rates": [
+        98.0,
+        100.0,
+        99.0,
+        99.0
+      ],
+      "sigma_hit20": 0.82,
+      "window_hit5_rates": [
+        65.0,
+        65.0,
+        62.0,
+        60.0
+      ],
+      "sigma_hit5": 2.45,
+      "window_prec5": [
+        0.154,
+        0.178,
+        0.174,
+        0.168
+      ],
+      "sigma_prec5": 0.0105
+    }
+  },
+  "lottery_summary": {
+    "ciudad": {
+      "REF-RANDOM": {
+        "draws": 208,
+        "head_hits": 5,
+        "head_pct": 2.4,
+        "hit20_pct": 98.56,
+        "prec5_avg": 0.1702
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 208,
+        "head_hits": 3,
+        "head_pct": 1.44,
+        "hit20_pct": 99.52,
+        "prec5_avg": 0.1865
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 208,
+        "head_hits": 3,
+        "head_pct": 1.44,
+        "hit20_pct": 99.52,
+        "prec5_avg": 0.1721
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 208,
+        "head_hits": 5,
+        "head_pct": 2.4,
+        "hit20_pct": 97.6,
+        "prec5_avg": 0.1933
+      },
+      "REF-BASELINE": {
+        "draws": 208,
+        "head_hits": 1,
+        "head_pct": 0.48,
+        "hit20_pct": 98.56,
+        "prec5_avg": 0.1702
+      },
+      "ML-FULL": {
+        "draws": 208,
+        "head_hits": 2,
+        "head_pct": 0.96,
+        "hit20_pct": 98.08,
+        "prec5_avg": 0.2144
+      },
+      "ML-NO-MARKOV": {
+        "draws": 208,
+        "head_hits": 2,
+        "head_pct": 0.96,
+        "hit20_pct": 98.56,
+        "prec5_avg": 0.2144
+      },
+      "ML-FREQUENCY": {
+        "draws": 208,
+        "head_hits": 1,
+        "head_pct": 0.48,
+        "hit20_pct": 97.6,
+        "prec5_avg": 0.2163
+      },
+      "ML-DELAY": {
+        "draws": 208,
+        "head_hits": 1,
+        "head_pct": 0.48,
+        "hit20_pct": 98.56,
+        "prec5_avg": 0.2202
+      },
+      "ML-TREND": {
+        "draws": 208,
+        "head_hits": 2,
+        "head_pct": 0.96,
+        "hit20_pct": 97.6,
+        "prec5_avg": 0.2212
+      },
+      "ML-POSITION": {
+        "draws": 208,
+        "head_hits": 2,
+        "head_pct": 0.96,
+        "hit20_pct": 98.56,
+        "prec5_avg": 0.1606
+      }
+    },
+    "provincia": {
+      "REF-RANDOM": {
+        "draws": 192,
+        "head_hits": 3,
+        "head_pct": 1.56,
+        "hit20_pct": 97.92,
+        "prec5_avg": 0.1771
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 192,
+        "head_hits": 1,
+        "head_pct": 0.52,
+        "hit20_pct": 98.44,
+        "prec5_avg": 0.1687
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 192,
+        "head_hits": 1,
+        "head_pct": 0.52,
+        "hit20_pct": 91.15,
+        "prec5_avg": 0.1469
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 192,
+        "head_hits": 4,
+        "head_pct": 2.08,
+        "hit20_pct": 99.48,
+        "prec5_avg": 0.1729
+      },
+      "REF-BASELINE": {
+        "draws": 192,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 97.92,
+        "prec5_avg": 0.1521
+      },
+      "ML-FULL": {
+        "draws": 192,
+        "head_hits": 4,
+        "head_pct": 2.08,
+        "hit20_pct": 98.96,
+        "prec5_avg": 0.2448
+      },
+      "ML-NO-MARKOV": {
+        "draws": 192,
+        "head_hits": 3,
+        "head_pct": 1.56,
+        "hit20_pct": 98.96,
+        "prec5_avg": 0.2417
+      },
+      "ML-FREQUENCY": {
+        "draws": 192,
+        "head_hits": 4,
+        "head_pct": 2.08,
+        "hit20_pct": 98.44,
+        "prec5_avg": 0.2427
+      },
+      "ML-DELAY": {
+        "draws": 192,
+        "head_hits": 1,
+        "head_pct": 0.52,
+        "hit20_pct": 99.48,
+        "prec5_avg": 0.2083
+      },
+      "ML-TREND": {
+        "draws": 192,
+        "head_hits": 4,
+        "head_pct": 2.08,
+        "hit20_pct": 98.44,
+        "prec5_avg": 0.2448
+      },
+      "ML-POSITION": {
+        "draws": 192,
+        "head_hits": 3,
+        "head_pct": 1.56,
+        "hit20_pct": 99.48,
+        "prec5_avg": 0.1771
+      }
+    }
+  },
+  "shift_summary": {
+    "previa": {
+      "REF-RANDOM": {
+        "draws": 76,
+        "head_hits": 2,
+        "head_pct": 2.63,
+        "hit20_pct": 97.37,
+        "prec5_avg": 0.1579
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 76,
+        "head_hits": 1,
+        "head_pct": 1.32,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2184
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 76,
+        "head_hits": 1,
+        "head_pct": 1.32,
+        "hit20_pct": 97.37,
+        "prec5_avg": 0.1947
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 76,
+        "head_hits": 6,
+        "head_pct": 7.89,
+        "hit20_pct": 98.68,
+        "prec5_avg": 0.1947
+      },
+      "REF-BASELINE": {
+        "draws": 76,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1447
+      },
+      "ML-FULL": {
+        "draws": 76,
+        "head_hits": 1,
+        "head_pct": 1.32,
+        "hit20_pct": 98.68,
+        "prec5_avg": 0.2211
+      },
+      "ML-NO-MARKOV": {
+        "draws": 76,
+        "head_hits": 1,
+        "head_pct": 1.32,
+        "hit20_pct": 98.68,
+        "prec5_avg": 0.2184
+      },
+      "ML-FREQUENCY": {
+        "draws": 76,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 98.68,
+        "prec5_avg": 0.2237
+      },
+      "ML-DELAY": {
+        "draws": 76,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2079
+      },
+      "ML-TREND": {
+        "draws": 76,
+        "head_hits": 1,
+        "head_pct": 1.32,
+        "hit20_pct": 98.68,
+        "prec5_avg": 0.2316
+      },
+      "ML-POSITION": {
+        "draws": 76,
+        "head_hits": 2,
+        "head_pct": 2.63,
+        "hit20_pct": 96.05,
+        "prec5_avg": 0.1763
+      }
+    },
+    "primera": {
+      "REF-RANDOM": {
+        "draws": 84,
+        "head_hits": 1,
+        "head_pct": 1.19,
+        "hit20_pct": 98.81,
+        "prec5_avg": 0.2
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 84,
+        "head_hits": 3,
+        "head_pct": 3.57,
+        "hit20_pct": 96.43,
+        "prec5_avg": 0.1405
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 84,
+        "head_hits": 1,
+        "head_pct": 1.19,
+        "hit20_pct": 95.24,
+        "prec5_avg": 0.1619
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 84,
+        "head_hits": 1,
+        "head_pct": 1.19,
+        "hit20_pct": 97.62,
+        "prec5_avg": 0.1429
+      },
+      "REF-BASELINE": {
+        "draws": 84,
+        "head_hits": 1,
+        "head_pct": 1.19,
+        "hit20_pct": 96.43,
+        "prec5_avg": 0.1595
+      },
+      "ML-FULL": {
+        "draws": 84,
+        "head_hits": 3,
+        "head_pct": 3.57,
+        "hit20_pct": 98.81,
+        "prec5_avg": 0.2571
+      },
+      "ML-NO-MARKOV": {
+        "draws": 84,
+        "head_hits": 2,
+        "head_pct": 2.38,
+        "hit20_pct": 98.81,
+        "prec5_avg": 0.2548
+      },
+      "ML-FREQUENCY": {
+        "draws": 84,
+        "head_hits": 2,
+        "head_pct": 2.38,
+        "hit20_pct": 98.81,
+        "prec5_avg": 0.2667
+      },
+      "ML-DELAY": {
+        "draws": 84,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 97.62,
+        "prec5_avg": 0.1976
+      },
+      "ML-TREND": {
+        "draws": 84,
+        "head_hits": 2,
+        "head_pct": 2.38,
+        "hit20_pct": 98.81,
+        "prec5_avg": 0.2595
+      },
+      "ML-POSITION": {
+        "draws": 84,
+        "head_hits": 2,
+        "head_pct": 2.38,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1833
+      }
+    },
+    "matutina": {
+      "REF-RANDOM": {
+        "draws": 86,
+        "head_hits": 1,
+        "head_pct": 1.16,
+        "hit20_pct": 98.84,
+        "prec5_avg": 0.1628
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1535
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 95.35,
+        "prec5_avg": 0.1837
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 86,
+        "head_hits": 1,
+        "head_pct": 1.16,
+        "hit20_pct": 97.67,
+        "prec5_avg": 0.1907
+      },
+      "REF-BASELINE": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 97.67,
+        "prec5_avg": 0.1465
+      },
+      "ML-FULL": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 95.35,
+        "prec5_avg": 0.2256
+      },
+      "ML-NO-MARKOV": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 96.51,
+        "prec5_avg": 0.2256
+      },
+      "ML-FREQUENCY": {
+        "draws": 86,
+        "head_hits": 1,
+        "head_pct": 1.16,
+        "hit20_pct": 96.51,
+        "prec5_avg": 0.2256
+      },
+      "ML-DELAY": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 97.67,
+        "prec5_avg": 0.2047
+      },
+      "ML-TREND": {
+        "draws": 86,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 95.35,
+        "prec5_avg": 0.2256
+      },
+      "ML-POSITION": {
+        "draws": 86,
+        "head_hits": 1,
+        "head_pct": 1.16,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1605
+      }
+    },
+    "vespertina": {
+      "REF-RANDOM": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 97.4,
+        "prec5_avg": 0.1792
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.213
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 97.4,
+        "prec5_avg": 0.1429
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 77,
+        "head_hits": 1,
+        "head_pct": 1.3,
+        "hit20_pct": 98.7,
+        "prec5_avg": 0.2078
+      },
+      "REF-BASELINE": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2
+      },
+      "ML-FULL": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2208
+      },
+      "ML-NO-MARKOV": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2208
+      },
+      "ML-FREQUENCY": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.213
+      },
+      "ML-DELAY": {
+        "draws": 77,
+        "head_hits": 1,
+        "head_pct": 1.3,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2545
+      },
+      "ML-TREND": {
+        "draws": 77,
+        "head_hits": 1,
+        "head_pct": 1.3,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.226
+      },
+      "ML-POSITION": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 98.7,
+        "prec5_avg": 0.1325
+      }
+    },
+    "nocturna": {
+      "REF-RANDOM": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 98.7,
+        "prec5_avg": 0.1662
+      },
+      "REF-FREQ-SIMPLE": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 98.7,
+        "prec5_avg": 0.1714
+      },
+      "REF-DELAY-SIMPLE": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 92.21,
+        "prec5_avg": 0.1143
+      },
+      "REF-MARKOV-PURO": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1844
+      },
+      "REF-BASELINE": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 97.4,
+        "prec5_avg": 0.1584
+      },
+      "ML-FULL": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2182
+      },
+      "ML-NO-MARKOV": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2156
+      },
+      "ML-FREQUENCY": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 96.1,
+        "prec5_avg": 0.213
+      },
+      "ML-DELAY": {
+        "draws": 77,
+        "head_hits": 1,
+        "head_pct": 1.3,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.2104
+      },
+      "ML-TREND": {
+        "draws": 77,
+        "head_hits": 2,
+        "head_pct": 2.6,
+        "hit20_pct": 97.4,
+        "prec5_avg": 0.2182
+      },
+      "ML-POSITION": {
+        "draws": 77,
+        "head_hits": 0,
+        "head_pct": 0.0,
+        "hit20_pct": 100.0,
+        "prec5_avg": 0.1896
+      }
+    }
+  }
+}

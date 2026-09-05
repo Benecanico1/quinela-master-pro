@@ -1,0 +1,139 @@
+{
+  "manifest_name": "PRE_PHASE5_MANIFEST",
+  "created_at_utc": "2026-09-04T18:24:03.817217+00:00",
+  "created_at_local": "2026-09-04 15:24:03",
+  "version": "1.4.3",
+  "android_versionCode": 75,
+  "android_versionName": "1.4.3",
+  "git_commit": "e1034e781d7706dd4b400fe3285bf738197305c8",
+  "git_branch": "main",
+  "prediction_engine_version": "v1.0",
+  "critical_files_count": 25,
+  "files": {
+    "frontend/src/App.jsx": {
+      "size_bytes": 34657,
+      "sha256": "79051274270f82938ac6bb5791828709c91f2ef91a806d5800c42dece4da7ee0",
+      "last_modified": "2026-09-04T02:13:27.647135"
+    },
+    "frontend/src/main.jsx": {
+      "size_bytes": 2325,
+      "sha256": "2a44b6c3a27571deeaf551fe6c40bcb34876d5a4a57e024ba2b7176819923111",
+      "last_modified": "2026-09-04T01:10:06.757102"
+    },
+    "frontend/src/services/clientEngine.js": {
+      "size_bytes": 114491,
+      "sha256": "8bafc7b3fad0fda0c07f3e15e337f744e2dfb4ca3539620e4626b1e320d29c77",
+      "last_modified": "2026-09-04T14:02:59.276584"
+    },
+    "frontend/src/services/mlPredictionEngine.js": {
+      "size_bytes": 30123,
+      "sha256": "4bb1338a2f1244f1e8719f831365cd05620a888331240b681fcfa08ea94037a3",
+      "last_modified": "2026-09-04T02:14:35.792365"
+    },
+    "frontend/src/components/DrawsHistoryTab.jsx": {
+      "size_bytes": 60927,
+      "sha256": "73fb53439744e2cd2bad4031d5d26b05d5d77be39a6d6edde1bc5b052bd46adc",
+      "last_modified": "2026-09-04T14:04:26.311436"
+    },
+    "frontend/src/components/PredictionsTab.jsx": {
+      "size_bytes": 45145,
+      "sha256": "e03d99bd3bd946cff4a47489938d04e4411770552f6f8dcd9bb956e424c1f37c",
+      "last_modified": "2026-09-04T01:16:05.071586"
+    },
+    "frontend/src/components/PredictiveAiDashboardTab.jsx": {
+      "size_bytes": 62168,
+      "sha256": "ffb540a0eb43a10fd91547e916e1477f4ab49f29b87a3e4db165129e92672e84",
+      "last_modified": "2026-09-04T01:51:49.105565"
+    },
+    "frontend/src/services/firebaseClient.js": {
+      "size_bytes": 6082,
+      "sha256": "56c3d13e65c4112d7be33fbfc603ddd4d8ea7f539a4e8c9ec350990803ad2d1a",
+      "last_modified": "2026-09-02T11:54:37.440325"
+    },
+    "frontend/src/services/telemetryService.js": {
+      "size_bytes": 5345,
+      "sha256": "9dacbcc40e41e47ec5357cee4c5fc05c6a846dbb337d601eb19f7a44e98cf01b",
+      "last_modified": "2026-09-02T15:22:44.014377"
+    },
+    "frontend/src/services/notificationService.js": {
+      "size_bytes": 8409,
+      "sha256": "c4213966ef2d9d1591783769dd296b9b4f28f73a4b1fee0a4b2da1730f2c2dc3",
+      "last_modified": "2026-09-03T14:57:21.029674"
+    },
+    "frontend/package.json": {
+      "size_bytes": 821,
+      "sha256": "97a15fd0de75006ca2aa8b39998e1ee177208cd0af53b70152cf3dc61bd2ab4b",
+      "last_modified": "2026-08-27T17:44:07.943455"
+    },
+    "frontend/vite.config.js": {
+      "size_bytes": 350,
+      "sha256": "70f6978f57ca935a16188c26667bf35c2a133faee471661105f1eec6174cc788",
+      "last_modified": "2026-08-19T03:26:27.637847"
+    },
+    "frontend/android/app/build.gradle": {
+      "size_bytes": 2784,
+      "sha256": "22e264217b80782bb481d17fab5dbefd37936fa1700f9885a3153b3f49b76ca7",
+      "last_modified": "2026-09-04T14:20:31.933969"
+    },
+    "frontend/public/api/draws.json": {
+      "size_bytes": 1180346,
+      "sha256": "ff246163d61f5e2a300eee47ca8674feb2aa1f57a50f171bc3f31ad0756cf8ca",
+      "last_modified": "2026-09-04T13:58:53.751591"
+    },
+    "backend/ml_pipeline/draws_curated.json": {
+      "size_bytes": 1161913,
+      "sha256": "4736ff9932a6f6e1da6cebb4323df67783f04b5412bc5307905e51aa893fd89b",
+      "last_modified": "2026-09-04T13:58:53.839495"
+    },
+    "backend/ml_pipeline/historical_test_v1_frozen.json": {
+      "size_bytes": 234571,
+      "sha256": "ab3991069aa5a381c3b4f3c08bce755c41687cd8ffcbc1f882324497fe10081f",
+      "last_modified": "2026-09-04T01:11:53.021090"
+    },
+    "backend/ml_pipeline/model_weights.json": {
+      "size_bytes": 3799,
+      "sha256": "e0590f5d8802fd037dd0029b94fc62d4975c86ea66aed23d4ae12a172be56006",
+      "last_modified": "2026-09-04T00:40:03.773514"
+    },
+    "backend/ml_pipeline/ablation_results.json": {
+      "size_bytes": 35312,
+      "sha256": "3b061470e90f1cb72ae57fbc80de49e6eab5f5e1c05e4e635b066d88a0291053",
+      "last_modified": "2026-09-04T01:48:29.812085"
+    },
+    "backend/ml_pipeline/four_systems_results.json": {
+      "size_bytes": 12523,
+      "sha256": "0b05f3bbb2d750758a291bd1a32bc1b1f5a557e847adc0f31e82105769e357f1",
+      "last_modified": "2026-09-04T01:12:51.292151"
+    },
+    "backend/ml_pipeline/feature_extractor.py": {
+      "size_bytes": 7097,
+      "sha256": "5dfc6ae72f03fc7580550eb30d2ec86e94d7e262dea0f84e672df85c30eebe4e",
+      "last_modified": "2026-09-04T00:37:56.379501"
+    },
+    "backend/ml_pipeline/walk_forward_trainer.py": {
+      "size_bytes": 15976,
+      "sha256": "d31e7afc7eed2977b2a25a049a9cbb23ef5f04e1e65ee034a897cb9a95fe8b16",
+      "last_modified": "2026-09-04T00:39:19.023734"
+    },
+    "backend/ml_pipeline/ablation_engine.py": {
+      "size_bytes": 24155,
+      "sha256": "cc3e6f54817d2d54e0f2f4641ed81c6cd28fbb011fb54e807f38d9eb3840972b",
+      "last_modified": "2026-09-04T01:47:54.221204"
+    },
+    "backend/ml_pipeline/blind_test_protocol.py": {
+      "size_bytes": 7574,
+      "sha256": "95aed6d224451033f9f432eea3dbc9646ef174fb29c7b79e1caeeda8a4a4a36a",
+      "last_modified": "2026-09-04T01:13:11.477015"
+    },
+    "backend/ml_pipeline/economic_backtest_simulator.py": {
+      "size_bytes": 3050,
+      "sha256": "8b951867e21f896231221b9f0ca6d3d7f0a1a8ff8b635665f754d5c9536bf35b",
+      "last_modified": "2026-09-04T01:13:21.576130"
+    },
+    "backend/ml_pipeline/test_ml_leakage.py": {
+      "size_bytes": 3689,
+      "sha256": "dc4adf0daaf5e235d8075d0c79db4e010ad18ce313e52633ace693b6c5f93777",
+      "last_modified": "2026-09-04T00:38:46.341424"
+    }
+  }
+}

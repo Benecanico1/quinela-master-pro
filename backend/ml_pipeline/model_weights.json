@@ -1,0 +1,160 @@
+{
+  "model_version": "Ensemble ML v1.0",
+  "evaluation_metrics": {
+    "A_baseline": {
+      "head_hits": 1,
+      "head_rate_pct": 0.25,
+      "head_ci_95": "[0.00%, 0.74%]",
+      "board_top20_hits": 245,
+      "board_top20_rate_pct": 61.25,
+      "board_top10_hits": 152,
+      "board_top10_rate_pct": 38.0,
+      "board_top5_hits": 71,
+      "board_top5_rate_pct": 17.75,
+      "precision_at_5": 0.1225
+    },
+    "B_ml_logistic": {
+      "head_hits": 6,
+      "head_rate_pct": 1.5,
+      "head_ci_95": "[0.31%, 2.69%]",
+      "board_top20_hits": 297,
+      "board_top20_rate_pct": 74.25,
+      "board_top10_hits": 194,
+      "board_top10_rate_pct": 48.5,
+      "board_top5_hits": 105,
+      "board_top5_rate_pct": 26.25,
+      "precision_at_5": 0.1485
+    },
+    "C_random": {
+      "head_hits": 8,
+      "head_rate_pct": 2.0,
+      "head_ci_95": "[0.63%, 3.37%]",
+      "board_top20_hits": 250,
+      "board_top20_rate_pct": 62.5,
+      "board_top10_hits": 164,
+      "board_top10_rate_pct": 41.0,
+      "board_top5_hits": 94,
+      "board_top5_rate_pct": 23.5,
+      "precision_at_5": 0.125
+    }
+  },
+  "significance": {
+    "p_value_vs_random_head": 0.2140809214989572,
+    "is_statistically_significant_vs_random": false,
+    "interpretation": "El modelo NO demuestra una ventaja estad\u00edsticamente significativa sobre el azar (p >= 0.05)."
+  },
+  "feature_weights": {
+    "freq_5": 0.0533049271828143,
+    "freq_10": -0.006975611896614129,
+    "freq_20": 0.02758835756042591,
+    "freq_50": -0.010009775903683904,
+    "freq_100": 0.019648703081790612,
+    "freq_all": 0.02073607068368451,
+    "delay_head": -0.016788613018932582,
+    "delay_avg": 0.08357475196495703,
+    "delay_max": -0.0888421761640658,
+    "delay_std": 0.04825318010430955,
+    "trend_recent_vs_all": 0.005290668629409712,
+    "trend_10_vs_50": -0.002695060506900162,
+    "trend_20_vs_100": 0.021074054601119642,
+    "pos_head_freq": -0.06293262480624973,
+    "pos_top5_freq": 0.0562298470132163,
+    "pos_top10_freq": 0.021971982831433794,
+    "pos_top20_freq": -0.05988472053874839,
+    "shift_freq": 0.039475371087332844,
+    "weekday_freq": 0.03203247676348588,
+    "unit_freq": -0.0031399767994109333,
+    "decade_freq": 0.022513326972675718,
+    "markov_prob": -0.021046579334925226
+  },
+  "feature_importance": [
+    [
+      "delay_max",
+      -0.0888421761640658
+    ],
+    [
+      "delay_avg",
+      0.08357475196495703
+    ],
+    [
+      "pos_head_freq",
+      -0.06293262480624973
+    ],
+    [
+      "pos_top20_freq",
+      -0.05988472053874839
+    ],
+    [
+      "pos_top5_freq",
+      0.0562298470132163
+    ],
+    [
+      "freq_5",
+      0.0533049271828143
+    ],
+    [
+      "delay_std",
+      0.04825318010430955
+    ],
+    [
+      "shift_freq",
+      0.039475371087332844
+    ],
+    [
+      "weekday_freq",
+      0.03203247676348588
+    ],
+    [
+      "freq_20",
+      0.02758835756042591
+    ],
+    [
+      "decade_freq",
+      0.022513326972675718
+    ],
+    [
+      "pos_top10_freq",
+      0.021971982831433794
+    ],
+    [
+      "trend_20_vs_100",
+      0.021074054601119642
+    ],
+    [
+      "markov_prob",
+      -0.021046579334925226
+    ],
+    [
+      "freq_all",
+      0.02073607068368451
+    ],
+    [
+      "freq_100",
+      0.019648703081790612
+    ],
+    [
+      "delay_head",
+      -0.016788613018932582
+    ],
+    [
+      "freq_50",
+      -0.010009775903683904
+    ],
+    [
+      "freq_10",
+      -0.006975611896614129
+    ],
+    [
+      "trend_recent_vs_all",
+      0.005290668629409712
+    ],
+    [
+      "unit_freq",
+      -0.0031399767994109333
+    ],
+    [
+      "trend_10_vs_50",
+      -0.002695060506900162
+    ]
+  ]
+}

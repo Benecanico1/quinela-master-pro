@@ -1,0 +1,516 @@
+{
+  "benchmark_name": "FOUR_SYSTEMS_SCIENTIFIC_EVALUATION",
+  "eval_period": "2026-07-19 al 2026-09-03",
+  "total_eval_draws": 400,
+  "summary": [
+    {
+      "system_key": "A_baseline",
+      "name": "Sistema A (Baseline Estadístico)",
+      "head_hits": 1,
+      "head_hit_rate": 0.25,
+      "head_ci95": [
+        0.04,
+        1.4
+      ],
+      "board_top20_hits": 245,
+      "board_top20_rate": 61.25,
+      "board_top20_ci95": [
+        56.39,
+        65.9
+      ],
+      "board_top10_hits": 152,
+      "board_top10_rate": 38.0,
+      "board_top5_hits": 71,
+      "board_top5_rate": 17.75,
+      "precision_at_5": 0.1615,
+      "precision_at_10": 0.164,
+      "precision_at_20": 0.1735,
+      "recall_at_5": 0.0445,
+      "f1_score_at_5": 0.0698
+    },
+    {
+      "system_key": "B_ml_logistic",
+      "name": "Sistema B (Regresión Logística + Markov)",
+      "head_hits": 6,
+      "head_hit_rate": 1.5,
+      "head_ci95": [
+        0.69,
+        3.23
+      ],
+      "board_top20_hits": 297,
+      "board_top20_rate": 74.25,
+      "board_top20_ci95": [
+        69.75,
+        78.29
+      ],
+      "board_top10_hits": 194,
+      "board_top10_rate": 48.5,
+      "board_top5_hits": 105,
+      "board_top5_rate": 26.25,
+      "precision_at_5": 0.229,
+      "precision_at_10": 0.218,
+      "precision_at_20": 0.202,
+      "recall_at_5": 0.0628,
+      "f1_score_at_5": 0.0986
+    },
+    {
+      "system_key": "C_markov",
+      "name": "Sistema C (Markov Independiente)",
+      "head_hits": 9,
+      "head_hit_rate": 2.25,
+      "head_ci95": [
+        1.19,
+        4.22
+      ],
+      "board_top20_hits": 257,
+      "board_top20_rate": 64.25,
+      "board_top20_ci95": [
+        59.44,
+        68.79
+      ],
+      "board_top10_hits": 163,
+      "board_top10_rate": 40.75,
+      "board_top5_hits": 94,
+      "board_top5_rate": 23.5,
+      "precision_at_5": 0.1835,
+      "precision_at_10": 0.1788,
+      "precision_at_20": 0.1803,
+      "recall_at_5": 0.0505,
+      "f1_score_at_5": 0.0792
+    },
+    {
+      "system_key": "D_random",
+      "name": "Sistema D (Azar Monte Carlo)",
+      "head_hits": 8,
+      "head_hit_rate": 2.0,
+      "head_ci95": [
+        1.02,
+        3.9
+      ],
+      "board_top20_hits": 250,
+      "board_top20_rate": 62.5,
+      "board_top20_ci95": [
+        57.66,
+        67.1
+      ],
+      "board_top10_hits": 164,
+      "board_top10_rate": 41.0,
+      "board_top5_hits": 94,
+      "board_top5_rate": 23.5,
+      "precision_at_5": 0.1735,
+      "precision_at_10": 0.172,
+      "precision_at_20": 0.1848,
+      "recall_at_5": 0.0476,
+      "f1_score_at_5": 0.0747
+    }
+  ],
+  "statistical_contrasts": {
+    "B_ml_logistic_vs_D_random": {
+      "label": "ML vs Azar",
+      "head": {
+        "diff_absolute_pct": "-0.5%",
+        "diff_relative_pct": "-25.0%",
+        "mcnemar_stat": 0.0714,
+        "p_value": 0.7893,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad (p >= 0.05)."
+      },
+      "board_top20": {
+        "diff_absolute_pct": "+11.75%",
+        "diff_relative_pct": "+18.8%",
+        "mcnemar_stat": 12.5207,
+        "p_value": 0.0004,
+        "is_statistically_significant": true,
+        "statement": "Superioridad estadísticamente significativa demostrada en pizarra (p < 0.05)."
+      }
+    },
+    "A_baseline_vs_D_random": {
+      "label": "Baseline vs Azar",
+      "head": {
+        "diff_absolute_pct": "-1.75%",
+        "diff_relative_pct": "-87.5%",
+        "mcnemar_stat": 4.0,
+        "p_value": 0.0455,
+        "is_statistically_significant": true,
+        "statement": "Superioridad estadísticamente significativa demostrada (p < 0.05)."
+      },
+      "board_top20": {
+        "diff_absolute_pct": "-1.25%",
+        "diff_relative_pct": "-2.0%",
+        "mcnemar_stat": 0.0884,
+        "p_value": 0.7662,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad en pizarra (p >= 0.05)."
+      }
+    },
+    "C_markov_vs_D_random": {
+      "label": "Markov vs Azar",
+      "head": {
+        "diff_absolute_pct": "+0.25%",
+        "diff_relative_pct": "+12.5%",
+        "mcnemar_stat": 0.0,
+        "p_value": 1.0,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad (p >= 0.05)."
+      },
+      "board_top20": {
+        "diff_absolute_pct": "+1.75%",
+        "diff_relative_pct": "+2.8%",
+        "mcnemar_stat": 0.1967,
+        "p_value": 0.6574,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad en pizarra (p >= 0.05)."
+      }
+    },
+    "B_ml_logistic_vs_A_baseline": {
+      "label": "ML vs Baseline",
+      "head": {
+        "diff_absolute_pct": "+1.25%",
+        "diff_relative_pct": "+500.0%",
+        "mcnemar_stat": 2.2857,
+        "p_value": 0.1306,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad (p >= 0.05)."
+      },
+      "board_top20": {
+        "diff_absolute_pct": "+13.0%",
+        "diff_relative_pct": "+21.22%",
+        "mcnemar_stat": 14.2912,
+        "p_value": 0.0002,
+        "is_statistically_significant": true,
+        "statement": "Superioridad estadísticamente significativa demostrada en pizarra (p < 0.05)."
+      }
+    },
+    "B_ml_logistic_vs_C_markov": {
+      "label": "ML vs Markov",
+      "head": {
+        "diff_absolute_pct": "-0.75%",
+        "diff_relative_pct": "-33.33%",
+        "mcnemar_stat": 0.3077,
+        "p_value": 0.5791,
+        "is_statistically_significant": false,
+        "statement": "No se encontró evidencia estadísticamente significativa de superioridad (p >= 0.05)."
+      },
+      "board_top20": {
+        "diff_absolute_pct": "+10.0%",
+        "diff_relative_pct": "+15.56%",
+        "mcnemar_stat": 8.9471,
+        "p_value": 0.0028,
+        "is_statistically_significant": true,
+        "statement": "Superioridad estadísticamente significativa demostrada en pizarra (p < 0.05)."
+      }
+    }
+  },
+  "segmentations": {
+    "by_lottery": {
+      "A_baseline": {
+        "ciudad": {
+          "draws": 208,
+          "head": 1,
+          "board": 134
+        },
+        "provincia": {
+          "draws": 192,
+          "head": 0,
+          "board": 111
+        }
+      },
+      "B_ml_logistic": {
+        "ciudad": {
+          "draws": 208,
+          "head": 2,
+          "board": 143
+        },
+        "provincia": {
+          "draws": 192,
+          "head": 4,
+          "board": 154
+        }
+      },
+      "C_markov": {
+        "ciudad": {
+          "draws": 208,
+          "head": 5,
+          "board": 138
+        },
+        "provincia": {
+          "draws": 192,
+          "head": 4,
+          "board": 119
+        }
+      },
+      "D_random": {
+        "ciudad": {
+          "draws": 208,
+          "head": 5,
+          "board": 126
+        },
+        "provincia": {
+          "draws": 192,
+          "head": 3,
+          "board": 124
+        }
+      }
+    },
+    "by_shift": {
+      "A_baseline": {
+        "matutina": {
+          "draws": 86,
+          "head": 0,
+          "board": 51
+        },
+        "previa": {
+          "draws": 76,
+          "head": 0,
+          "board": 41
+        },
+        "primera": {
+          "draws": 84,
+          "head": 1,
+          "board": 50
+        },
+        "vespertina": {
+          "draws": 77,
+          "head": 0,
+          "board": 55
+        },
+        "nocturna": {
+          "draws": 77,
+          "head": 0,
+          "board": 48
+        }
+      },
+      "B_ml_logistic": {
+        "matutina": {
+          "draws": 86,
+          "head": 0,
+          "board": 61
+        },
+        "previa": {
+          "draws": 76,
+          "head": 1,
+          "board": 58
+        },
+        "primera": {
+          "draws": 84,
+          "head": 3,
+          "board": 69
+        },
+        "vespertina": {
+          "draws": 77,
+          "head": 0,
+          "board": 57
+        },
+        "nocturna": {
+          "draws": 77,
+          "head": 2,
+          "board": 52
+        }
+      },
+      "C_markov": {
+        "matutina": {
+          "draws": 86,
+          "head": 1,
+          "board": 61
+        },
+        "previa": {
+          "draws": 76,
+          "head": 6,
+          "board": 50
+        },
+        "primera": {
+          "draws": 84,
+          "head": 1,
+          "board": 44
+        },
+        "vespertina": {
+          "draws": 77,
+          "head": 1,
+          "board": 54
+        },
+        "nocturna": {
+          "draws": 77,
+          "head": 0,
+          "board": 48
+        }
+      },
+      "D_random": {
+        "matutina": {
+          "draws": 86,
+          "head": 1,
+          "board": 51
+        },
+        "previa": {
+          "draws": 76,
+          "head": 2,
+          "board": 47
+        },
+        "primera": {
+          "draws": 84,
+          "head": 1,
+          "board": 62
+        },
+        "vespertina": {
+          "draws": 77,
+          "head": 2,
+          "board": 47
+        },
+        "nocturna": {
+          "draws": 77,
+          "head": 2,
+          "board": 43
+        }
+      }
+    },
+    "by_weekday": {
+      "A_baseline": {
+        "0": {
+          "draws": 70,
+          "head": 1,
+          "board": 43
+        },
+        "1": {
+          "draws": 70,
+          "head": 0,
+          "board": 47
+        },
+        "2": {
+          "draws": 65,
+          "head": 0,
+          "board": 42
+        },
+        "3": {
+          "draws": 65,
+          "head": 0,
+          "board": 40
+        },
+        "4": {
+          "draws": 55,
+          "head": 0,
+          "board": 35
+        },
+        "5": {
+          "draws": 58,
+          "head": 0,
+          "board": 29
+        },
+        "6": {
+          "draws": 17,
+          "head": 0,
+          "board": 9
+        }
+      },
+      "B_ml_logistic": {
+        "0": {
+          "draws": 70,
+          "head": 0,
+          "board": 55
+        },
+        "1": {
+          "draws": 70,
+          "head": 2,
+          "board": 51
+        },
+        "2": {
+          "draws": 65,
+          "head": 2,
+          "board": 46
+        },
+        "3": {
+          "draws": 65,
+          "head": 1,
+          "board": 45
+        },
+        "4": {
+          "draws": 55,
+          "head": 1,
+          "board": 44
+        },
+        "5": {
+          "draws": 58,
+          "head": 0,
+          "board": 42
+        },
+        "6": {
+          "draws": 17,
+          "head": 0,
+          "board": 14
+        }
+      },
+      "C_markov": {
+        "0": {
+          "draws": 70,
+          "head": 2,
+          "board": 48
+        },
+        "1": {
+          "draws": 70,
+          "head": 2,
+          "board": 43
+        },
+        "2": {
+          "draws": 65,
+          "head": 1,
+          "board": 42
+        },
+        "3": {
+          "draws": 65,
+          "head": 1,
+          "board": 42
+        },
+        "4": {
+          "draws": 55,
+          "head": 2,
+          "board": 34
+        },
+        "5": {
+          "draws": 58,
+          "head": 1,
+          "board": 40
+        },
+        "6": {
+          "draws": 17,
+          "head": 0,
+          "board": 8
+        }
+      },
+      "D_random": {
+        "0": {
+          "draws": 70,
+          "head": 1,
+          "board": 42
+        },
+        "1": {
+          "draws": 70,
+          "head": 2,
+          "board": 46
+        },
+        "2": {
+          "draws": 65,
+          "head": 1,
+          "board": 37
+        },
+        "3": {
+          "draws": 65,
+          "head": 0,
+          "board": 40
+        },
+        "4": {
+          "draws": 55,
+          "head": 2,
+          "board": 40
+        },
+        "5": {
+          "draws": 58,
+          "head": 2,
+          "board": 39
+        },
+        "6": {
+          "draws": 17,
+          "head": 0,
+          "board": 6
+        }
+      }
+    }
+  }
+}

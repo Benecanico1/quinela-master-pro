@@ -1,0 +1,132 @@
+{
+  "protocol": "PHASE5_FROZEN_MODELS_V1",
+  "frozen_at_utc": "2026-09-04T18:25:03.219031+00:00",
+  "status": "FROZEN_IMMUTABLE",
+  "models": {
+    "ML-FULL": {
+      "model_id": "ML-FULL",
+      "model_name": "Logistic Regression + Markov Features v1.0",
+      "model_version": "1.0.0",
+      "role": "CHAMPION",
+      "feature_version": "v1.0",
+      "architecture": "Binary Logistic Regression with L2 Regularization (C=0.1, solver=lbfgs)",
+      "feature_list": [
+        "markov_order1_prob",
+        "markov_order2_prob",
+        "delay_recent",
+        "freq_w10",
+        "freq_w30",
+        "freq_w50",
+        "freq_w100",
+        "shift_affinity",
+        "paridad_rate",
+        "decena_affinity"
+      ],
+      "hyperparameters": {
+        "C": 0.1,
+        "penalty": "l2",
+        "solver": "lbfgs",
+        "max_iter": 500,
+        "calibration": "sigmoid"
+      },
+      "weights": {
+        "markov_order1_prob": 0.32,
+        "markov_order2_prob": 0.18,
+        "delay_recent": 0.22,
+        "freq_w30": 0.12,
+        "freq_w100": 0.08,
+        "shift_affinity": 0.05,
+        "paridad_rate": 0.03
+      },
+      "intercept": -2.85,
+      "source_files": {
+        "mlPredictionEngine.js": "4bb1338a2f1244f1e8719f831365cd05620a888331240b681fcfa08ea94037a3",
+        "walk_forward_trainer.py": "d31e7afc7eed2977b2a25a049a9cbb23ef5f04e1e65ee034a897cb9a95fe8b16",
+        "feature_extractor.py": "5dfc6ae72f03fc7580550eb30d2ec86e94d7e262dea0f84e672df85c30eebe4e"
+      },
+      "frozen_immutable": true
+    },
+    "ML-TREND": {
+      "model_id": "ML-TREND",
+      "model_name": "Trend & Delay Logistic Submodel",
+      "model_version": "1.0.0",
+      "role": "CHALLENGER_1",
+      "feature_version": "v1.0-trend",
+      "architecture": "Logistic Regression on Delay and Short-Term Window Trends",
+      "feature_list": [
+        "delay_recent",
+        "freq_w10",
+        "freq_w30",
+        "shift_affinity"
+      ],
+      "hyperparameters": {
+        "C": 0.05,
+        "penalty": "l2"
+      },
+      "weights": {
+        "delay_recent": 0.45,
+        "freq_w10": 0.25,
+        "freq_w30": 0.2,
+        "shift_affinity": 0.1
+      },
+      "intercept": -2.6,
+      "source_files": {
+        "ablation_engine.py": "cc3e6f54817d2d54e0f2f4641ed81c6cd28fbb011fb54e807f38d9eb3840972b"
+      },
+      "frozen_immutable": true
+    },
+    "FREQUENCY-SIMPLE": {
+      "model_id": "FREQUENCY-SIMPLE",
+      "model_name": "Frequency Simple Baseline",
+      "model_version": "1.0.0",
+      "role": "CHALLENGER_2",
+      "feature_version": "none",
+      "architecture": "Empirical Frequency Counter over rolling window (N=50)",
+      "feature_list": [
+        "raw_frequency_window50"
+      ],
+      "hyperparameters": {
+        "window_size": 50
+      },
+      "weights": {},
+      "frozen_immutable": true
+    },
+    "MARKOV-PURE": {
+      "model_id": "MARKOV-PURE",
+      "model_name": "Pure Markov Transition Matrix",
+      "model_version": "1.0.0",
+      "role": "CHALLENGER_3",
+      "feature_version": "v1.0-markov",
+      "architecture": "Order-1 Transition Probability Matrix without regression",
+      "feature_list": [
+        "transition_matrix_100x100"
+      ],
+      "hyperparameters": {
+        "order": 1,
+        "laplace_smoothing": 1.0
+      },
+      "weights": {},
+      "frozen_immutable": true
+    },
+    "HEURISTIC-BASELINE": {
+      "model_id": "HEURISTIC-BASELINE",
+      "model_name": "Quiniela Master Pro Legacy Statistical Engine",
+      "model_version": "1.0.0",
+      "role": "BASELINE",
+      "feature_version": "legacy-v1",
+      "architecture": "Weighted composite score of delay, parity balance and hot/cold numbers",
+      "hyperparameters": {
+        "decay_rate": 0.95
+      },
+      "frozen_immutable": true
+    },
+    "RANDOM-REFERENCE": {
+      "model_id": "RANDOM-REFERENCE",
+      "model_name": "Stochastic Random Reference",
+      "model_version": "1.0.0",
+      "role": "RANDOM",
+      "architecture": "Uniform Pseudo-Random Generator (3 Modes: Fixed Seed, Analytical, Monte Carlo)",
+      "frozen_immutable": true
+    }
+  }
+}

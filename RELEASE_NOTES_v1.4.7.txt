@@ -1,0 +1,22 @@
+=== QUINIELA MASTER PRO v1.4.7 (VersionCode 79) ===
+Fecha: 05/09/2026
+
+NOVEDADES DE LA ACTUALIZACIÓN:
+1. Endurecimiento del Gate de Resultados Oficiales (Anti-Premature Win):
+   - Validación estricta que impide cualquier evaluación de aciertos antes de que el extracto oficial esté debidamente publicado y verificado por la lotería.
+   - Verificación obligatoria de coincidencia exacta de fecha, turno, jurisdicción y número oficial de sorteo (expected_draw_number).
+
+2. Estabilidad Absoluta en Pronósticos (Zero Flicker):
+   - Eliminación definitiva del parpadeo o recálculo en vivo de números en pantalla.
+   - Fijación estricta de pronósticos canónicos pre-sorteo sellados criptográficamente con SHA-256.
+
+3. Aislamiento Estructural de Turnos (Anti-Carryover):
+   - Segregación total entre turnos (Previa, Primera, Matutina, Vespertina y Nocturna) evitando el arrastre de pronósticos de turnos previos.
+   - Sincronización exacta con la numeración unificada oficial de extractos LOTBA para Ciudad y Provincia.
+
+4. Doble Motor Canónico Transparente:
+   - Fila 1: Motor IA / Machine Learning (Champion ML-FULL).
+   - Fila 2: Motor Estadístico y Frecuencias Tradicional.
+   - Transparencia total en Historial y Resultados con auditoría matemática 1:1.
+
+5. Mejoras de rendimiento general, optimización de renderizado reactivo y actualización de librerías base.

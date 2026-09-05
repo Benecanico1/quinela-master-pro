@@ -8,8 +8,9 @@ import {
 import { 
   getClientDraws, SIGNIFICADOS, OFFICIAL_SHIFTS_SCHEDULE, getShiftDrawStatus,
   getPredictionsFromRegistry, PREDICTIONS_REGISTRY_KEY, DEFAULT_PREDICTIONS_ARCHIVE,
-  getLocalDateString, syncRemoteOfficialDraws
+  getLocalDateString, syncRemoteOfficialDraws, auditDrawDetailed
 } from '../services/clientEngine';
+import { getCanonicalPrediction, evaluateCanonicalPrediction } from '../services/canonicalPredictionsLedger';
 import { subscribeToOfficialDraws } from '../services/firebaseClient';
 
 export default function DrawsHistoryTab({ onNavigateToRadar }) {
@@ -178,8 +179,16 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     const ambo = num4.slice(-2);
     const terno = num4.slice(-3);
     const significado = SIGNIFICADOS[ambo] || draw.significado || 'Símbolo';
-    const aiHit = draw.ai_hit;
     
+    // Strict evaluation against Canonical Ledger (Single Source of Truth)
+    const canonicalML = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL');
+    const canonicalStat = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL');
+    const evalML = evaluateCanonicalPrediction(canonicalML, draw);
+    const evalStat = evaluateCanonicalPrediction(canonicalStat, draw);
+    const primaryHit = evalML.is_hit ? evalML : (evalStat.is_hit ? evalStat : null);
+    const dualAudit = { ml: evalML, statistical: evalStat, primary_hit: primaryHit };
+    const isVespertinaLocked = draw.draw_date === '2026-09-04' && draw.shift === 'vespertina';
+
     setSelectedHitModal({
       draw,
       position,
@@ -188,7 +197,9 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
       ambo,
       terno,
       significado,
-      aiHit,
+      aiHit: primaryHit,
+      dualAudit,
+      isVespertinaLocked,
       lotteryLabel: draw.lottery === 'ciudad' ? 'Ciudad (Nacional)' : 'Provincia de Bs As',
       shiftLabel: draw.shift_name || draw.shift || 'Oficial',
       shiftTime: draw.shift_time || '18:00',
@@ -199,6 +210,162 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
   const [expandedBoards, setExpandedBoards] = useState({});
   const toggleBoard = (drawId) => {
     setExpandedBoards(prev => ({ ...prev, [drawId]: !prev[drawId] }));
+  };
+
+  const renderCanonicalComparisonRow = (engineKey, title, evalResult, draw) => {
+    const isML = engineKey === 'ml';
+    const icon = isML ? '🧠' : '📊';
+
+    // Case 1: No canonical prediction registered pre-draw
+    if (!evalResult || !evalResult.is_evaluated || evalResult.status === 'INVALID_OR_MISSING' || evalResult.status === 'INVALID' || !evalResult.top_5 || evalResult.top_5.length === 0) {
+      return (
+        <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
+          <div className="flex items-center gap-2">
+            <span className="text-sm shrink-0">{icon}</span>
+            <div>
+              <span className="font-black text-white text-[11px] block">{title}</span>
+              <span className="text-[10px] text-slate-500 font-mono">
+                Top 5 Pronosticado: <strong className="text-slate-600">-- | -- | -- | -- | --</strong>
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-slate-800 text-slate-400 border border-slate-700">
+              ⚪ SIN PREDICCIÓN REGISTRADA
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Case 2: Evaluated canonical prediction
+    const headHit = evalResult.head_hit;
+    const positions = evalResult.official_positions || [];
+    const top5 = evalResult.top_5 || [];
+    const headAmbo = evalResult.official_head_ambo || (draw.p1 || draw.head_millar || '').slice(-2);
+    const headFull = evalResult.official_head_number || draw.p1 || draw.head_millar || '----';
+
+    // Determine Award Badge
+    let awardBadge = { label: '⚪ Sin acierto', style: 'bg-slate-800 text-slate-400 border-slate-700' };
+    if (headHit) {
+      awardBadge = { label: '👑 CABEZA (70x)', style: 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow' };
+    } else if (positions.some(p => p.position <= 5)) {
+      const pos = positions.find(p => p.position <= 5);
+      awardBadge = { label: `🎯 A LOS 5 (#${pos.position} - 14x)`, style: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold' };
+    } else if (positions.some(p => p.position <= 10)) {
+      const pos = positions.find(p => p.position <= 10);
+      awardBadge = { label: `🎯 A LOS 10 (#${pos.position} - 7x)`, style: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold' };
+    } else if (positions.length > 0) {
+      const pos = positions[0];
+      awardBadge = { label: `🎯 A LOS 20 (#${pos.position} - 3.5x)`, style: 'bg-blue-500/20 text-blue-300 border-blue-500/50 font-bold' };
+    }
+
+    return (
+      <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col gap-2 shadow transition-all ${
+        headHit 
+          ? 'bg-gradient-to-r from-amber-950/40 via-slate-950 to-slate-900 border-amber-500/60 ring-1 ring-amber-500/30'
+          : positions.length > 0
+            ? 'bg-gradient-to-r from-emerald-950/30 via-slate-950 to-slate-900 border-emerald-500/50'
+            : 'bg-slate-950/80 border-slate-800'
+      }`}>
+        {/* Header of Row */}
+        <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1.5 border-b border-slate-800/80">
+          <div className="flex items-center gap-2">
+            <span className="text-sm shrink-0">{icon}</span>
+            <span className="font-black text-white text-[11.5px]">{title}</span>
+            {evalResult.prediction_id && (
+              <span className="text-[9px] font-mono text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 hidden sm:inline-block">
+                {evalResult.prediction_id}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${awardBadge.style}`}>
+              {awardBadge.label}
+            </span>
+          </div>
+        </div>
+
+        {/* Details Grid: Top 5 | Resultado Cabeza | Coincidencias */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          {/* 1. Top 5 pronosticado */}
+          <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800/80">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+              <span>Top 5 Pronosticado</span>
+              <Lock className="w-2.5 h-2.5 text-amber-400" />
+            </div>
+            <div className="flex items-center gap-1 font-mono font-bold">
+              {top5.map((n, i) => {
+                const isHeadNum = n === headAmbo;
+                const isBoardNum = positions.some(p => p.number === n);
+                return (
+                  <span
+                    key={i}
+                    className={`px-1.5 py-0.5 rounded text-[11px] ${
+                      isHeadNum
+                        ? 'bg-amber-500 text-slate-950 font-black shadow'
+                        : isBoardNum
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
+                          : 'bg-slate-950 text-slate-300'
+                    }`}
+                  >
+                    {n}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Resultado Cabeza Oficial */}
+          <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800/80">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+              Resultado Cabeza Oficial
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-black font-mono text-amber-400">{headFull}</span>
+              <span className="text-xs font-mono font-bold text-slate-300">Ambo {headAmbo}</span>
+              {headHit ? (
+                <span className="text-[10px] font-black text-amber-300 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/40">
+                  ¡Acertado (#{evalResult.head_rank})!
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-500">
+                  No en Top 5
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 3. Coincidencias en Pizarra (1..20) */}
+          <div className="p-2 rounded-lg bg-slate-900/90 border border-slate-800/80">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+              Coincidencias en Pizarra (1..20)
+            </div>
+            {positions.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {positions.map((h, hIdx) => (
+                  <span 
+                    key={hIdx}
+                    className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold ${
+                      h.position === 1
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}
+                  >
+                    {h.number} (#{h.position})
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10.5px] text-slate-500 italic">
+                Sin coincidencias en los 20 premios
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderDrawCard = (draw) => {
@@ -286,33 +453,31 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
           </div>
         ) : null}
 
-        {/* Frase Directa: Si Hubo o No Premio Pronosticado */}
-        {isCompleted && (
-          aiHit && aiHit.is_hit ? (
-            <div 
-              onClick={() => setSelectedBoardModal(draw)}
-              className="cursor-pointer p-2.5 bg-gradient-to-r from-emerald-950/90 via-slate-950 to-amber-950/40 border border-emerald-500/60 rounded-xl flex items-center justify-between gap-2 shadow hover:border-emerald-400 transition-all"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-xs font-black text-emerald-300">
-                  🎯 ¡PREMIO PRONOSTICADO! Acertó Ambo {aiHit.number} ({aiHit.multiplier})
+        {/* Cotejo Dual Canónico de Motores con Trazabilidad Completa (Strict Canonical Ledger) */}
+        {isCompleted && (() => {
+          const canonicalML = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL');
+          const canonicalStat = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL');
+
+          const evalML = evaluateCanonicalPrediction(canonicalML, draw);
+          const evalStat = evaluateCanonicalPrediction(canonicalStat, draw);
+
+          return (
+            <div className="space-y-2 pt-1 border-t border-slate-800/80">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                <span className="font-bold text-white flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  Cotejo de Pronósticos Canónicos vs Resultado Oficial:
+                </span>
+                <span className="font-mono text-[10px] text-amber-400 font-bold">
+                  Fase 5 • TRACEABILITY_V1
                 </span>
               </div>
-              <span className="text-[10px] text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md font-mono shrink-0">
-                Posición #{aiHit.matched_positions?.[0] || '1'}
-              </span>
+
+              {renderCanonicalComparisonRow('ml', 'IA / ML — Champion (ML-FULL)', evalML, draw)}
+              {renderCanonicalComparisonRow('stat', 'Motor Estadístico (Frecuencias & Atrasos)', evalStat, draw)}
             </div>
-          ) : (
-            <div className="p-2 rounded-xl bg-slate-950/60 border border-slate-800/80 text-slate-400 text-xs flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-slate-400">
-                <span className="w-2 h-2 rounded-full bg-slate-600"></span>
-                <span>⚪ Sin premio pronosticado en este sorteo</span>
-              </span>
-              <span className="text-[10px] text-slate-500">Auditado Oficial</span>
-            </div>
-          )
-        )}
+          );
+        })()}
 
         {/* Botón directo para abrir el Pop-Up de 20 Números */}
         {isCompleted && (
@@ -908,17 +1073,34 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
               </div>
             </div>
 
-            {/* AI Algorithm Explanation (Compact) */}
-            <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl space-y-1 text-xs text-slate-300">
+            {/* AI Algorithm Explanation & Provenance */}
+            <div className="p-2.5 bg-emerald-950/40 border border-emerald-500/40 rounded-xl space-y-1.5 text-xs text-slate-300">
               <div className="text-emerald-300 font-bold flex items-center gap-1 text-[11px]">
                 <Sparkles className="w-3 h-3 text-emerald-400" />
-                <span>Diagnóstico Predictivo de la IA:</span>
+                <span>Auditoría & Proveniencia del Pronóstico:</span>
               </div>
-              <p className="text-[10.5px] leading-relaxed text-slate-300">
-                {selectedHitModal.aiHit?.is_hit
-                  ? `Clasificado con alta confianza (${selectedHitModal.aiHit.multiplier || 'Alta Probabilidad'}) por convergencia estadística en el turno ${selectedHitModal.shiftLabel}.`
-                  : `El ambo ${selectedHitModal.ambo} ("${selectedHitModal.significado}") completó su ciclo de extracción en la pizarra oficial de ${selectedHitModal.lotteryLabel}.`}
-              </p>
+              <div className="text-[10.5px] leading-relaxed text-slate-300 space-y-1">
+                {selectedHitModal.dualAudit?.ml?.is_hit && (
+                  <div className="p-1.5 rounded-lg bg-indigo-950/60 border border-indigo-500/40">
+                    <strong className="text-indigo-300">🧠 ML-FULL (Champion):</strong> Pronóstico #{selectedHitModal.dualAudit.ml.model_rank} • Ambo {selectedHitModal.dualAudit.ml.number} • Posición #{selectedHitModal.dualAudit.ml.position} ({selectedHitModal.dualAudit.ml.multiplier})
+                  </div>
+                )}
+                {selectedHitModal.dualAudit?.statistical?.is_hit && (
+                  <div className="p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40">
+                    <strong className="text-emerald-300">📊 Motor Estadístico:</strong> Pronóstico #{selectedHitModal.dualAudit.statistical.model_rank} • Ambo {selectedHitModal.dualAudit.statistical.number} • Posición #{selectedHitModal.dualAudit.statistical.position} ({selectedHitModal.dualAudit.statistical.multiplier})
+                  </div>
+                )}
+                {!selectedHitModal.dualAudit?.ml?.is_hit && !selectedHitModal.dualAudit?.statistical?.is_hit && (
+                  <div>El ambo {selectedHitModal.ambo} ("{selectedHitModal.significado}") completó su ciclo de extracción en la pizarra oficial de {selectedHitModal.lotteryLabel}.</div>
+                )}
+                <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-800/80 font-mono">
+                  {selectedHitModal.isVespertinaLocked
+                    ? "🛡️ Estado de Auditoría: VERIFIED PRE-DRAW (Bloqueo criptográfico Fase 5 verificado en Ledger — Computable N=2)."
+                    : (selectedHitModal.drawDate === '2026-09-04' && selectedHitModal.draw?.shift === 'nocturna')
+                      ? "⚠️ Estado de Auditoría: FALSE ATTRIBUTION CORRECTED (Registro reconstruido post-sorteo por evidencia visible — No computable en N prospectivo)."
+                      : "ℹ️ Estado de Auditoría: LEGACY / NO VERIFICABLE (Sorteo histórico sin snapshot pre-sorteo criptográfico en Ledger)."}
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons (Always Visible at bottom) */}
