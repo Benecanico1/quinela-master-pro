@@ -13,6 +13,7 @@ import {
   getLastClosedShift,
   getRealOfficialDrawsFromStorage,
   getLocalDateString,
+  syncRemoteOfficialDraws,
   SIGNIFICADOS
 } from '../services/clientEngine';
 import { getMLPredictions, ML_MODEL_METADATA } from '../services/mlPredictionEngine';
@@ -53,6 +54,14 @@ export default function PredictionsTab({
   const [isSlipModalOpen, setIsSlipModalOpen] = useState(false);
   const [isExtraLargeFont, setIsExtraLargeFont] = useState(false);
   const [slipEngineChoice, setSlipEngineChoice] = useState('ml'); // 'ml' | 'baseline'
+  const [drawsSyncVersion, setDrawsSyncVersion] = useState(0);
+
+  // Auto-sync official draws from LOTBA / remote backend on mount
+  useEffect(() => {
+    syncRemoteOfficialDraws().then(() => {
+      setDrawsSyncVersion(v => v + 1);
+    }).catch(() => {});
+  }, []);
 
   // Second-by-second live countdown
   useEffect(() => {

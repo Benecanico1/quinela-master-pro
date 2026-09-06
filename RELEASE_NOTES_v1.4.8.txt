@@ -1,0 +1,20 @@
+QUINIELA MASTER PRO - NOTAS DE LA VERSIÓN v1.4.8 (BUILD 80)
+=============================================================
+Fecha de Lanzamiento: 05 de Septiembre de 2026
+Canal: Producción / Google Play Store
+
+NOVEDADES Y MEJORAS DE ESTA VERSIÓN:
+-------------------------------------
+1. AUDITORÍA Y EVALUACIÓN OFICIAL EN TIEMPO REAL:
+   - Sincronización e integración inmediata de extractos oficiales de LOTBA e IPLyC Buenos Aires.
+   - Evaluación y contraste automático de pronósticos canónicos sellados pre-sorteo vs extractos oficiales (Previa, Primera, Matutina, Vespertina y Nocturna).
+   - Marcado de aciertos en pizarra (#1 a #20) y cabezas oficiales con cálculo de multiplicadores en vivo.
+
+2. TRAZABILIDAD CANÓNICA REFORZADA (TRACEABILITY_V1):
+   - Sellado inmutable pre-sorteo con resolución automática de expected_draw_number para todos los turnos.
+   - Protocolo anti-aciertos prematuros y aislamiento estricto de jurisdicciones (Ciudad vs Provincia).
+   - Estabilidad visual garantizada: cero parpadeo y consistencia absoluta entre pestañas de Pronósticos y Resultados.
+
+3. OPTIMIZACIÓN Y RENDIMIENTO NATIVO:
+   - Corrección del sincronizador directo in-app con actualización en segundo plano.
+   - Soporte nativo para Android 14+ y compatibilidad offline con base de datos de 2.240+ sorteos oficiales históricos.

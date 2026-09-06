@@ -128,6 +128,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '21:00',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52866',
     top_5: ['13', '20', '07', '55', '63'],
     top_10: ['13', '20', '07', '55', '63', '90', '52', '69', '95', '32'],
     top_20: [],
@@ -156,6 +157,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '21:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52866',
     top_5: [],
     top_10: [],
     top_20: [],
@@ -178,6 +180,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '21:00',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52866',
     top_5: ['80', '60', '20', '06', '97'],
     top_10: ['80', '60', '20', '06', '97', '89', '03', '67', '37', '56'],
     top_20: [],
@@ -204,6 +207,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '21:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52866',
     top_5: [],
     top_10: [],
     top_20: [],
@@ -226,6 +230,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '18:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52865',
     top_5: ['07', '20', '21', '83', '99'],
     top_10: ['07', '20', '21', '83', '99', '08', '59', '28', '53', '37'],
     top_20: [],
@@ -253,6 +258,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '18:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52865',
     top_5: ['60', '83', '14', '74', '13'],
     top_10: ['60', '83', '14', '74', '13', '79', '28', '53', '08', '47'],
     top_20: [],
@@ -279,6 +285,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '10:15',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52867',
     top_5: ['13', '35', '55', '97', '48'],
     top_10: ['13', '35', '55', '97', '48'],
     top_20: ['13', '35', '55', '97', '48'],
@@ -305,6 +312,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '10:15',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52867',
     top_5: ['47', '07', '66', '21', '53'],
     top_10: ['47', '07', '66', '21', '53'],
     top_20: ['47', '07', '66', '21', '53'],
@@ -331,6 +339,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '10:15',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52867',
     top_5: ['27', '26', '43', '77', '87'],
     top_10: ['27', '26', '43', '77', '87'],
     top_20: ['27', '26', '43', '77', '87'],
@@ -357,6 +366,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '10:15',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52867',
     top_5: ['74', '47', '37', '81', '71'],
     top_10: ['74', '47', '37', '81', '71'],
     top_20: ['74', '47', '37', '81', '71'],
@@ -384,6 +394,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '15:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52869',
     top_5: ['76', '77', '73', '97', '55'],
     top_10: ['76', '77', '73', '97', '55'],
     top_20: ['76', '77', '73', '97', '55'],
@@ -410,6 +421,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '15:00',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52869',
     top_5: ['21', '12', '00', '92', '63'],
     top_10: ['21', '12', '00', '92', '63'],
     top_20: ['21', '12', '00', '92', '63'],
@@ -436,6 +448,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '15:00',
     engine_id: 'ML-FULL',
     engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52869',
     top_5: ['77', '38', '27', '92', '54'],
     top_10: ['77', '38', '27', '92', '54'],
     top_20: ['77', '38', '27', '92', '54'],
@@ -462,6 +475,7 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     draw_time: '15:00',
     engine_id: 'STATISTICAL',
     engine_name: 'Motor Estadístico',
+    expected_draw_number: '52869',
     top_5: ['59', '38', '13', '87', '49'],
     top_10: ['59', '38', '13', '87', '49'],
     top_20: ['59', '38', '13', '87', '49'],
@@ -664,7 +678,13 @@ export function getCanonicalLedger() {
   } catch (e) {
     custom = {};
   }
-  return { ...PRE_SEEDED_CANONICAL_RECORDS, ...custom };
+  const merged = { ...PRE_SEEDED_CANONICAL_RECORDS, ...custom };
+  for (const [k, v] of Object.entries(merged)) {
+    if (v && !v.expected_draw_number && v.date && v.jurisdiction && v.shift) {
+      v.expected_draw_number = resolveExpectedDrawNumber(v.date, v.jurisdiction, v.shift);
+    }
+  }
+  return merged;
 }
 
 // Persist a CanonicalPredictionRecord strictly before user display
