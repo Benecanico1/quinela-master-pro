@@ -179,3 +179,26 @@ export function subscribeToOfficialDraws(onUpdate) {
     return () => {};
   }
 }
+
+// Subscribe to real-time User Profile updates from Firestore (for instant VIP activation reflection)
+export function subscribeToUserProfile(email, onUpdate) {
+  if (!db || !email || email === 'visita@quiniela.com') return () => {};
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const docId = 'user_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+    const userRef = doc(db, 'users', docId);
+
+    const unsubscribe = onSnapshot(userRef, (snap) => {
+      if (snap.exists()) {
+        const userData = snap.data();
+        if (onUpdate) onUpdate(userData);
+      }
+    }, (err) => {
+      console.warn("User profile snapshot listener offline/fallback:", err.message);
+    });
+
+    return unsubscribe;
+  } catch (e) {
+    return () => {};
+  }
+}

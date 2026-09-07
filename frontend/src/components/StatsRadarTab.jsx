@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Flame, Clock, Radio, Info, ChevronRight, Target, ShieldCheck, 
   Sparkles, Crown, Lock, Award, TrendingUp, Zap, CheckCircle2, History, Calendar, Filter, Building2, Trees,
-  Copy, Check, BarChart2, Share2, Trophy
+  Copy, Check, BarChart2, Share2, Trophy, X
 } from 'lucide-react';
 import { getClientFrequencies, getRadar30DaysHistory, getAuditedRankingKPIs } from '../services/clientEngine';
 
@@ -16,6 +16,24 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
   const [copiedRanking, setCopiedRanking] = useState(false);
   const [isRadarLoading, setIsRadarLoading] = useState(true);
   const [radarLoadingStep, setRadarLoadingStep] = useState(0);
+  const [selectedPrizeDetailModal, setSelectedPrizeDetailModal] = useState(null); // 'cabeza' | 'all' | null
+  
+  // Asynchronous audited KPIs state so initial mounting never blocks UI
+  const [auditedKPIs, setAuditedKPIs] = useState(() => ({
+    completedDraws: 0,
+    totalScheduledDraws: 0,
+    pendingDraws: 0,
+    accuracyRate: '0.0',
+    totalHits: 0,
+    headHits: 0,
+    pos5Hits: 0,
+    pos10Hits: 0,
+    pos20Hits: 0,
+    multiplier: '0.00x',
+    ciudad: { completed: 0, hits: 0, headHits: 0, rate: '0.0' },
+    provincia: { completed: 0, hits: 0, headHits: 0, rate: '0.0' },
+    hitDetails: []
+  }));
 
   const loadingSteps = [
     '📡 Sincronizando extractos oficiales LOTBA y Provincia...',
@@ -24,11 +42,24 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
     '✨ ¡Radar Térmico y Métricas listos!'
   ];
 
+  // Defer heavy calculation to background microtask to keep UI 60fps responsive
   useEffect(() => {
-    const step1 = setTimeout(() => setRadarLoadingStep(1), 350);
-    const step2 = setTimeout(() => setRadarLoadingStep(2), 700);
-    const step3 = setTimeout(() => setRadarLoadingStep(3), 1050);
-    const finishTimer = setTimeout(() => setIsRadarLoading(false), 1350);
+    const calcTimer = setTimeout(() => {
+      try {
+        const kpis = getAuditedRankingKPIs(rankingPeriod, kpiLotteryFilter);
+        setAuditedKPIs(kpis);
+      } catch (e) {
+        console.warn("Error calculating KPIs:", e);
+      }
+    }, 50);
+    return () => clearTimeout(calcTimer);
+  }, [rankingPeriod, kpiLotteryFilter]);
+
+  useEffect(() => {
+    const step1 = setTimeout(() => setRadarLoadingStep(1), 300);
+    const step2 = setTimeout(() => setRadarLoadingStep(2), 600);
+    const step3 = setTimeout(() => setRadarLoadingStep(3), 900);
+    const finishTimer = setTimeout(() => setIsRadarLoading(false), 1200);
 
     return () => {
       clearTimeout(step1);
@@ -37,11 +68,6 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
       clearTimeout(finishTimer);
     };
   }, []);
-
-  // Dynamic calculation of real day-by-day audited KPIs
-  const auditedKPIs = useMemo(() => {
-    return getAuditedRankingKPIs(rankingPeriod, kpiLotteryFilter);
-  }, [rankingPeriod, kpiLotteryFilter]);
 
   const handleCopyRanking = () => {
     let copyText = '';
@@ -316,27 +342,53 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
             </div>
           </div>
 
-          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-              <Crown className="w-3.5 h-3.5 text-amber-400" /> Plenos a la Cabeza
+          {/* Plenos a la Cabeza (Interactive Clickable Card) */}
+          <div 
+            onClick={() => setSelectedPrizeDetailModal('cabeza')}
+            className="bg-gradient-to-b from-amber-950/40 to-slate-950 p-3 rounded-2xl border border-amber-500/40 hover:border-amber-400 space-y-1 cursor-pointer transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
+            title="Toca para ver la lista detallada de números que pegaron a la cabeza"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] text-amber-300 font-bold flex items-center gap-1">
+                <Crown className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" /> Plenos a la Cabeza
+              </div>
+              <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 rounded-full font-black animate-pulse">
+                👆 Ver Todos
+              </span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
               {auditedKPIs.headHits}
             </div>
-            <div className="text-[9px] text-amber-300 font-semibold">1° Premio Directo (70x)</div>
+            <div className="text-[9px] text-amber-300 font-semibold flex items-center justify-between">
+              <span>1° Premio Directo (70x)</span>
+              <span className="text-[8.5px] text-slate-400 underline group-hover:text-amber-300">Tocar para detalle</span>
+            </div>
           </div>
 
-          <div className="bg-slate-950/80 p-3 rounded-2xl border border-slate-800 space-y-0.5">
-            <div className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
-              <Award className="w-3.5 h-3.5 text-indigo-400" /> En los 20 Premios
+          {/* En los 20 Premios (Interactive Clickable Card) */}
+          <div 
+            onClick={() => setSelectedPrizeDetailModal('all')}
+            className="bg-gradient-to-b from-indigo-950/40 to-slate-950 p-3 rounded-2xl border border-indigo-500/40 hover:border-indigo-400 space-y-1 cursor-pointer transition-all duration-200 shadow-md hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
+            title="Toca para ver el detalle de todos los aciertos en la pizarra"
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] text-indigo-300 font-bold flex items-center gap-1">
+                <Award className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" /> En los 20 Premios
+              </div>
+              <span className="text-[8px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-full font-black">
+                👆 Ver Lista
+              </span>
             </div>
             <div className="text-xl sm:text-2xl font-black text-indigo-300 font-mono">
               {auditedKPIs.pos5Hits + auditedKPIs.pos10Hits + auditedKPIs.pos20Hits}
             </div>
-            <div className="text-[9px] text-slate-400">
-              {auditedKPIs.pos5Hits > 0 ? `${auditedKPIs.pos5Hits} a los 5 • ` : ''}
-              {auditedKPIs.pos10Hits > 0 ? `${auditedKPIs.pos10Hits} a los 10 • ` : ''}
-              {auditedKPIs.pos20Hits > 0 ? `${auditedKPIs.pos20Hits} a los 20` : 'Pizarra confirmada'}
+            <div className="text-[9px] text-slate-400 flex items-center justify-between">
+              <span className="truncate max-w-[110px]">
+                {auditedKPIs.pos5Hits > 0 ? `${auditedKPIs.pos5Hits} a los 5 • ` : ''}
+                {auditedKPIs.pos10Hits > 0 ? `${auditedKPIs.pos10Hits} a los 10 • ` : ''}
+                {auditedKPIs.pos20Hits > 0 ? `${auditedKPIs.pos20Hits} a los 20` : 'Pizarra confirmada'}
+              </span>
+              <span className="text-[8.5px] text-indigo-300 underline">Detalle</span>
             </div>
           </div>
 
@@ -1344,6 +1396,116 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
                 </div>
               ))
             )}
+          </div>
+    </div>
+      )}
+
+      {/* MODAL DETALLADO DE PREMIOS Y PLENOS A LA CABEZA */}
+      {selectedPrizeDetailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-xl w-full p-4 sm:p-6 shadow-2xl relative max-h-[85vh] flex flex-col space-y-4">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className={`p-2 rounded-xl ${selectedPrizeDetailModal === 'cabeza' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'}`}>
+                  {selectedPrizeDetailModal === 'cabeza' ? <Crown className="w-5 h-5 text-amber-400" /> : <Award className="w-5 h-5 text-indigo-400" />}
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black text-white flex items-center gap-1.5">
+                    {selectedPrizeDetailModal === 'cabeza' ? '👑 Plenos a la Cabeza Auditados' : '🏆 Desglose Completo de Premios'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {selectedPrizeDetailModal === 'cabeza' 
+                      ? 'Sorteos donde el pronóstico pegó exactamente en la 1° Posición (Cabeza)' 
+                      : 'Todos los aciertos verificados según extractos oficiales'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedPrizeDetailModal(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 cursor-pointer transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="overflow-y-auto space-y-2.5 pr-1 flex-1 no-scrollbar">
+              {(() => {
+                const hitsToList = (auditedKPIs.hitDetails || []).filter(h => {
+                  if (selectedPrizeDetailModal === 'cabeza') {
+                    return h.position === 1 || (h.prizeCategory && h.prizeCategory.includes('cabeza'));
+                  }
+                  return true;
+                });
+
+                if (hitsToList.length === 0) {
+                  return (
+                    <div className="p-8 text-center bg-slate-950/80 rounded-2xl border border-slate-800 text-slate-400 text-xs space-y-1">
+                      <p className="font-bold text-slate-300">No se registran impactos a la cabeza en este período filtrado.</p>
+                      <p className="text-[10px] text-slate-500">Selecciona el período 'Mes' o 'Semana' para ver el histórico consolidado.</p>
+                    </div>
+                  );
+                }
+
+                return hitsToList.map((hit, idx) => (
+                  <div 
+                    key={idx}
+                    className="p-3 bg-slate-950 rounded-2xl border border-slate-800/90 hover:border-amber-500/40 transition-all flex items-center justify-between gap-3 shadow-inner"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-400 text-slate-950 flex flex-col items-center justify-center font-black font-mono shadow border border-amber-300">
+                        <span className="text-base leading-none">{hit.number}</span>
+                        <span className="text-[7.5px] font-sans font-bold uppercase">{hit.position === 1 ? 'Cabeza' : `#${hit.position}`}</span>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-white font-mono">
+                            {hit.lottery_name || (hit.lottery === 'ciudad' ? 'Nacional' : 'Provincia')}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-semibold">
+                            {hit.shift_name || hit.shift}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-300">
+                          Significado: <strong className="text-amber-300">"{hit.significado || 'Número'}"</strong>
+                        </div>
+                        {hit.head_num && (
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            Cabeza oficial sorteada: <span className="text-amber-400 font-bold">{hit.head_num}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black font-mono inline-block">
+                        {hit.multiplier || '70x Cabeza'}
+                      </span>
+                      <div className="text-[10px] text-slate-400 font-mono mt-1">
+                        📅 {hit.date}
+                      </div>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-[11px] text-slate-400">
+                Auditoría verificada con extractos oficiales
+              </span>
+              <button
+                onClick={() => setSelectedPrizeDetailModal(null)}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-xl cursor-pointer transition-all active:scale-95"
+              >
+                Cerrar Detalle
+              </button>
+            </div>
+
           </div>
         </div>
       )}

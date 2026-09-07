@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { Sparkles, Mail, Lock, User, ArrowRight, ShieldCheck, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import GoogleAuthPromptModal from './GoogleAuthPromptModal';
@@ -41,6 +41,8 @@ export default function WelcomeAuthScreen({ isOpen, onAuthSuccess, onSuccess, on
       finalName = finalName.charAt(0).toUpperCase() + finalName.slice(1);
     }
 
+    const now = Date.now();
+    const expiresAt = now + 15 * 86400000;
     const trialUser = {
       id: Date.now(),
       name: finalName,
@@ -51,7 +53,8 @@ export default function WelcomeAuthScreen({ isOpen, onAuthSuccess, onSuccess, on
       trial_active: true,
       trial_days_left: 15,
       vip_active: true,
-      vip_days_left: 15
+      vip_days_left: 15,
+      vip_expires_at: expiresAt
     };
 
     triggerSuccess(trialUser);

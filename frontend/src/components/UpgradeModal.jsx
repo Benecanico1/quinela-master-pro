@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Crown, Copy, Check, MessageCircle, Send, ShieldCheck, CreditCard, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Crown, Copy, Check, MessageCircle, Send, ShieldCheck, CreditCard, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { notifyPaymentIntention, submitCloudPaymentProof } from '../services/telemetryService';
 
 export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }) {
   const [settings, setSettings] = useState(null);
@@ -10,6 +11,7 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
   const [amount, setAmount] = useState(5500);
   const [sendingProof, setSendingProof] = useState(false);
   const [proofSentSuccess, setProofSentSuccess] = useState(false);
+  const [adminNotified, setAdminNotified] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -17,8 +19,13 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
         setSettings(res.data);
         if (res.data.price_ars) setAmount(res.data.price_ars);
       }).catch(console.error);
+
+      // Instantly notify Admin mailbox in Firestore that user is viewing payment data
+      notifyPaymentIntention(user, { amount: 5500 }).then(() => {
+        setAdminNotified(true);
+      }).catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -39,16 +46,34 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
 
     setSendingProof(true);
     try {
+      // 1. Submit directly to Firebase Firestore
+      await submitCloudPaymentProof(user, proofText, amount);
+
+      // 2. Also save to local pending payments for immediate offline fallback
+      const localPayments = JSON.parse(localStorage.getItem('pending_payments') || '[]');
+      const newPayment = {
+        id: 'pay_' + Date.now(),
+        user_name: user?.name || 'Cliente Quiniela',
+        user_email: user?.email || 'usuario@quiniela.com',
+        amount: Number(amount),
+        proof_details: proofText,
+        status: 'pending',
+        created_at: new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      };
+      localStorage.setItem('pending_payments', JSON.stringify([newPayment, ...localPayments]));
+
+      // 3. Fallback backend call
       await axios.post('/api/payments/submit-proof', {
         email: user?.email || 'usuario@quiniela.com',
         name: user?.name || 'Cliente',
         amount: Number(amount),
         proof_details: proofText
-      });
+      }).catch(() => {});
+
       setProofSentSuccess(true);
       if (onProofSubmitted) onProofSubmitted();
     } catch (err) {
-      console.error(err);
+      console.error("Error sending proof:", err);
     } finally {
       setSendingProof(false);
     }
@@ -114,6 +139,22 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
             </div>
           </div>
         )}
+
+        {/* Real-Time Admin Standby Banner */}
+        <div className="bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 border border-purple-500/40 p-3 rounded-2xl flex items-center justify-between gap-2 shadow">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-bold text-slate-200">
+              Administrador en línea: <strong className="text-emerald-400">Atento a tu depósito</strong>
+            </span>
+          </div>
+          <span className="text-[9.5px] font-mono font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
+            Buzón Activo
+          </span>
+        </div>
 
         {/* Payment Data Box */}
         <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-3">

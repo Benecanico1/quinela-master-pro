@@ -1,17 +1,19 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { 
   X, User, Mail, ShieldCheck, Crown, Sparkles, Clock, LogOut, 
   ChevronRight, ExternalLink, Award, CheckCircle2, Ticket, Star, RefreshCw
 } from 'lucide-react';
 import { logOutGoogleAccount, getAffiliateUrl } from '../services/firebaseClient';
+import { calculateRemainingVipDays } from '../services/telemetryService';
 
 export default function UserProfileModal({ isOpen, onClose, user, onUserUpdated, onOpenUpgrade }) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   if (!isOpen || !user) return null;
 
-  const isVip = Boolean(user.is_vip || user.vip_active || user.email === 'jesushidalgo25@gmail.com');
-  const daysLeft = user.vip_days_left ?? (isVip ? 30 : 0);
+  const vipCalc = calculateRemainingVipDays(user);
+  const isVip = vipCalc.isVip;
+  const daysLeft = vipCalc.daysLeft;
   const affiliateUrl = getAffiliateUrl();
 
   const handleLogout = async () => {

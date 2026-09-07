@@ -54,7 +54,8 @@ import {
   getClientBacktest,
   syncRemoteOfficialDraws
 } from './services/clientEngine';
-import { registerDeviceSession, syncUserProfileToCloud } from './services/telemetryService';
+import { registerDeviceSession, syncUserProfileToCloud, calculateRemainingVipDays } from './services/telemetryService';
+import { subscribeToUserProfile } from './services/firebaseClient';
 import { 
   getStoredNotifications, 
   subscribeToBroadcastNotifications, 
@@ -112,24 +113,42 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(() => new Date().toLocaleTimeString());
 
-  // User & Auth State
+  // User & Auth State with automatic 15-day VIP trial initialization
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('quiniela_user');
+    const now = Date.now();
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        const vipCalc = calculateRemainingVipDays(parsed);
+        return {
+          ...parsed,
+          is_vip: vipCalc.isVip,
+          vip_active: vipCalc.isVip,
+          vip_days_left: vipCalc.daysLeft,
+          vip_expires_at: vipCalc.expiresAt
+        };
+      } catch (e) {}
     }
-    return {
-      id: 0,
-      name: 'Invitado',
+    // Brand new user / fresh install: 15 full VIP days granted automatically
+    const expiresAt = now + 15 * 86400000;
+    const defaultTrialUser = {
+      id: 'guest_' + now,
+      name: 'Usuario Quiniela',
       email: 'visita@quiniela.com',
       role: 'user',
-      is_vip: false,
-      tier: 'FREE',
-      trial_active: false,
-      trial_days_left: 0,
-      vip_active: false,
-      vip_days_left: 0
+      is_vip: true,
+      tier: 'VIP_TRIAL',
+      trial_active: true,
+      trial_days_left: 15,
+      vip_active: true,
+      vip_days_left: 15,
+      vip_expires_at: expiresAt
     };
+    try {
+      localStorage.setItem('quiniela_user', JSON.stringify(defaultTrialUser));
+    } catch (e) {}
+    return defaultTrialUser;
   });
 
   const [showSplash, setShowSplash] = useState(true);
@@ -169,6 +188,45 @@ export default function App() {
 
     // 0. Register device installation telemetry session in Firestore
     registerDeviceSession();
+
+    // Real-time listener for user profile from Firestore (instant VIP reflection when admin approves)
+    let unsubscribeUser = () => {};
+    if (user?.email && user.email !== 'visita@quiniela.com') {
+      unsubscribeUser = subscribeToUserProfile(user.email, (cloudUser) => {
+        if (cloudUser) {
+          const calc = calculateRemainingVipDays(cloudUser);
+          const merged = {
+            ...cloudUser,
+            is_vip: calc.isVip,
+            vip_active: calc.isVip,
+            vip_days_left: calc.daysLeft,
+            vip_expires_at: calc.expiresAt
+          };
+          setUser(merged);
+          localStorage.setItem('quiniela_user', JSON.stringify(merged));
+        }
+      });
+    }
+
+    // Recalculate VIP countdown every 60s
+    const vipTicker = setInterval(() => {
+      setUser(prev => {
+        if (!prev) return prev;
+        const calc = calculateRemainingVipDays(prev);
+        if (calc.daysLeft !== prev.vip_days_left || calc.isVip !== prev.is_vip) {
+          const updated = {
+            ...prev,
+            is_vip: calc.isVip,
+            vip_active: calc.isVip,
+            vip_days_left: calc.daysLeft,
+            vip_expires_at: calc.expiresAt
+          };
+          localStorage.setItem('quiniela_user', JSON.stringify(updated));
+          return updated;
+        }
+        return prev;
+      });
+    }, 60000);
 
     // 1. Immediate Cloud Auto-Sync with LOTBA/Firebase on App Launch
     syncRemoteOfficialDraws().then(res => {
@@ -387,32 +445,48 @@ export default function App() {
               <Wallet className="w-4 h-4" />
             </button>
 
-            {/* User Profile / VIP Space Button */}
-            {user && user.email && user.email !== 'visita@quiniela.com' ? (
-              <button
-                onClick={() => setIsProfileOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-700 hover:border-amber-500/50 text-white text-xs font-bold transition-all cursor-pointer shadow active:scale-95"
-                title="Mi Espacio VIP & Cuenta Oficial"
-              >
-                {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.name} className="w-5 h-5 rounded-full object-cover border border-amber-400" />
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-600 to-amber-400 text-slate-950 font-black text-[10px] flex items-center justify-center">
-                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                )}
-                <span className="hidden sm:inline text-xs font-black truncate max-w-[90px]">{user.name?.split(' ')[0]}</span>
-                {user.is_vip && <Crown className="w-3 h-3 text-amber-400 shrink-0" />}
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black text-xs rounded-xl shadow cursor-pointer transition-all active:scale-95 flex items-center gap-1"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>+15d VIP</span>
-              </button>
-            )}
+            {/* User Profile / VIP Space Button with 24h Countdown Badge */}
+            <button
+              onClick={() => {
+                if (user && user.email && user.email !== 'visita@quiniela.com') {
+                  setIsProfileOpen(true);
+                } else if (!user?.is_vip || user?.vip_days_left <= 0) {
+                  setIsUpgradeOpen(true);
+                } else {
+                  setIsProfileOpen(true);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs font-bold transition-all cursor-pointer shadow active:scale-95 ${
+                user?.is_vip && user?.vip_days_left > 0
+                  ? 'bg-slate-900 border-amber-500/50 hover:border-amber-400 text-white'
+                  : 'bg-rose-950/60 border-rose-500/50 hover:border-rose-400 text-rose-200 animate-pulse'
+              }`}
+              title="Mi Espacio VIP & Cuenta Oficial"
+            >
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt={user.name} className="w-5 h-5 rounded-full object-cover border border-amber-400 shrink-0" />
+              ) : (
+                <div className={`w-5 h-5 rounded-full ${user?.is_vip && user?.vip_days_left > 0 ? 'bg-gradient-to-tr from-amber-600 to-amber-400 text-slate-950' : 'bg-rose-600 text-white'} font-black text-[10px] flex items-center justify-center shrink-0`}>
+                  {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+              )}
+
+              {user?.is_vip && user?.vip_days_left > 0 ? (
+                <div className="flex items-center gap-1">
+                  <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="font-mono font-black text-amber-300 text-[11px]">
+                    {user.vip_days_left}d VIP
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-rose-400 shrink-0" />
+                  <span className="font-black text-rose-300 text-[10px]">
+                    Pagar VIP
+                  </span>
+                </div>
+              )}
+            </button>
 
             {/* Notification Bell Button */}
             <button

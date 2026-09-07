@@ -606,6 +606,35 @@ export default function PredictionsTab({
 
   return (
     <div className="space-y-4 animate-fadeIn">
+      {/* Banner de Aviso cuando el VIP está Vencido */}
+      {!isVip && (
+        <div className="p-3.5 bg-gradient-to-r from-rose-950/90 via-slate-900 to-amber-950/80 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+              <Crown className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                <span>Tu período VIP ha expirado (Viendo 1 pronóstico)</span>
+                <span className="text-[9px] bg-rose-500/30 text-rose-300 border border-rose-500/40 px-1.5 py-0.2 rounded font-mono">Modo Limitado</span>
+              </h4>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                ¿Quieres tener los pronósticos completos de cada motor? Comunícate con el administrador o activa tus 30 días premium.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenUpgrade}
+            className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black text-xs rounded-xl shadow-lg cursor-pointer transition-all active:scale-95 shrink-0 flex items-center justify-center gap-1.5"
+          >
+            <Sparkles className="w-4 h-4 text-slate-950" />
+            <span>Pagar 30 Días Premium ($5 USD)</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Barra Sticky Superior con Próximo Sorteo y Menú de Rayitas */}
       <div className="sticky top-[48px] sm:top-[56px] z-30 -mx-3 sm:-mx-6 lg:-mx-8 px-3 sm:px-6 lg:px-8 py-1.5 bg-slate-950/95 backdrop-blur-md border-b border-amber-500/30 flex items-center justify-between gap-2 shadow-md">
         <div className="flex items-center gap-1.5 min-w-0">

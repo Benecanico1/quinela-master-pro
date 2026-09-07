@@ -7,8 +7,9 @@ import {
   Calendar, Clock, UserCheck, Sparkles, Send, ShieldAlert, Trash2
 } from 'lucide-react';
 import { getRealOfficialDrawsFromStorage, saveRealOfficialDrawToStorage, SIGNIFICADOS, getLocalDateString } from '../services/clientEngine';
-import { getAffiliateUrl, setAffiliateUrl } from '../services/firebaseClient';
-import { getCloudAdminTelemetry, grantVipDaysInCloud } from '../services/telemetryService';
+import { db, getAffiliateUrl, setAffiliateUrl } from '../services/firebaseClient';
+import { doc, updateDoc } from 'firebase/firestore';
+import { getCloudAdminTelemetry, grantVipDaysInCloud, subscribeToPaymentInbox } from '../services/telemetryService';
 import { publishBroadcastNotification, getStoredNotifications, deleteBroadcastFromCloud } from '../services/notificationService';
 
 export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushidalgo25@gmail.com' }) {
@@ -155,6 +156,22 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
   useEffect(() => {
     if (isOpen) {
       fetchAdminData();
+      // Listen in real-time to payment intentions and submitted proofs from Firestore
+      const unsubscribePayments = subscribeToPaymentInbox((liveIntents) => {
+        if (liveIntents && liveIntents.length > 0) {
+          setPaymentsList(prev => {
+            const map = new Map();
+            (prev || []).forEach(p => map.set(p.id, p));
+            liveIntents.forEach(p => map.set(p.id, p));
+            const merged = Array.from(map.values());
+            merged.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            return merged;
+          });
+        }
+      });
+      return () => {
+        if (unsubscribePayments) unsubscribePayments();
+      };
     }
   }, [isOpen]);
 
@@ -239,16 +256,42 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
     if (action === 'approve') {
       const payment = updatedPayments.find(p => p.id === paymentId);
       if (payment) {
+        const targetEmail = payment.user_email;
+        // 1. Grant 30 days in Firestore cloud
+        if (targetEmail) {
+          const docId = 'user_' + targetEmail.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_');
+          grantVipDaysInCloud(docId, 30);
+        }
+
+        // 2. Also update local storage if it's the current user
         const currentUser = JSON.parse(localStorage.getItem('quiniela_user') || '{}');
-        if (currentUser.email === payment.user_email) {
+        if (currentUser.email === targetEmail) {
+          const now = Date.now();
+          const currentExp = currentUser.vip_expires_at && currentUser.vip_expires_at > now ? currentUser.vip_expires_at : now;
+          const newExp = currentExp + 30 * 86400000;
           currentUser.is_vip = true;
           currentUser.tier = 'VIP_MONTHLY';
           currentUser.vip_active = true;
-          currentUser.vip_days_left = (currentUser.vip_days_left || 0) + 30;
+          currentUser.vip_expires_at = newExp;
+          currentUser.vip_days_left = Math.max(0, Math.ceil((newExp - now) / 86400000));
           localStorage.setItem('quiniela_user', JSON.stringify(currentUser));
         }
+
+        // Refresh admin user list to reflect changes immediately
+        fetchAdminData();
       }
     }
+
+    // Direct Firestore update if payment was from payment_intentions
+    try {
+      if (db) {
+        const intentRef = doc(db, 'payment_intentions', paymentId);
+        await updateDoc(intentRef, {
+          status: action === 'approve' ? 'approved' : 'rejected',
+          updated_at: new Date().toISOString()
+        });
+      }
+    } catch (e) {}
 
     try {
       await axios.post('/api/admin/payments/review', {
@@ -674,21 +717,30 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
                         )}
                       </div>
 
-                      {p.status === 'pending' && (
+                      {p.status !== 'approved' && (
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleReviewPayment(p.id, 'approve')}
-                            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer shadow"
+                            className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-xl flex items-center gap-1.5 cursor-pointer shadow-lg active:scale-95 transition-all"
                           >
-                            <Check className="w-4 h-4" /> Aprobar (+30D VIP)
+                            <Sparkles className="w-4 h-4 text-amber-300" />
+                            <span>Activar 30 Días Premium</span>
                           </button>
-                          <button
-                            onClick={() => handleReviewPayment(p.id, 'reject')}
-                            className="px-3 py-2 bg-slate-800 hover:bg-rose-950 text-rose-300 text-xs font-bold rounded-xl cursor-pointer"
-                          >
-                            Rechazar
-                          </button>
+                          {p.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleReviewPayment(p.id, 'reject')}
+                              className="px-3 py-2 bg-slate-800 hover:bg-rose-950 text-rose-300 text-xs font-bold rounded-xl cursor-pointer"
+                            >
+                              Descartar
+                            </button>
+                          )}
                         </div>
+                      )}
+
+                      {p.status === 'approved' && (
+                        <span className="px-3 py-1 bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 font-black text-xs rounded-xl flex items-center gap-1">
+                          <Check className="w-4 h-4 text-emerald-400" /> 30 Días Activados
+                        </span>
                       )}
                     </div>
                   ))
@@ -1161,14 +1213,29 @@ export default function AdminPanelModal({ isOpen, onClose, adminEmail = 'jesushi
                 <span className="text-slate-400">Tiempo de Vigencia VIP:</span>
                 <span className="font-bold text-amber-400">
                   {selectedUserModal.vip_days_left > 0 ? (
-                    `Quedan ${selectedUserModal.vip_days_left} días de acceso`
+                    <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-mono font-black border border-amber-500/30">
+                      👑 Le quedan {selectedUserModal.vip_days_left} días
+                    </span>
                   ) : selectedUserModal.trial_active ? (
-                    `Prueba activa (${selectedUserModal.trial_days_left}d)`
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                      Prueba activa ({selectedUserModal.trial_days_left}d)
+                    </span>
                   ) : (
-                    <span className="text-slate-500 font-normal">Sin días VIP activos</span>
+                    <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-400 font-bold border border-rose-500/30">
+                      ❌ Período Vencido (0 días)
+                    </span>
                   )}
                 </span>
               </div>
+
+              {selectedUserModal.vip_expires_at && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Vence exactamente el:</span>
+                  <span className="font-mono text-[10.5px] text-slate-300">
+                    {new Date(selectedUserModal.vip_expires_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })} hs
+                  </span>
+                </div>
+              )}
 
               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
                 <span className="text-slate-500">ID / UID:</span>
