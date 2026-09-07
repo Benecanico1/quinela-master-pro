@@ -44,10 +44,10 @@ export default function PredictionsTab({
   const [selectedLottery, setSelectedLottery] = useState('all'); // 'all', 'ciudad', 'provincia'
   const [engineFilter, setEngineFilter] = useState('both'); // 'both' | 'ml' | 'baseline'
   const [expandedSections, setExpandedSections] = useState({
-    'active-ml': false,
-    'active-baseline': false,
-    'closed-ml': false,
-    'closed-baseline': false
+    'active-ml': true,
+    'active-baseline': true,
+    'closed-ml': true,
+    'closed-baseline': true
   });
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [generatedTicket, setGeneratedTicket] = useState(null);
@@ -93,6 +93,15 @@ export default function PredictionsTab({
     : (liveShiftInfo?.id || 'la_previa');
   const cleanJur = selectedLottery === 'all' ? 'ciudad' : selectedLottery;
   const cleanActiveShift = resolvedActiveShiftId.toLowerCase().replace('la_', '');
+
+  // Predictions object for active shift (fallback, labels, redoblonas)
+  const mlPredictionsActive = useMemo(() => {
+    try {
+      return getMLPredictions(selectedLottery, resolvedActiveShiftId, 15);
+    } catch (e) {
+      return { shift_name: 'En Vivo', shift_time: '10:15', top_predictions: [], suggested_redoblonas: [] };
+    }
+  }, [selectedLottery, resolvedActiveShiftId]);
 
   // Pre-draw lock for active upcoming shift strictly before deadline
   try {
