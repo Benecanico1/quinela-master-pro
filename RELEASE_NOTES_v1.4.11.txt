@@ -1,0 +1,21 @@
+# Notas de la Versión v1.4.11 (Build 87) - Google Play Store
+
+### 🇪🇸 Español (es-419 / es-ES) - Copiar y pegar en Play Console:
+```text
+¡Novedades en Quinela Master Pro v1.4.11!
+• Apertura instantánea y optimizada del Ranking y Radar de Aciertos.
+• Nuevo desglose forense interactivo al tocar "Plenos a la Cabeza": consulta fecha, turno, lotería y número oficial de cada acierto.
+• Nuevo sistema de bienvenida: 15 días VIP de regalo con contador en vivo de 24 horas.
+• Notificaciones directas y activación inmediata de membresías mensuales.
+• Mejoras de estabilidad, rendimiento y sincronización en tiempo real con extractos oficiales.
+```
+
+---
+
+### 📝 Versión ultra-corta (por si el límite de caracteres es muy estricto):
+```text
+• Optimización de velocidad al abrir el Ranking y Radar Térmico.
+• Nuevo detalle interactivo de Premios a la Cabeza con fecha, turno y lotería.
+• 15 días VIP de bienvenida con contador diario.
+• Mejoras de rendimiento y estabilidad general.
+```
