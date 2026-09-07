@@ -1561,22 +1561,44 @@ export async function fetchDirectFromLotba() {
     const homeHtml = await homeRes.text();
     
     // Discover today's active sorteo IDs strictly from the live home select dropdown
-    const sorteos = [];
-    const optionRegex = /<option[^>]*value=['"](\d{5})['"][^>]*>(.*?)<\/option>/gi;
+    // Matches both value="52872" and unquoted value=52872
+    const optionRegex = /<option[^>]*value=['"]?(\d{5})['"]?[^>]*>(.*?)<\/option>/gi;
     let optMatch;
+    const todayDrawsFound = [];
+    const SHIFT_NAMES_ORDER = ['previa', 'primera', 'matutina', 'vespertina', 'nocturna'];
+
+    // Convert todayStr (YYYY-MM-DD) to DD/MM/YYYY
+    const [tYear, tMonth, tDay] = todayStr.split('-');
+    const todayDmy = `${tDay}/${tMonth}/${tYear}`;
+
     while ((optMatch = optionRegex.exec(homeHtml)) !== null) {
       const sId = optMatch[1];
-      const label = optMatch[2].toLowerCase();
-      let cleanShift = null;
-      if (label.includes('previa')) cleanShift = 'previa';
-      else if (label.includes('primera')) cleanShift = 'primera';
-      else if (label.includes('matutina')) cleanShift = 'matutina';
-      else if (label.includes('vespertina')) cleanShift = 'vespertina';
-      else if (label.includes('nocturna')) cleanShift = 'nocturna';
-      if (cleanShift && !sorteos.some(s => s.id === sId)) {
-        sorteos.push({ id: sId, shift: cleanShift, time: '18:00' });
+      const text = optMatch[2] || '';
+      const lower = text.toLowerCase();
+
+      // Check if this option belongs to today
+      if (text.includes(todayDmy) || text.includes(todayStr)) {
+        let cleanShift = null;
+        if (lower.includes('previa')) cleanShift = 'previa';
+        else if (lower.includes('primera')) cleanShift = 'primera';
+        else if (lower.includes('matutina')) cleanShift = 'matutina';
+        else if (lower.includes('vespertina')) cleanShift = 'vespertina';
+        else if (lower.includes('nocturna')) cleanShift = 'nocturna';
+
+        if (!todayDrawsFound.some(s => s.id === sId)) {
+          todayDrawsFound.push({ id: sId, shift: cleanShift, text });
+        }
       }
     }
+
+    // If shift is not explicitly named in the option label, deduce it from chronological sorteo ID order
+    // Sorteo IDs increase monotonically for each shift in the day:
+    // 1st of day = previa, 2nd = primera, 3rd = matutina, 4th = vespertina, 5th = nocturna
+    const sortedToday = [...todayDrawsFound].sort((a, b) => parseInt(a.id, 10) - parseInt(b.id, 10));
+    const sorteos = sortedToday.map((item, idx) => ({
+      id: item.id,
+      shift: item.shift || SHIFT_NAMES_ORDER[idx] || 'previa'
+    }));
 
     // PROHIBITED: Hardcoded static fallbackCandidates from previous dates (e.g. 52864 from 2026-09-04)
     if (sorteos.length === 0) return null;

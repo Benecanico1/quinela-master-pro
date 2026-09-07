@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
-import { saveRealOfficialDrawToStorage } from './clientEngine.js';
+import { saveRealOfficialDrawToStorage, getLocalDateString } from './clientEngine.js';
 
 // Firebase configuration with verified Google Auth credentials
 const firebaseConfig = {
@@ -114,7 +114,7 @@ export async function logOutGoogleAccount() {
 export async function syncDrawsFromFirestore() {
   if (!db) return null;
   try {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateString(new Date());
     // 1. Check today's specific document
     const todayRef = doc(db, 'official_draws', todayStr);
     const snap = await getDoc(todayRef);
