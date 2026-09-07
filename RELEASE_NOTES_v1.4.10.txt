@@ -1,0 +1,31 @@
+﻿===================================================================
+QUINIELA MASTER PRO — RELEASE NOTES v1.4.10 (BUILD 86)
+===================================================================
+Fecha de Lanzamiento: 07 de Septiembre de 2026
+Versión: 1.4.10 (VersionCode: 86)
+Paquete: com.quinelamasterpro.app
+Archivos Generados:
+- QuinelaMasterPro_v1.4.10.aab (Google Play Store Bundle: 22.5 MB)
+- QuinelaMasterPro_v1.4.10.apk (Instalación Directa: 23.3 MB)
+
+NOVEDADES Y MEJORAS EN ESTA VERSIÓN:
+-------------------------------------------------------------------
+1. CORRECCIÓN DEFINITIVA EN PRONÓSTICOS Y ESTABILIDAD:
+   - Se resolvió la excepción en tiempo de ejecución (ReferenceError: mlPredictionsActive is not defined) que provocaba la activación del ErrorBoundary ("Actualizando vista...").
+   - Las tarjetas de pronósticos ("Pronóstico Estrella IA - ML Champion" y "Pronóstico Clásico - Motor Estadístico") ahora se despliegan automáticamente sin requerir interacción manual.
+
+2. PANTALLA DE CARGA Y ANIMACIÓN DEL RADAR TÉRMICO:
+   - Nueva animación de diagnóstico estocástico al ingresar al Radar Térmico: logo 3D, gradiente ambiental y barra de progreso dinámica con los pasos de sincronización y computación de frecuencias.
+   - Transición fluida con posibilidad de omitir al instante tocando la pantalla.
+
+3. NOMBRES ATRACTIVOS Y REDOBLONAS CANDADO:
+   - Nueva nomenclatura clara y atractiva para los motores predictivos.
+   - Visualización directa de las Redoblonas Candado del turno y desglose de Ternos y Cuaternos.
+
+4. NAVEGACIÓN MEJORADA:
+   - Botones de retorno rápido "Volver a la App" optimizados tanto en la web como en WebView de Android.
+
+5. COTEJO EN TIEMPO REAL & AUDITORÍA DETERMINISTA:
+   - Trazabilidad criptográfica SHA-256 previa al sorteo en el Ledger Canónico sin fugas entre turnos ni loterías.
+   - Sincronización oficial continua con pizarras de LOTBA y Provincia.
+===================================================================
