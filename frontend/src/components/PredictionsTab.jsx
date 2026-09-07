@@ -43,6 +43,12 @@ export default function PredictionsTab({
 }) {
   const [selectedLottery, setSelectedLottery] = useState('all'); // 'all', 'ciudad', 'provincia'
   const [engineFilter, setEngineFilter] = useState('both'); // 'both' | 'ml' | 'baseline'
+  const [expandedSections, setExpandedSections] = useState({
+    'active-ml': false,
+    'active-baseline': false,
+    'closed-ml': false,
+    'closed-baseline': false
+  });
   const [expandedIndex, setExpandedIndex] = useState(null);
   const [generatedTicket, setGeneratedTicket] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -55,6 +61,13 @@ export default function PredictionsTab({
   const [isExtraLargeFont, setIsExtraLargeFont] = useState(false);
   const [slipEngineChoice, setSlipEngineChoice] = useState('ml'); // 'ml' | 'baseline'
   const [drawsSyncVersion, setDrawsSyncVersion] = useState(0);
+
+  const toggleSection = (sectionKey) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey]
+    }));
+  };
 
   // Auto-sync official draws from LOTBA / remote backend on mount
   useEffect(() => {
@@ -105,9 +118,6 @@ export default function PredictionsTab({
     rawStatActive.shift === cleanActiveShift && 
     rawStatActive.engine_id === 'STATISTICAL') ? rawStatActive : null;
 
-  const mlPredictionsActive = getMLPredictions(selectedLottery, resolvedActiveShiftId, 15);
-
-  // Strictly source Top 5 from Canonical Prediction Record. Top 5 NEVER falls back to dynamic recalculation or previous shifts.
   const mlTop5Active = useMemo(() => {
     if (canonicalMLActive && 
         canonicalMLActive.status === 'LOCKED' && 
@@ -299,7 +309,7 @@ export default function PredictionsTab({
     postText += `https://ingenieriajh.com/quinela.html`;
 
     navigator.clipboard.writeText(postText);
-    setCopyStatus('¡Pronósticos de Ambas Filas copiados para WhatsApp! 📢✨');
+    setCopyStatus('¡Pronósticos copiados para WhatsApp! 📢✨');
     setTimeout(() => setCopyStatus(''), 3000);
   };
 
@@ -337,7 +347,7 @@ export default function PredictionsTab({
 
   const currentShiftObj = shiftOptions.find(s => s.id === activeShift) || shiftOptions[0];
 
-  // Helper to render an Engine Row (Top 5 cards)
+  // Helper to render an Engine Row (Accordion Collapsible + Top 5 cards)
   const renderEngineRow = ({
     engineKey,
     title,
@@ -352,196 +362,233 @@ export default function PredictionsTab({
     predictionsList,
     isClosedSection = false
   }) => {
+    const sectionKey = isClosedSection ? `closed-${engineKey}` : `active-${engineKey}`;
+    const isSectionExpanded = Boolean(expandedSections[sectionKey]);
+    const previewNumbers = (predictionsList || []).slice(0, 5).map(p => p.number);
+
     return (
-      <div className="space-y-2 p-3 sm:p-4 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-md">
-        {/* Row Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2 border-b border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-base">{engineKey === 'ml' ? '🧠' : '📊'}</span>
-            <span className="text-xs sm:text-sm font-black text-white">{title}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold ${tagColor}`}>
-              {tag}
-            </span>
-            {isSealed && (
-              <span className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> 🔒 LOCKED (TRACEABILITY_V1)
-              </span>
-            )}
+      <div className={`rounded-2xl border transition-all duration-200 shadow-md ${
+        isSectionExpanded 
+          ? 'bg-slate-900/95 border-amber-500/50 ring-1 ring-amber-500/20' 
+          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+      }`}>
+        {/* Row Header (Clickable Accordion Trigger) */}
+        <button
+          type="button"
+          onClick={() => toggleSection(sectionKey)}
+          className="w-full p-3 sm:p-3.5 text-left flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer rounded-2xl transition-colors hover:bg-slate-800/40"
+        >
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-lg shrink-0">{engineKey === 'ml' ? '🧠' : '📊'}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs sm:text-sm font-black text-white">{title}</span>
+                <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-bold ${tagColor}`}>
+                  {tag}
+                </span>
+                {isSealed && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" /> LOCKED
+                  </span>
+                )}
+              </div>
+              <p className="text-[10.5px] text-slate-400 mt-0.5">
+                {subtitle}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[10.5px] text-slate-400 font-mono">
+          <div className="flex items-center gap-2 text-[10.5px] font-mono shrink-0 self-end sm:self-auto">
+            {/* Top 5 Preview Pill when collapsed */}
+            {!isSectionExpanded && previewNumbers.length > 0 && (
+              <div className="hidden xs:flex items-center gap-1 bg-slate-950/80 border border-slate-700/80 px-2 py-0.5 rounded-lg text-amber-300 font-black text-[11px]">
+                <span className="text-slate-400 font-bold text-[9.5px]">Top:</span>
+                <span>{previewNumbers.join(' • ')}</span>
+              </div>
+            )}
+
             <span className={`px-2 py-0.5 rounded-md ${statusColor} font-bold flex items-center gap-1`}>
               <Lock className="w-2.5 h-2.5" />
               {statusText}
             </span>
-            <span>•</span>
-            <span className="truncate">{timestampText}</span>
-          </div>
-        </div>
 
-        {/* Traceability Metadata Bar (Required for Pre-Draw Auditing) */}
-        {canonicalRecord && (
-          <div className="p-2.5 rounded-xl bg-slate-950/90 border border-slate-800 text-[10px] font-mono text-slate-300 space-y-1.5 shadow-inner">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="text-amber-400 font-bold flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/30">
-                <Lock className="w-3 h-3 text-amber-400" /> ESTADO: {canonicalRecord.status}
+            <div className="flex items-center gap-1 text-slate-400 bg-slate-950/60 px-2 py-1 rounded-lg border border-slate-800 text-[10px]">
+              <span className="text-amber-400 font-bold">
+                {isSectionExpanded ? 'Contraer' : 'Ver Detalles'}
               </span>
-              <span>•</span>
-              <span>🏛️ JURISDICCIÓN: <strong className="text-white font-bold">{canonicalRecord.jurisdiction?.toUpperCase()}</strong></span>
-              <span>•</span>
-              <span>📅 FECHA: <strong className="text-white font-bold">{canonicalRecord.date}</strong></span>
-              <span>•</span>
-              <span>⏰ TURNO: <strong className="text-white font-bold">{canonicalRecord.shift?.toUpperCase()}</strong></span>
-              <span>•</span>
-              <span>🕒 HORARIO: <strong className="text-white font-bold">{canonicalRecord.draw_time} hs</strong></span>
+              <ChevronDown className={`w-3.5 h-3.5 text-amber-400 transition-transform duration-300 ${isSectionExpanded ? 'rotate-180' : ''}`} />
             </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] text-slate-400">
-              <span className="truncate">PREDICTION_ID: <strong className="text-indigo-300 font-mono">{canonicalRecord.prediction_id}</strong></span>
-              <span>•</span>
-              <span>CREATED: <strong className="text-slate-300">{canonicalRecord.created_at || 'N/A'}</strong></span>
-              <span>•</span>
-              <span>LOCKED: <strong className="text-slate-300">{canonicalRecord.locked_at || 'N/A'}</strong></span>
-              <span>•</span>
-              <span>DEADLINE: <strong className="text-amber-300 font-bold">{canonicalRecord.deadline}</strong></span>
-            </div>
-            {canonicalRecord.prediction_hash && (
-              <div className="text-[9px] text-slate-400 truncate flex items-center gap-1">
-                <span>HASH SHA-256:</span>
-                <strong className="text-emerald-400 font-mono select-all bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/30">
-                  {canonicalRecord.prediction_hash}
-                </strong>
+          </div>
+        </button>
+
+        {/* Collapsible Content */}
+        {isSectionExpanded && (
+          <div className="p-3 sm:p-4 pt-0 space-y-3 animate-fadeIn border-t border-slate-800/80">
+            {/* Traceability Metadata Bar (Required for Pre-Draw Auditing) */}
+            {canonicalRecord && (
+              <div className="p-2.5 mt-3 rounded-xl bg-slate-950/90 border border-slate-800 text-[10px] font-mono text-slate-300 space-y-1.5 shadow-inner">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="text-amber-400 font-bold flex items-center gap-1 bg-amber-950/50 px-2 py-0.5 rounded border border-amber-500/30">
+                    <Lock className="w-3 h-3 text-amber-400" /> ESTADO: {canonicalRecord.status}
+                  </span>
+                  <span>•</span>
+                  <span>🏛️ JURISDICCIÓN: <strong className="text-white font-bold">{canonicalRecord.jurisdiction?.toUpperCase()}</strong></span>
+                  <span>•</span>
+                  <span>📅 FECHA: <strong className="text-white font-bold">{canonicalRecord.date}</strong></span>
+                  <span>•</span>
+                  <span>⏰ TURNO: <strong className="text-white font-bold">{canonicalRecord.shift?.toUpperCase()}</strong></span>
+                  <span>•</span>
+                  <span>🕒 HORARIO: <strong className="text-white font-bold">{canonicalRecord.draw_time} hs</strong></span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9.5px] text-slate-400">
+                  <span className="truncate">PREDICTION_ID: <strong className="text-indigo-300 font-mono">{canonicalRecord.prediction_id}</strong></span>
+                  <span>•</span>
+                  <span>CREATED: <strong className="text-slate-300">{canonicalRecord.created_at || 'N/A'}</strong></span>
+                  <span>•</span>
+                  <span>LOCKED: <strong className="text-slate-300">{canonicalRecord.locked_at || 'N/A'}</strong></span>
+                  <span>•</span>
+                  <span>DEADLINE: <strong className="text-amber-300 font-bold">{canonicalRecord.deadline}</strong></span>
+                </div>
+                {canonicalRecord.prediction_hash && (
+                  <div className="text-[9px] text-slate-400 truncate flex items-center gap-1">
+                    <span>HASH SHA-256:</span>
+                    <strong className="text-emerald-400 font-mono select-all bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                      {canonicalRecord.prediction_hash}
+                    </strong>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* 5 Cards Grid or Loading/Unregistered State */}
-        {(!predictionsList || predictionsList.length === 0) ? (
-          <div className="p-4 text-center rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 font-mono text-xs space-y-1">
-            <div className="flex items-center justify-center gap-1.5 text-amber-400">
-              <Lock className="w-4 h-4" />
-              <span className="font-bold">
-                {isClosedSection 
-                  ? 'SIN PREDICCIÓN REGISTRADA' 
-                  : (loading ? 'Cargando pronóstico sellado...' : `SIN PRONÓSTICO SELLADO PARA ${(canonicalRecord?.shift || cleanActiveShift || 'ESTE TURNO').toUpperCase()}`)}
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-500">
-              {isClosedSection 
-                ? 'No existía snapshot sellado en Ledger previo a este sorteo. Generación retrospectiva deshabilitada.'
-                : 'No existe registro canónico sellado antes del deadline para este turno y jurisdicción.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
-            {predictionsList.map((cand, idx) => {
-              const isLocked = !isVip && idx > 0;
-              const hitInfo = isClosedSection ? evaluateItemInClosedShift(cand.number, engineKey) : null;
-
-              if (isLocked) {
-                return (
-                  <div
-                    key={`${engineKey}-${cand.number}-${idx}`}
-                    onClick={onOpenUpgrade}
-                    className="relative rounded-xl p-3 bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between overflow-hidden cursor-pointer group hover:border-amber-500/50 transition-all min-h-[120px]"
-                  >
-                    <div className="filter blur-sm select-none opacity-20 text-center">
-                      <span className="text-2xl font-black font-mono">{cand.number}</span>
-                    </div>
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-2 bg-slate-950/85 backdrop-blur-xs text-center space-y-1">
-                      <Crown className="w-3.5 h-3.5 text-amber-400" />
-                      <div className="text-[11px] font-black text-white">Top #{idx + 1} (VIP)</div>
-                      <span className="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30">
-                        Desbloquear
-                      </span>
-                    </div>
-                  </div>
-                );
-              }
-
-              const isExpanded = expandedIndex === `${engineKey}-${idx}`;
-
-              return (
-                <div
-                  key={`${engineKey}-${cand.number}-${idx}`}
-                  onClick={() => setExpandedIndex(isExpanded ? null : `${engineKey}-${idx}`)}
-                  className={`rounded-xl p-2.5 transition-all border cursor-pointer relative ${
-                    hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
-                      ? 'bg-gradient-to-b from-amber-950/60 to-slate-950 border-amber-400 shadow-md ring-1 ring-amber-400/50'
-                      : hitInfo?.is_hit
-                        ? 'bg-gradient-to-b from-emerald-950/50 to-slate-950 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
-                        : idx === 0 && !isClosedSection
-                          ? 'bg-gradient-to-b from-slate-900 to-slate-950 border-amber-500/40'
-                          : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
-                  }`}
-                >
-                  {/* Header of Card */}
-                  <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-800/80 text-[9.5px]">
-                    <span className="font-mono font-bold text-slate-400">
-                      #{idx + 1} • {idx === 0 ? 'Cabeza' : idx === 1 ? '1° y 5' : idx < 4 ? 'A los 10' : 'A los 20'}
-                    </span>
-                    <span className="font-mono text-emerald-400 font-bold">
-                      {cand.composite_score || cand.predictive_score}%
-                    </span>
-                  </div>
-
-                  {/* Main Number & Meaning */}
-                  <div className="flex items-center justify-between gap-1.5 my-1">
-                    <div>
-                      <span className={`text-2xl font-black font-mono tracking-tight ${
-                        hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
-                          ? 'text-amber-300'
-                          : hitInfo?.is_hit
-                            ? 'text-emerald-300'
-                            : idx === 0 && !isClosedSection
-                              ? 'text-amber-400'
-                              : 'text-white'
-                      }`}>
-                        {cand.number}
-                      </span>
-                      <span className="text-[10px] text-slate-300 block truncate max-w-[95px]">
-                        "{cand.significado}"
-                      </span>
-                    </div>
-
-                    <div className="text-right text-[9px] font-mono text-slate-400">
-                      <div>T: <strong className="text-slate-200">{cand.suggested_centenas?.[0] || `7${cand.number}`}</strong></div>
-                      <div>C: <strong className="text-slate-200">{cand.suggested_millar?.[0] || `17${cand.number}`}</strong></div>
-                    </div>
-                  </div>
-
-                  {/* Hit Result Badge in Closed Section */}
-                  {isClosedSection && (
-                    <div className="mt-1.5 pt-1 border-t border-slate-800/80">
-                      <span className={`w-full block text-center text-[9.5px] font-mono font-bold px-1 py-0.5 rounded ${
-                        hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
-                          ? 'bg-amber-500 text-slate-950 font-black shadow'
-                          : hitInfo?.is_hit
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                            : 'bg-slate-900 text-slate-500'
-                      }`}>
-                        {hitInfo?.label}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Traceability Trigger */}
-                  {!isClosedSection && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setTraceCandidate(cand);
-                      }}
-                      className="mt-1 w-full py-1 text-[9px] font-bold text-slate-400 hover:text-amber-300 flex items-center justify-center gap-1 border-t border-slate-800/80 cursor-pointer"
-                    >
-                      <HelpCircle className="w-2.5 h-2.5 text-amber-400" />
-                      <span>¿Por qué?</span>
-                    </button>
-                  )}
+            {/* 5 Cards Grid or Loading/Unregistered State */}
+            {(!predictionsList || predictionsList.length === 0) ? (
+              <div className="p-4 text-center rounded-xl bg-slate-950/60 border border-slate-800 text-slate-400 font-mono text-xs space-y-1 mt-2">
+                <div className="flex items-center justify-center gap-1.5 text-amber-400">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-bold">
+                    {isClosedSection 
+                      ? 'SIN PREDICCIÓN REGISTRADA' 
+                      : (loading ? 'Cargando pronóstico sellado...' : `SIN PRONÓSTICO SELLADO PARA ${(canonicalRecord?.shift || cleanActiveShift || 'ESTE TURNO').toUpperCase()}`)}
+                  </span>
                 </div>
-              );
-            })}
+                <p className="text-[10px] text-slate-500">
+                  {isClosedSection 
+                    ? 'No existía snapshot sellado en Ledger previo a este sorteo. Generación retrospectiva deshabilitada.'
+                    : 'No existe registro canónico sellado antes del deadline para este turno y jurisdicción.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1">
+                {predictionsList.map((cand, idx) => {
+                  const isLocked = !isVip && idx > 0;
+                  const hitInfo = isClosedSection ? evaluateItemInClosedShift(cand.number, engineKey) : null;
+
+                  if (isLocked) {
+                    return (
+                      <div
+                        key={`${engineKey}-${cand.number}-${idx}`}
+                        onClick={onOpenUpgrade}
+                        className="relative rounded-xl p-3 bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between overflow-hidden cursor-pointer group hover:border-amber-500/50 transition-all min-h-[120px]"
+                      >
+                        <div className="filter blur-sm select-none opacity-20 text-center">
+                          <span className="text-2xl font-black font-mono">{cand.number}</span>
+                        </div>
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-2 bg-slate-950/85 backdrop-blur-xs text-center space-y-1">
+                          <Crown className="w-3.5 h-3.5 text-amber-400" />
+                          <div className="text-[11px] font-black text-white">Top #{idx + 1} (VIP)</div>
+                          <span className="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/30">
+                            Desbloquear
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const isExpanded = expandedIndex === `${engineKey}-${idx}`;
+
+                  return (
+                    <div
+                      key={`${engineKey}-${cand.number}-${idx}`}
+                      onClick={() => setExpandedIndex(isExpanded ? null : `${engineKey}-${idx}`)}
+                      className={`rounded-xl p-2.5 transition-all border cursor-pointer relative ${
+                        hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                          ? 'bg-gradient-to-b from-amber-950/60 to-slate-950 border-amber-400 shadow-md ring-1 ring-amber-400/50'
+                          : hitInfo?.is_hit
+                            ? 'bg-gradient-to-b from-emerald-950/50 to-slate-950 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30'
+                            : idx === 0 && !isClosedSection
+                              ? 'bg-gradient-to-b from-slate-900 to-slate-950 border-amber-500/40'
+                              : 'bg-slate-950/90 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {/* Header of Card */}
+                      <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-800/80 text-[9.5px]">
+                        <span className="font-mono font-bold text-slate-400">
+                          #{idx + 1} • {idx === 0 ? 'Cabeza' : idx === 1 ? '1° y 5' : idx < 4 ? 'A los 10' : 'A los 20'}
+                        </span>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {cand.composite_score || cand.predictive_score}%
+                        </span>
+                      </div>
+
+                      {/* Main Number & Meaning */}
+                      <div className="flex items-center justify-between gap-1.5 my-1">
+                        <div>
+                          <span className={`text-2xl font-black font-mono tracking-tight ${
+                            hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                              ? 'text-amber-300'
+                              : hitInfo?.is_hit
+                                ? 'text-emerald-300'
+                                : idx === 0 && !isClosedSection
+                                  ? 'text-amber-400'
+                                  : 'text-white'
+                          }`}>
+                            {cand.number}
+                          </span>
+                          <span className="text-[10px] text-slate-300 block truncate max-w-[95px]">
+                            "{cand.significado}"
+                          </span>
+                        </div>
+
+                        <div className="text-right text-[9px] font-mono text-slate-400">
+                          <div>T: <strong className="text-slate-200">{cand.suggested_centenas?.[0] || `7${cand.number}`}</strong></div>
+                          <div>C: <strong className="text-slate-200">{cand.suggested_millar?.[0] || `17${cand.number}`}</strong></div>
+                        </div>
+                      </div>
+
+                      {/* Hit Result Badge in Closed Section */}
+                      {isClosedSection && (
+                        <div className="mt-1.5 pt-1 border-t border-slate-800/80">
+                          <span className={`w-full block text-center text-[9.5px] font-mono font-bold px-1 py-0.5 rounded ${
+                            hitInfo?.is_hit && hitInfo.hit_type === 'CABEZA'
+                              ? 'bg-amber-500 text-slate-950 font-black shadow'
+                              : hitInfo?.is_hit
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : 'bg-slate-900 text-slate-500'
+                          }`}>
+                            {hitInfo?.label}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Traceability Trigger */}
+                      {!isClosedSection && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setTraceCandidate(cand);
+                          }}
+                          className="mt-1 w-full py-1 text-[9px] font-bold text-slate-400 hover:text-amber-300 flex items-center justify-center gap-1 border-t border-slate-800/80 cursor-pointer"
+                        >
+                          <HelpCircle className="w-2.5 h-2.5 text-amber-400" />
+                          <span>¿Por qué?</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -692,7 +739,7 @@ export default function PredictionsTab({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <span>✨ 2 Filas (Ambos)</span>
+            <span>✨ Todos los Motores</span>
           </button>
           <button
             onClick={() => setEngineFilter('ml')}
@@ -702,7 +749,7 @@ export default function PredictionsTab({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <span>🧠 Solo IA</span>
+            <span>🧠 Motor IA</span>
           </button>
           <button
             onClick={() => setEngineFilter('baseline')}
@@ -712,7 +759,7 @@ export default function PredictionsTab({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <span>📊 Solo Estadístico</span>
+            <span>📊 Motor Estadístico</span>
           </button>
         </div>
       </div>
@@ -813,11 +860,11 @@ export default function PredictionsTab({
           </div>
         </div>
 
-        {/* FILA 1: IA / ML — Champion (ML-FULL) */}
+        {/* MOTOR ESTRELLA IA: Machine Learning Champion */}
         {(engineFilter === 'both' || engineFilter === 'ml') && renderEngineRow({
           engineKey: 'ml',
-          title: 'Fila 1: Motor IA / Machine Learning — Champion (ML-FULL)',
-          subtitle: 'Regresión Logística L2 + 22 Features Causales',
+          title: 'Pronóstico Estrella IA — Machine Learning Champion (ML-FULL)',
+          subtitle: 'Redes Neuronales y Regresión Logística L2 con 22 Features Causales',
           tag: 'Champion v1.0',
           tagColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
           statusText: 'LOCKED',
@@ -829,12 +876,12 @@ export default function PredictionsTab({
           isClosedSection: false
         })}
 
-        {/* FILA 2: Motor Estadístico Base (Frecuencias & Atrasos) */}
+        {/* MOTOR CLÁSICO: Estadístico & Markov */}
         {(engineFilter === 'both' || engineFilter === 'baseline') && renderEngineRow({
           engineKey: 'baseline',
-          title: 'Fila 2: Motor Estadístico (Frecuencias, Atrasos & Markov)',
-          subtitle: 'Baseline Descriptivo con 2.223 Sorteos Verificados',
-          tag: 'Baseline Estadístico',
+          title: 'Pronóstico Clásico — Motor Estadístico & Cadenas de Markov',
+          subtitle: 'Análisis Probabilístico de Frecuencias, Atrasos y Rezagados Históricos',
+          tag: 'Motor Estadístico',
           tagColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
           statusText: 'LOCKED',
           statusColor: 'bg-blue-950 text-blue-400 border border-blue-500/30',
@@ -892,7 +939,7 @@ export default function PredictionsTab({
           </span>
         </div>
 
-        {/* Fila 1 Cerrada: IA / ML */}
+        {/* Auditoría de Aciertos IA */}
         {(() => {
           const targetClosedDraw = cleanJur === 'provincia' ? provinciaDraw : ciudadDraw;
           const evalClosedML = targetClosedDraw && canonicalClosedML ? evaluateCanonicalPrediction(canonicalClosedML, targetClosedDraw) : null;
@@ -900,8 +947,8 @@ export default function PredictionsTab({
 
           return (engineFilter === 'both' || engineFilter === 'ml') && renderEngineRow({
             engineKey: 'ml',
-            title: `Resultados Fila 1: Motor IA (ML-FULL) en ${lastClosed.name}`,
-            subtitle: 'Verificación de aciertos del modelo Champion',
+            title: `Auditoría de Aciertos — Pronóstico Estrella IA Champion (${lastClosed.name})`,
+            subtitle: 'Verificación de aciertos del modelo Champion en extracto oficial',
             tag: 'ML-FULL Auditado',
             tagColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
             statusText: isClosedMLEvaluated ? 'EVALUADO' : '⏳ Sorteo cerrado — esperando resultado oficial',
@@ -914,7 +961,7 @@ export default function PredictionsTab({
           });
         })()}
 
-        {/* Fila 2 Cerrada: Motor Estadístico */}
+        {/* Auditoría de Aciertos Estadístico */}
         {(() => {
           const targetClosedDraw = cleanJur === 'provincia' ? provinciaDraw : ciudadDraw;
           const evalClosedStat = targetClosedDraw && canonicalClosedStat ? evaluateCanonicalPrediction(canonicalClosedStat, targetClosedDraw) : null;
@@ -922,8 +969,8 @@ export default function PredictionsTab({
 
           return (engineFilter === 'both' || engineFilter === 'baseline') && renderEngineRow({
             engineKey: 'baseline',
-            title: `Resultados Fila 2: Motor Estadístico en ${lastClosed.name}`,
-            subtitle: 'Verificación de aciertos de frecuencias y atrasos',
+            title: `Auditoría de Aciertos — Pronóstico Clásico Estadístico (${lastClosed.name})`,
+            subtitle: 'Verificación de aciertos de frecuencias y atrasos en extracto oficial',
             tag: 'Estadístico Auditado',
             tagColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
             statusText: isClosedStatEvaluated ? 'EVALUADO' : '⏳ Sorteo cerrado — esperando resultado oficial',
@@ -1055,7 +1102,7 @@ export default function PredictionsTab({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                🧠 Fila 1: Motor IA (ML-FULL)
+                🧠 Motor IA Champion (ML)
               </button>
               <button
                 type="button"
@@ -1066,7 +1113,7 @@ export default function PredictionsTab({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                📊 Fila 2: Estadístico Base
+                📊 Motor Estadístico Clásico
               </button>
             </div>
 

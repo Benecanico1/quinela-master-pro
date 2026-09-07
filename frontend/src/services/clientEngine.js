@@ -962,6 +962,42 @@ export const REAL_DRAWS_STORAGE_KEY = 'quinela_official_draws_real_v1';
 
 export const REAL_OFFICIAL_DRAWS_DATABASE = {
   // 2026-09-05 (Sábado - Extractos Oficiales 100% Verificados LOTBA / IPLyC)
+  "2026-09-05_ciudad_nocturna": {
+    draw_number: "52871",
+    draw_date: "2026-09-05",
+    date: "2026-09-05",
+    official_date: "2026-09-05",
+    lottery: "ciudad",
+    jurisdiction: "ciudad",
+    shift: "nocturna",
+    head_millar: "5915",
+    head_centena: "915",
+    head_ambo: "15",
+    p1: "5915",
+    board: ["5915", "4996", "2011", "1132", "7952", "6872", "7843", "8205", "9352", "4509", "6765", "8998", "4613", "5468", "6687", "9655", "3339", "1190", "9948", "8894"],
+    source: "LOTBA_OFFICIAL_EXTRACT",
+    source_verified: true,
+    status: "PUBLISHED",
+    received_at: "2026-09-05T21:25:00.000-03:00"
+  },
+  "2026-09-05_provincia_nocturna": {
+    draw_number: "52871",
+    draw_date: "2026-09-05",
+    date: "2026-09-05",
+    official_date: "2026-09-05",
+    lottery: "provincia",
+    jurisdiction: "provincia",
+    shift: "nocturna",
+    head_millar: "1488",
+    head_centena: "488",
+    head_ambo: "88",
+    p1: "1488",
+    board: ["1488", "0914", "7012", "8203", "2583", "4544", "9305", "0054", "4666", "5044", "1792", "6689", "2797", "6856", "7413", "8244", "6175", "8920", "6099", "7868"],
+    source: "LOTBA_OFFICIAL_EXTRACT",
+    source_verified: true,
+    status: "PUBLISHED",
+    received_at: "2026-09-05T21:25:00.000-03:00"
+  },
   "2026-09-05_ciudad_vespertina": {
     draw_number: "52870",
     draw_date: "2026-09-05",
@@ -1461,6 +1497,9 @@ export const REAL_OFFICIAL_DRAWS_DATABASE = {
 export function getRealOfficialDrawsFromStorage() {
   let db = REAL_OFFICIAL_DRAWS_DATABASE;
   try {
+    if (typeof globalThis !== 'undefined' && globalThis.__REAL_DRAWS_JSON) {
+      db = { ...REAL_OFFICIAL_DRAWS_DATABASE, ...globalThis.__REAL_DRAWS_JSON };
+    }
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(REAL_DRAWS_STORAGE_KEY) : null;
     if (raw) {
       const custom = JSON.parse(raw);
@@ -1469,6 +1508,7 @@ export function getRealOfficialDrawsFromStorage() {
   } catch (e) {
     db = REAL_OFFICIAL_DRAWS_DATABASE;
   }
+
 
   // Populate draw_date, lottery, shift from dictionary key if missing
   const normalized = {};
@@ -1720,7 +1760,9 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
 
   let canonicalRecord = null;
   try {
-    if (typeof window !== 'undefined' && window.__CANONICAL_LEDGER_GET) {
+    if (typeof globalThis !== 'undefined' && globalThis.__CANONICAL_LEDGER_GET) {
+      canonicalRecord = globalThis.__CANONICAL_LEDGER_GET(dateStr, cleanLot, cleanShift, 'STATISTICAL');
+    } else if (typeof window !== 'undefined' && window.__CANONICAL_LEDGER_GET) {
       canonicalRecord = window.__CANONICAL_LEDGER_GET(dateStr, cleanLot, cleanShift, 'STATISTICAL');
     } else {
       const { getCanonicalPrediction } = require('./canonicalPredictionsLedger.js');
@@ -1735,27 +1777,16 @@ export function auditDrawAgainstPredictions(drawObj, dateStr, lottery, shift) {
     } catch (err) {}
   }
 
-  if (!canonicalRecord) {
-    // Special pre-seeded check for Nocturna 2026-09-04
-    if (dateStr === '2026-09-04' && cleanShift === 'nocturna') {
-      const top5 = cleanLot === 'ciudad' ? ['13', '20', '07', '55', '63'] : ['80', '60', '20', '06', '97'];
-      canonicalRecord = {
-        prediction_id: `CANONICAL_2026-09-04_${cleanLot.toUpperCase()}_NOCTURNA_STATISTICAL`,
-        engine_id: 'STATISTICAL',
-        engine_name: 'Motor Estadístico',
-        status: 'LOCKED',
-        top_5: top5
-      };
-    } else {
-      return {
-        is_hit: false,
-        hit_type: 'NO_RECORD',
-        engine_type: 'STATISTICAL',
-        engine_name: 'Motor Estadístico',
-        details: 'Sin pronóstico sellado pre-sorteo registrado en Ledger',
-        status_text: '⚪ Sin snapshot pre-sorteo'
-      };
-    }
+  if (!canonicalRecord || canonicalRecord.status === 'INVALID' || !Array.isArray(canonicalRecord.top_5) || canonicalRecord.top_5.length === 0) {
+    return {
+      is_hit: false,
+      hit_type: 'NO_RECORD',
+      engine_type: 'STATISTICAL',
+      engine_name: 'Motor Estadístico',
+      matched_positions: [],
+      details: 'Sin pronóstico sellado pre-sorteo registrado en Ledger',
+      status_text: '⚪ Sin snapshot pre-sorteo'
+    };
   }
 
   // Pure evaluation of Canonical Record * Official Draw
@@ -1857,7 +1888,9 @@ export function auditDrawDetailed(drawObj, dateStr, lottery, shift, mlTop5Ambos 
 
   let mlCanonicalRecord = null;
   try {
-    if (typeof window !== 'undefined' && window.__CANONICAL_LEDGER_GET) {
+    if (typeof globalThis !== 'undefined' && globalThis.__CANONICAL_LEDGER_GET) {
+      mlCanonicalRecord = globalThis.__CANONICAL_LEDGER_GET(dateStr, cleanLot, cleanShift, 'ML-FULL');
+    } else if (typeof window !== 'undefined' && window.__CANONICAL_LEDGER_GET) {
       mlCanonicalRecord = window.__CANONICAL_LEDGER_GET(dateStr, cleanLot, cleanShift, 'ML-FULL');
     } else {
       const { getCanonicalPrediction } = require('./canonicalPredictionsLedger.js');
@@ -2931,4 +2964,13 @@ export function getClientBacktest(lottery = 'all', shift = 'all', drawsCount = 3
     disclaimer: "El rendimiento histórico es descriptivo y no garantiza resultados en sorteos futuros. Cada sorteo es independiente."
   };
 }
+
+// Global registration for universal runtime cross-module access
+if (typeof globalThis !== 'undefined') {
+  globalThis.__GET_CLIENT_PREDICTIONS = getClientPredictions;
+}
+if (typeof window !== 'undefined') {
+  window.__GET_CLIENT_PREDICTIONS = getClientPredictions;
+}
+
 

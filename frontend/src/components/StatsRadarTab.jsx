@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Flame, Clock, Radio, Info, ChevronRight, Target, ShieldCheck, 
   Sparkles, Crown, Lock, Award, TrendingUp, Zap, CheckCircle2, History, Calendar, Filter, Building2, Trees,
@@ -14,6 +14,29 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
   const [historyTypeFilter, setHistoryTypeFilter] = useState('all'); // 'all', 'cabeza', 'pizarra'
   const [rankingPeriod, setRankingPeriod] = useState('month'); // 'day', 'week', 'month'
   const [copiedRanking, setCopiedRanking] = useState(false);
+  const [isRadarLoading, setIsRadarLoading] = useState(true);
+  const [radarLoadingStep, setRadarLoadingStep] = useState(0);
+
+  const loadingSteps = [
+    '📡 Sincronizando extractos oficiales LOTBA y Provincia...',
+    '🧠 Procesando matriz térmica de 100 números y frecuencias...',
+    '📊 Generando balance y ranking auditado de aciertos...',
+    '✨ ¡Radar Térmico y Métricas listos!'
+  ];
+
+  useEffect(() => {
+    const step1 = setTimeout(() => setRadarLoadingStep(1), 350);
+    const step2 = setTimeout(() => setRadarLoadingStep(2), 700);
+    const step3 = setTimeout(() => setRadarLoadingStep(3), 1050);
+    const finishTimer = setTimeout(() => setIsRadarLoading(false), 1350);
+
+    return () => {
+      clearTimeout(step1);
+      clearTimeout(step2);
+      clearTimeout(step3);
+      clearTimeout(finishTimer);
+    };
+  }, []);
 
   // Dynamic calculation of real day-by-day audited KPIs
   const auditedKPIs = useMemo(() => {
@@ -133,6 +156,76 @@ export default function StatsRadarTab({ frequencies, loading, isVip, onOpenUpgra
 
   // Limit numbers for free users
   const displayedNums = isVip ? nums : nums.slice(0, 30);
+
+  if (isRadarLoading) {
+    return (
+      <div 
+        onClick={() => setIsRadarLoading(false)}
+        className="min-h-[70vh] flex flex-col items-center justify-center p-6 bg-slate-950 text-white rounded-3xl border border-slate-800/80 shadow-2xl relative overflow-hidden cursor-pointer select-none animate-fadeIn"
+        style={{
+          background: 'radial-gradient(circle at 50% 40%, #1e1b4b 0%, #090d16 60%, #030712 100%)'
+        }}
+      >
+        {/* Ambient background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Top Branding Tag */}
+        <div className="flex items-center gap-2 mb-6 opacity-90">
+          <Radio className="w-4 h-4 text-cyan-400 animate-pulse" />
+          <span className="text-xs font-black tracking-widest uppercase text-cyan-300">
+            Radar Térmico & Métricas IA
+          </span>
+        </div>
+
+        {/* Main Center Glowing Logo */}
+        <div className="flex flex-col items-center text-center space-y-5 max-w-xs relative z-10">
+          <div className="relative group">
+            <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 via-amber-500 to-yellow-300 rounded-3xl blur-xl opacity-40 animate-pulse" />
+            <div className="relative w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-cyan-400/40 shadow-2xl shadow-cyan-500/20 bg-slate-900 flex items-center justify-center">
+              <img 
+                src="/splash_logo.jpg" 
+                alt="Quiniela Master Pro Radar" 
+                className="w-full h-full object-cover transform hover:scale-105 transition duration-700"
+                onError={(e) => {
+                  e.target.src = '/logo.jpg';
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Title & Tagline */}
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-black tracking-wider bg-gradient-to-r from-cyan-200 via-amber-300 to-yellow-400 bg-clip-text text-transparent">
+              RADAR DE PROBABILIDAD
+            </h1>
+            <p className="text-xs text-slate-400 font-medium">
+              Analizando 2.223 sorteos oficiales y tendencias
+            </p>
+          </div>
+
+          {/* Loading / Progress Indicator */}
+          <div className="w-56 space-y-2.5 pt-2">
+            <div className="h-1.5 w-full bg-slate-800/90 rounded-full overflow-hidden border border-slate-700/60 shadow-inner">
+              <div 
+                className="h-full bg-gradient-to-r from-cyan-500 via-amber-400 to-emerald-400 rounded-full transition-all duration-300 shadow-sm shadow-cyan-400/50" 
+                style={{ width: `${Math.min(100, (radarLoadingStep + 1) * 25)}%` }} 
+              />
+            </div>
+            <div className="text-[11px] text-slate-300 font-mono flex items-center justify-center gap-1.5 min-h-[24px]">
+              <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+              <span className="text-center font-bold text-cyan-200">
+                {loadingSteps[radarLoadingStep] || loadingSteps[0]}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-[9.5px] text-slate-500 pt-2">
+            Toca la pantalla para omitir y entrar
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fadeIn">

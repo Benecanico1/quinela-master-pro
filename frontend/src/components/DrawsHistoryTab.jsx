@@ -175,7 +175,7 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
 
   const openHitModal = (draw, position = 1) => {
     const isPos1 = position === 1;
-    const num4 = draw[`p${position}`] || draw.p1 || '0000';
+    const num4 = draw[`p${position}`] || (Array.isArray(draw.board) ? draw.board[position - 1] : null) || draw.p1 || '0000';
     const ambo = num4.slice(-2);
     const terno = num4.slice(-3);
     const significado = SIGNIFICADOS[ambo] || draw.significado || 'Símbolo';
@@ -185,8 +185,19 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     const canonicalStat = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL');
     const evalML = evaluateCanonicalPrediction(canonicalML, draw);
     const evalStat = evaluateCanonicalPrediction(canonicalStat, draw);
-    const primaryHit = evalML.is_hit ? evalML : (evalStat.is_hit ? evalStat : null);
-    const dualAudit = { ml: evalML, statistical: evalStat, primary_hit: primaryHit };
+    
+    // Specific match for THIS clicked position
+    const posHitML = evalML?.official_positions?.find(p => p.position === position) || null;
+    const posHitStat = evalStat?.official_positions?.find(p => p.position === position) || null;
+    const primaryHit = posHitML || posHitStat || (isPos1 && (evalML?.head_hit ? evalML : (evalStat?.head_hit ? evalStat : null))) || null;
+
+    const dualAudit = { 
+      ml: evalML, 
+      statistical: evalStat, 
+      pos_ml: posHitML,
+      pos_stat: posHitStat,
+      primary_hit: primaryHit 
+    };
     const isVespertinaLocked = draw.draw_date === '2026-09-04' && draw.shift === 'vespertina';
 
     setSelectedHitModal({
@@ -373,15 +384,20 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     const isInProgress = draw.status === 'IN_PROGRESS';
     const ambo = isCompleted ? (draw.head_ambo || draw.p1?.slice(-2) || '--') : '--';
     const sig = isCompleted ? (SIGNIFICADOS[ambo] || draw.significado || 'La Suerte') : draw.significado;
-    const aiHit = draw.ai_hit;
-    const matchedPositions = aiHit?.matched_positions || [];
+    
+    // Strict evaluation against Canonical Ledger
+    const canonicalML = isCompleted ? getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL') : null;
+    const canonicalStat = isCompleted ? getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL') : null;
+    const evalML = isCompleted ? evaluateCanonicalPrediction(canonicalML, draw) : null;
+    const evalStat = isCompleted ? evaluateCanonicalPrediction(canonicalStat, draw) : null;
+    const isCardHit = evalML?.is_hit || evalStat?.is_hit;
     const isExpanded = !!expandedBoards[draw.id];
 
     return (
       <div
         key={draw.id}
         className={`bg-slate-900/95 border rounded-2xl p-3.5 sm:p-4 shadow-lg transition-all space-y-3 ${
-          aiHit?.is_hit
+          isCardHit
             ? 'border-emerald-500/60 ring-1 ring-emerald-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/20'
             : 'border-slate-800'
         }`}
@@ -1080,25 +1096,28 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
                 <span>Auditoría & Proveniencia del Pronóstico:</span>
               </div>
               <div className="text-[10.5px] leading-relaxed text-slate-300 space-y-1">
-                {selectedHitModal.dualAudit?.ml?.is_hit && (
+                {selectedHitModal.dualAudit?.pos_ml && (
                   <div className="p-1.5 rounded-lg bg-indigo-950/60 border border-indigo-500/40">
-                    <strong className="text-indigo-300">🧠 ML-FULL (Champion):</strong> Pronóstico #{selectedHitModal.dualAudit.ml.model_rank} • Ambo {selectedHitModal.dualAudit.ml.number} • Posición #{selectedHitModal.dualAudit.ml.position} ({selectedHitModal.dualAudit.ml.multiplier})
+                    <strong className="text-indigo-300">🧠 ML-FULL (Champion):</strong> Pronóstico #{selectedHitModal.dualAudit.pos_ml.rank_in_prediction} • Ambo {selectedHitModal.dualAudit.pos_ml.number} • Posición #{selectedHitModal.dualAudit.pos_ml.position} ({selectedHitModal.dualAudit.pos_ml.multiplier})
                   </div>
                 )}
-                {selectedHitModal.dualAudit?.statistical?.is_hit && (
+                {selectedHitModal.dualAudit?.pos_stat && (
                   <div className="p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40">
-                    <strong className="text-emerald-300">📊 Motor Estadístico:</strong> Pronóstico #{selectedHitModal.dualAudit.statistical.model_rank} • Ambo {selectedHitModal.dualAudit.statistical.number} • Posición #{selectedHitModal.dualAudit.statistical.position} ({selectedHitModal.dualAudit.statistical.multiplier})
+                    <strong className="text-emerald-300">📊 Motor Estadístico:</strong> Pronóstico #{selectedHitModal.dualAudit.pos_stat.rank_in_prediction} • Ambo {selectedHitModal.dualAudit.pos_stat.number} • Posición #{selectedHitModal.dualAudit.pos_stat.position} ({selectedHitModal.dualAudit.pos_stat.multiplier})
                   </div>
                 )}
-                {!selectedHitModal.dualAudit?.ml?.is_hit && !selectedHitModal.dualAudit?.statistical?.is_hit && (
-                  <div>El ambo {selectedHitModal.ambo} ("{selectedHitModal.significado}") completó su ciclo de extracción en la pizarra oficial de {selectedHitModal.lotteryLabel}.</div>
+                {!selectedHitModal.dualAudit?.pos_ml && !selectedHitModal.dualAudit?.pos_stat && (
+                  <div>El ambo {selectedHitModal.ambo} ("{selectedHitModal.significado}") completó su ciclo de extracción en la pizarra oficial de {selectedHitModal.lotteryLabel}. Sin pronóstico canónico coincidente en esta posición.</div>
                 )}
                 <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-800/80 font-mono">
                   {selectedHitModal.isVespertinaLocked
                     ? "🛡️ Estado de Auditoría: VERIFIED PRE-DRAW (Bloqueo criptográfico Fase 5 verificado en Ledger — Computable N=2)."
                     : (selectedHitModal.drawDate === '2026-09-04' && selectedHitModal.draw?.shift === 'nocturna')
-                      ? "⚠️ Estado de Auditoría: FALSE ATTRIBUTION CORRECTED (Registro reconstruido post-sorteo por evidencia visible — No computable en N prospectivo)."
-                      : "ℹ️ Estado de Auditoría: LEGACY / NO VERIFICABLE (Sorteo histórico sin snapshot pre-sorteo criptográfico en Ledger)."}
+                      ? "⚠️ Estado de Auditoría: AUDITADO CANÓNICO (Sin snapshot pre-sorteo previo — No computable en N prospectivo)."
+                      : (selectedHitModal.dualAudit?.pos_ml || selectedHitModal.dualAudit?.pos_stat)
+                        ? "📊 Estado de Auditoría: WALK-FORWARD HISTÓRICO (Evaluación determinista basada en datos previos al sorteo)."
+                        : "ℹ️ Estado de Auditoría: HISTÓRICO (Sin coincidencias en el Top 5 pronosticado para este sorteo)."}
+
                 </div>
               </div>
             </div>
@@ -1126,147 +1145,160 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
       )}
 
       {/* POP-UP MODAL: PIZARRA OFICIAL COMPLETA (20 PREMIOS) */}
-      {selectedBoardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar relative">
-            {/* Header del Pop-up */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow ${
-                  selectedBoardModal.lottery === 'ciudad'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                }`}>
-                  {selectedBoardModal.lottery === 'ciudad' ? <Building2 className="w-3.5 h-3.5" /> : <Trees className="w-3.5 h-3.5" />}
-                  <span>{selectedBoardModal.lottery === 'ciudad' ? '🏛️ Ciudad (Nacional)' : '🌿 Provincia Bs As'}</span>
-                </span>
+      {selectedBoardModal && (() => {
+        const canonicalML = getCanonicalPrediction(selectedBoardModal.draw_date, selectedBoardModal.lottery, selectedBoardModal.shift, 'ML-FULL');
+        const canonicalStat = getCanonicalPrediction(selectedBoardModal.draw_date, selectedBoardModal.lottery, selectedBoardModal.shift, 'STATISTICAL');
+        const evalML = evaluateCanonicalPrediction(canonicalML, selectedBoardModal);
+        const evalStat = evaluateCanonicalPrediction(canonicalStat, selectedBoardModal);
 
-                <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-amber-300 border border-slate-800 text-xs font-bold capitalize">
-                  {selectedBoardModal.shift_name || selectedBoardModal.shift} • {selectedBoardModal.shift_time || '18:00'} hs
-                </span>
+        const canonicalMatchedPositions = new Set([
+          ...(evalML?.matched_positions || []),
+          ...(evalStat?.matched_positions || [])
+        ]);
+        const primaryEvalHit = evalML?.is_hit ? evalML : (evalStat?.is_hit ? evalStat : null);
 
-                <span className="text-slate-400 font-mono text-xs">
-                  {selectedBoardModal.draw_date}
-                </span>
-              </div>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
+            <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto no-scrollbar relative">
+              {/* Header del Pop-up */}
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black uppercase flex items-center gap-1.5 shadow ${
+                    selectedBoardModal.lottery === 'ciudad'
+                      ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  }`}>
+                    {selectedBoardModal.lottery === 'ciudad' ? <Building2 className="w-3.5 h-3.5" /> : <Trees className="w-3.5 h-3.5" />}
+                    <span>{selectedBoardModal.lottery === 'ciudad' ? '🏛️ Ciudad (Nacional)' : '🌿 Provincia Bs As'}</span>
+                  </span>
 
-              <button
-                type="button"
-                onClick={() => setSelectedBoardModal(null)}
-                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+                  <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-amber-300 border border-slate-800 text-xs font-bold capitalize">
+                    {selectedBoardModal.shift_name || selectedBoardModal.shift} • {selectedBoardModal.shift_time || '18:00'} hs
+                  </span>
 
-            {/* 1° Premio Destacado */}
-            <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 p-3.5 rounded-2xl flex items-center justify-between shadow-lg">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider block">👑 1° PREMIO OFICIAL A LA CABEZA</span>
-                <span className="text-2xl sm:text-3xl font-black font-mono tracking-widest leading-tight">
-                  {selectedBoardModal.p1 || '----'}
-                </span>
-                <span className="text-xs font-bold block mt-0.5">
-                  Ambo {selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)} — "{SIGNIFICADOS[selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)] || selectedBoardModal.significado || 'La Suerte'}"
-                </span>
-              </div>
-
-              {selectedBoardModal.ai_hit?.is_hit && (
-                <div className="bg-slate-950 text-emerald-300 border border-emerald-500/50 p-2 rounded-xl text-right shadow">
-                  <span className="text-[9px] font-mono text-amber-400 block font-bold">✨ ACIERTO IA</span>
-                  <span className="text-xs font-black">+{selectedBoardModal.ai_hit.multiplier}</span>
+                  <span className="text-slate-400 font-mono text-xs">
+                    {selectedBoardModal.draw_date}
+                  </span>
                 </div>
-              )}
-            </div>
 
-            {/* Grilla Oficial de los 20 Premios (2 Columnas: 1-10 y 11-20) */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] font-black uppercase text-slate-400 px-1">
-                <span>Pizarra Oficial Completa (20 Premios)</span>
-                <span className="text-emerald-400">4 Cifras Oficiales</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBoardModal(null)}
+                  className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                {/* Columna Izquierda: Posiciones 1 a 10 */}
-                <div className="space-y-1">
-                  {Array.from({ length: 10 }, (_, i) => i + 1).map((pos) => {
-                    const num4 = selectedBoardModal[`p${pos}`] || '0000';
-                    const ambo = num4.slice(-2);
-                    const isPos1 = pos === 1;
-                    const isHit = selectedBoardModal.ai_hit?.matched_positions?.includes(pos);
+              {/* 1° Premio Destacado */}
+              <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 p-3.5 rounded-2xl flex items-center justify-between shadow-lg">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider block">👑 1° PREMIO OFICIAL A LA CABEZA</span>
+                  <span className="text-2xl sm:text-3xl font-black font-mono tracking-widest leading-tight">
+                    {selectedBoardModal.p1 || '----'}
+                  </span>
+                  <span className="text-xs font-bold block mt-0.5">
+                    Ambo {selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)} — "{SIGNIFICADOS[selectedBoardModal.head_ambo || selectedBoardModal.p1?.slice(-2)] || selectedBoardModal.significado || 'La Suerte'}"
+                  </span>
+                </div>
 
-                    return (
-                      <div
-                        key={pos}
-                        onClick={() => openHitModal(selectedBoardModal, pos)}
-                        className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                          isPos1
-                            ? 'bg-amber-950/70 border-amber-500/80 text-amber-300 font-black ring-1 ring-amber-500/40'
-                            : isHit
+                {primaryEvalHit?.is_hit && (
+                  <div className="bg-slate-950 text-emerald-300 border border-emerald-500/50 p-2 rounded-xl text-right shadow">
+                    <span className="text-[9px] font-mono text-amber-400 block font-bold">✨ ACIERTO IA</span>
+                    <span className="text-xs font-black">+{primaryEvalHit.multiplier}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Grilla Oficial de los 20 Premios (2 Columnas: 1-10 y 11-20) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[11px] font-black uppercase text-slate-400 px-1">
+                  <span>Pizarra Oficial Completa (20 Premios)</span>
+                  <span className="text-emerald-400">4 Cifras Oficiales</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Columna Izquierda: Posiciones 1 a 10 */}
+                  <div className="space-y-1">
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((pos) => {
+                      const num4 = selectedBoardModal[`p${pos}`] || (Array.isArray(selectedBoardModal.board) ? selectedBoardModal.board[pos - 1] : null) || '0000';
+                      const ambo = num4.slice(-2);
+                      const isPos1 = pos === 1;
+                      const isHit = canonicalMatchedPositions.has(pos);
+
+                      return (
+                        <div
+                          key={pos}
+                          onClick={() => openHitModal(selectedBoardModal, pos)}
+                          className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                            isPos1
+                              ? 'bg-amber-950/70 border-amber-500/80 text-amber-300 font-black ring-1 ring-amber-500/40'
+                              : isHit
+                                ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
+                                : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                          }`}
+                        >
+                          <span className={`font-mono font-bold text-[10px] ${isPos1 ? 'text-amber-400' : isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            #{pos.toString().padStart(2, '0')}
+                          </span>
+                          <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
+                          <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
+                            {SIGNIFICADOS[ambo] || ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Columna Derecha: Posiciones 11 a 20 */}
+                  <div className="space-y-1">
+                    {Array.from({ length: 10 }, (_, i) => i + 11).map((pos) => {
+                      const num4 = selectedBoardModal[`p${pos}`] || (Array.isArray(selectedBoardModal.board) ? selectedBoardModal.board[pos - 1] : null) || '0000';
+                      const ambo = num4.slice(-2);
+                      const isHit = canonicalMatchedPositions.has(pos);
+
+                      return (
+                        <div
+                          key={pos}
+                          onClick={() => openHitModal(selectedBoardModal, pos)}
+                          className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
+                            isHit
                               ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
                               : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`font-mono font-bold text-[10px] ${isPos1 ? 'text-amber-400' : isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
-                          #{pos.toString().padStart(2, '0')}
-                        </span>
-                        <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
-                        <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
-                          {SIGNIFICADOS[ambo] || ''}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Columna Derecha: Posiciones 11 a 20 */}
-                <div className="space-y-1">
-                  {Array.from({ length: 10 }, (_, i) => i + 11).map((pos) => {
-                    const num4 = selectedBoardModal[`p${pos}`] || '0000';
-                    const ambo = num4.slice(-2);
-                    const isHit = selectedBoardModal.ai_hit?.matched_positions?.includes(pos);
-
-                    return (
-                      <div
-                        key={pos}
-                        onClick={() => openHitModal(selectedBoardModal, pos)}
-                        className={`px-2 py-1.5 rounded-xl border flex items-center justify-between text-xs cursor-pointer transition-all ${
-                          isHit
-                            ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-200 font-bold ring-1 ring-emerald-500/40'
-                            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                        }`}
-                      >
-                        <span className={`font-mono font-bold text-[10px] ${isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
-                          #{pos.toString().padStart(2, '0')}
-                        </span>
-                        <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
-                        <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
-                          {SIGNIFICADOS[ambo] || ''}
-                        </span>
-                      </div>
-                    );
-                  })}
+                          }`}
+                        >
+                          <span className={`font-mono font-bold text-[10px] ${isHit ? 'text-emerald-400' : 'text-slate-500'}`}>
+                            #{pos.toString().padStart(2, '0')}
+                          </span>
+                          <span className="font-mono font-black text-sm tracking-wider">{num4}</span>
+                          <span className="text-[10px] text-slate-400 truncate max-w-[60px]">
+                            {SIGNIFICADOS[ambo] || ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer de Validación Oficial */}
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Extracto 100% Oficial Verificado
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedBoardModal(null)}
-                className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs cursor-pointer"
-              >
-                Cerrar Pop-Up
-              </button>
+              {/* Footer de Validación Oficial */}
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Extracto 100% Oficial Verificado
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBoardModal(null)}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Cerrar Pop-Up
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 5-Minute Auto-Sync & Real-Time Status Bar (Al final de la pantalla) */}
       <div className="bg-slate-900/60 border border-slate-800/80 px-3.5 py-2 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-2 text-xs shadow-inner mt-4">

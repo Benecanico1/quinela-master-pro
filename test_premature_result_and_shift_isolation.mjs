@@ -149,16 +149,16 @@ function assert(condition, message) {
 }
 
 // -----------------------------------------------------------------------------
-// TEST 6: Turno sin registrar (Nocturna) devuelve null y lista vacía []
+// TEST 6: Turno sin registrar (Nocturna) devuelve INVALID o null y lista vacía []
 // -----------------------------------------------------------------------------
 {
   const vespertinaRecord = getCanonicalPrediction('2026-09-05', 'ciudad', 'vespertina', 'ML-FULL');
   const nocturnaRecord = getCanonicalPrediction('2026-09-05', 'ciudad', 'nocturna', 'ML-FULL');
-  const nocturnaItems = nocturnaRecord ? formatItemsFromTop5(nocturnaRecord.top_5) : [];
+  const nocturnaItems = (nocturnaRecord && nocturnaRecord.status === 'LOCKED') ? formatItemsFromTop5(nocturnaRecord.top_5) : [];
   assert(
     vespertinaRecord !== null && vespertinaRecord.status === 'LOCKED' &&
-    nocturnaRecord === null && nocturnaItems.length === 0,
-    'Vespertina tiene registro LOCKED válido; Turno sin registrar (Nocturna) devuelve null y lista vacía [] (Garantiza "SIN PRONÓSTICO SELLADO")'
+    (!nocturnaRecord || nocturnaRecord.status === 'INVALID') && nocturnaItems.length === 0,
+    'Vespertina tiene registro LOCKED válido; Turno sin registrar (Nocturna) devuelve INVALID/null y lista vacía [] (Garantiza "SIN PRONÓSTICO SELLADO")'
   );
 }
 

@@ -1,4 +1,4 @@
-QUINIELA MASTER PRO - NOTAS DE LA VERSIÓN v1.4.8 (BUILD 80)
+QUINIELA MASTER PRO - NOTAS DE LA VERSIÓN v1.4.8 (BUILD 81)
 =============================================================
 Fecha de Lanzamiento: 05 de Septiembre de 2026
 Canal: Producción / Google Play Store

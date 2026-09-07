@@ -1,0 +1,36 @@
+===================================================================
+QUINIELA MASTER PRO — RELEASE NOTES v1.4.9 (BUILD 85)
+===================================================================
+Fecha de Lanzamiento: 07 de Septiembre de 2026
+Versión: 1.4.9 (VersionCode: 85)
+Paquete: com.quinelamasterpro.app
+
+NOVEDADES Y MEJORAS EN ESTA VERSIÓN:
+-------------------------------------------------------------------
+1. PANTALLA DE CARGA Y ANIMACIÓN DEL RADAR TÉRMICO:
+   - Al entrar al Radar Térmico, se visualiza una animación con el logo 3D, fondo con gradiente ambiental y barra de progreso dinámica.
+   - Muestra en tiempo real los pasos de procesamiento:
+     * Sincronización con extractos oficiales LOTBA y Provincia.
+     * Computación de matrices de frecuencia de 100 números y atrasos.
+     * Generación de balances y ranking auditado de aciertos.
+   - Transición fluida directo al radar y gráficos de probabilidad.
+   - Opción para omitir al instante tocando la pantalla.
+
+2. NUEVOS NOMBRES ATRACTIVOS Y ACORDEONES EN PRONÓSTICOS:
+   - Se reemplazaron "Fila 1" y "Fila 2" por nombres de alto impacto:
+     * Pronóstico Estrella IA — Machine Learning Champion (ML-FULL)
+     * Pronóstico Clásico — Motor Estadístico & Cadenas de Markov
+     * Auditorías de Aciertos con verificación de pizarra oficial.
+   - Diseño compacto tipo acordeón: inicialmente se muestran solo las barras de título con mini-resumen Top 5, y al tocar se despliegan todas las tarjetas y métricas.
+
+3. NAVEGACIÓN Y BOTONES DE RETORNO EN EXPLICACIÓN DE IA:
+   - Incorporación de botón destacado "Volver a la App" en el header fijo, botón flotante permanente y en el pie de página.
+   - Retorno inteligente compatible con navegadores y WebView Android.
+
+4. CANONICAL PRE-DRAW LOCKING & AUDITORÍA DETERMINISTA:
+   - Aislamiento estricto por turno, fecha y jurisdicción en el Ledger Canónico sin fugas entre loterías.
+   - Trazabilidad criptográfica SHA-256 previa al sorteo.
+
+5. OPTIMIZACIÓN Y SINCRONIZACIÓN WEB:
+   - Sincronizado con Capacitor Android y desplegado en Firebase Hosting (https://ingenieriajh.web.app).
+===================================================================
