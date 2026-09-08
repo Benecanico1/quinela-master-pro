@@ -272,9 +272,12 @@ def scrape_jugandoonline() -> List[Dict[str, Any]]:
         'nocturna':   'https://www.jugandoonline.com.ar/Quiniela-Nocturna.aspx',
     }
     # Texto que aparece en el título del bloque de cada lotería
+    # El sitio usa "Prov. Bs. As." (con puntos) para Provincia
     LOTTERY_MAP = [
-        ('Prov Bs As', 'provincia'),
-        ('Ciudad',     'ciudad'),
+        ('Prov. Bs. As.', 'provincia'),
+        ('Prov Bs As',    'provincia'),   # por si cambia el formato
+        ('Provincia',     'provincia'),   # alias adicional
+        ('Ciudad',        'ciudad'),
     ]
 
     for shift, url in SHIFT_URLS.items():
