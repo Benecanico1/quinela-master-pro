@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 from database import get_db_connection
 
@@ -56,7 +56,7 @@ def scrape_lotba_official() -> List[Dict[str, Any]]:
             return results
         
         options = re.findall(r'<option[^>]*value=[\'"]?(\d{5})[\'"]?[^>]*>(.*?)</option>', r_home.text, re.IGNORECASE)
-        now_arg = datetime.now()
+        now_arg = datetime.now(timezone(timedelta(hours=-3)))
         date_str = now_arg.strftime("%Y-%m-%d")
         today_dmy = now_arg.strftime("%d/%m/%Y")
         
@@ -71,17 +71,35 @@ def scrape_lotba_official() -> List[Dict[str, Any]]:
         
         for idx, (sorteo_id, label) in enumerate(today_options):
             shift = shift_names[idx] if idx < len(shift_names) else 'nocturna'
+            verified_shift = None
 
             for jur_code, lot_name in [('51', 'ciudad'), ('53', 'provincia')]:
                 try:
                     payload = {'codigo': '0080', 'juridiccion': jur_code, 'sorteo': str(sorteo_id)}
                     r_res = requests.post(endpoint, data=payload, headers=HEADERS, timeout=8)
                     if r_res.status_code == 200:
+                        extract = re.search(r'QNL(51|53)([A-Z])(\d{8})\.(?:pdf|xml)', r_res.text, re.I)
+                        shift_match = re.search(r'<tr>\s*<td>\s*(PREVIA|PRIMERA|MATUTINA|VESPERTINA|NOCTURNA)\s*</td>\s*</tr>', r_res.text, re.I)
+                        if jur_code == '51':
+                            if not extract or extract[1] != jur_code or extract[3] != now_arg.strftime('%Y%m%d') or not shift_match:
+                                continue
+                            verified_shift = shift_match[1].lower()
+                        elif not verified_shift or not re.search(r'<p>\s*BUENOS AIRES\s*</p>', r_res.text, re.I):
+                            continue
+                        shift = verified_shift
+                        hours = {'previa': (10, 15), 'primera': (12, 0), 'matutina': (15, 0), 'vespertina': (18, 0), 'nocturna': (21, 0)}
+                        hour, minute = hours[shift]
+                        if now_arg < now_arg.replace(hour=hour, minute=minute, second=0, microsecond=0):
+                            continue
                         board20 = parse_lotba_html(r_res.content)
                         if board20 and len(board20) == 20:
                             results.append({
                                 "draw_number": str(sorteo_id),
                                 "draw_date": date_str,
+                                "official_date": date_str,
+                                "source_verified": True,
+                                "status": "PUBLISHED",
+                                "received_at": datetime.now(timezone.utc).isoformat(),
                                 "lottery": lot_name,
                                 "shift": shift,
                                 "p1": board20[0], "p2": board20[1], "p3": board20[2], "p4": board20[3], "p5": board20[4],
@@ -376,7 +394,8 @@ def run_live_sync():
 
     # --- Fuente 2: JugandoOnline (siempre corre como complemento) ---
     # Agrega sorteos que LOTBA no trajo (ej: aún no publicados en el dropdown o falla)
-    draws_jugando_raw = scrape_jugandoonline()
+    # Secondary pages do not provide a verified date/shift identity.
+    draws_jugando_raw = []
     draws_jugando = [d for d in draws_jugando_raw
                      if f"{d['draw_date']}_{d['lottery']}_{d['shift']}" not in lotba_keys]
     print(f"[JugandoOnline] {len(draws_jugando_raw)} raw, {len(draws_jugando)} nuevos (no en LOTBA)")
@@ -385,7 +404,7 @@ def run_live_sync():
 
     # --- Fuente 3: Clarín / La Nación (solo si ambas fuentes anteriores dieron 0) ---
     draws_other = []
-    if len(draws_lotba) + len(draws_jugando) == 0:
+    if False:  # Never publish undated fallback numbers as today's official results.
         draws_other = scrape_clarin_and_lanacion()
         print(f"[Clarin/LaNacion] {len(draws_other)} resultados (fallback)")
 
@@ -419,9 +438,24 @@ def run_live_sync():
             "status":       "PUBLISHED",
         }
     conn.close()
+
+    # Preserve independently verified extracts across runs; SQLite's legacy
+    # columns do not retain the official identity and provenance metadata.
+    import json
+    from pathlib import Path
+    dump_path = Path(__file__).resolve().parent / 'real_draws_dump.json'
+    try:
+        previous = json.loads(dump_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        previous = {}
+    for key, draw in previous.items():
+        if draw.get('source_verified') is True and draw.get('draw_number') and draw.get('official_date') and draw.get('received_at'):
+            all_dict[key] = draw
+    for draw in draws_lotba:
+        all_dict[f"{draw['draw_date']}_{draw['lottery']}_{draw['shift']}"] = draw
     
     import json
-    with open("backend/real_draws_dump.json", "w", encoding="utf-8") as f:
+    with open(dump_path, "w", encoding="utf-8") as f:
         json.dump(all_dict, f, indent=2)
         
     try:
