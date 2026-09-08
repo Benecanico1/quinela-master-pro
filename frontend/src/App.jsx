@@ -174,7 +174,8 @@ export default function App() {
   const [activeBroadcastPopup, setActiveBroadcastPopup] = useState(null);
 
   const isAdmin = user?.email === 'jesushidalgo25@gmail.com' || user?.role === 'admin';
-  const isPaywallBlocked = !isAdmin && !isWelcomeAuthOpen && (user?.vip_days_left <= 0 || !user?.is_vip);
+  const isPaywallBlocked = !isAdmin && !isWelcomeAuthOpen && !isGuideOpen
+    && Number(user?.vip_days_left ?? 0) <= 0;
 
   useEffect(() => {
     if (user?.email && user.email !== 'visita@quiniela.com') {
@@ -455,10 +456,10 @@ export default function App() {
 
             {/* Descargar App Android (APK) */}
             <a
-              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
-              download="QuinelaMasterPro_v1.4.16.apk"
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.17.apk"
+              download="QuinelaMasterPro_v1.4.17.apk"
               className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/40 text-white text-[10px] sm:text-xs font-black tracking-tight flex items-center gap-1 transition-all shadow-md active:scale-95"
-              title="Descargar App Android Oficial (APK v1.4.16)"
+              title="Descargar App Android Oficial (APK v1.4.17)"
             >
               <Download className="w-3.5 h-3.5 text-white" />
               <span className="hidden xs:inline">Instalar App</span>
@@ -690,10 +691,10 @@ export default function App() {
           {/* Clean Icon Quick Actions (No weird wrapped text) */}
           <div className="flex items-center gap-2">
             <a
-              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
-              download="QuinelaMasterPro_v1.4.16.apk"
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.17.apk"
+              download="QuinelaMasterPro_v1.4.17.apk"
               className="p-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
-              title="Descargar App Android Oficial (APK v1.4.16)"
+              title="Descargar App Android Oficial (APK v1.4.17)"
             >
               <Download className="w-4 h-4 text-emerald-400" />
               <span className="text-[11px] font-black hidden md:inline">Descargar App (APK)</span>
