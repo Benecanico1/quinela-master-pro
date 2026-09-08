@@ -307,7 +307,7 @@ def scrape_jugandoonline() -> List[Dict[str, Any]]:
 
                 if len(nums) != 20:
                     # El sorteo todavía no tiene los 20 números (turno aún no jugado)
-                    print(f"[JugandoOnline] {shift} {lottery}: solo {len(nums)} nums — sorteo pendiente")
+                    print(f"[JugandoOnline] {shift} {lottery}: solo {len(nums)} nums - sorteo pendiente")
                     continue
 
                 board20 = nums
@@ -366,19 +366,29 @@ def run_live_sync():
     
     # Export full JSON
     conn = get_db_connection()
+    conn.row_factory = __import__('sqlite3').Row  # acceso por nombre de columna
     cur = conn.cursor()
-    cur.execute("SELECT draw_date, lottery, shift, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18, p19, p20, head_ambo, head_centena, head_millar FROM draws")
+    cur.execute("""
+        SELECT draw_date, lottery, shift,
+               p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,
+               p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,
+               head_ambo, head_centena, head_millar
+        FROM draws
+        ORDER BY draw_date DESC
+    """)
     all_dict = {}
     for row in cur.fetchall():
-        key = f"{row[0]}_{row[1]}_{row[2]}"
+        key = f"{row['draw_date']}_{row['lottery']}_{row['shift']}"
+        board = [row[f'p{i}'] for i in range(1, 21)]
         all_dict[key] = {
-            "draw_date": row[0],
-            "lottery": row[1],
-            "shift": row[2],
-            "head_millar": row[3],
-            "head_centena": row[3][-3:],
-            "head_ambo": row[3][-2:],
-            "board": list(row[3:23])
+            "draw_date":    row['draw_date'],
+            "lottery":      row['lottery'],
+            "shift":        row['shift'],
+            "head_millar":  row['head_millar'],
+            "head_centena": row['head_centena'],
+            "head_ambo":    row['head_ambo'],
+            "board":        board,
+            "status":       "PUBLISHED",
         }
     conn.close()
     

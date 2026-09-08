@@ -1,16 +1,19 @@
-name: Quiniela Master Pro - Bot 24/7 LOTBA Sync
+name: Quiniela Master Pro - Bot Multi-Fuente 24/7
 
 on:
   schedule:
-    # Runs every 5 minutes from 10:00 to 22:30 (UTC-3 is 13:00 to 01:30 UTC)
-    - cron: '*/5 13-23,0-2 * * 1-6'
+    # Corre cada 5 min de 10:00 a 23:30 Argentina (UTC-3)
+    # 13:00-23:59 UTC = 10:00-20:59 Argentina
+    - cron: '*/5 13-23 * * *'
+    # 00:00-02:59 UTC = 21:00-23:59 Argentina (cubre Nocturna de 21hs)
+    - cron: '*/5 0-2 * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  sync_lotba:
+  sync_quiniela:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -27,7 +30,7 @@ jobs:
         run: |
           pip install requests beautifulsoup4
 
-      - name: Run LOTBA & Multi-Source Official Scraper
+      - name: Run Multi-Source Scraper (LOTBA + JugandoOnline + Clarin/LaNacion)
         run: |
           python backend/scraper_service.py
 
@@ -51,4 +54,5 @@ jobs:
           git config --global user.name 'Quiniela Sync Bot'
           git config --global user.email 'bot@ingenieriajh.com'
           git add backend/real_draws_dump.json backend/quiniela.db frontend/public/api/draws.json
-          git diff --quiet && git diff --staged --quiet || (git commit -m "🤖 Auto-Sync: Actualización oficial de extractos LOTBA [skip ci]" && git push)
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Bot: Actualizacion automatica de resultados [skip ci]" && git push)
+
