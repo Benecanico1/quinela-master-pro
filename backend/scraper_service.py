@@ -254,11 +254,111 @@ def save_scraped_draws_to_db(draws: List[Dict[str, Any]]) -> int:
     conn.close()
     return saved
 
+def scrape_jugandoonline() -> List[Dict[str, Any]]:
+    """
+    Fuente alternativa robusta: jugandoonline.com.ar
+    Extrae los 5 turnos (Previa, Primera, Matutina, Vespertina, Nocturna)
+    para Ciudad de Buenos Aires y Provincia de Buenos Aires.
+    Estructura HTML simple: div.versionmovilquinielas contiene div.Num (20 números).
+    """
+    results = []
+    date_str = datetime.now().strftime("%Y-%m-%d")
+
+    SHIFT_URLS = {
+        'previa':     'https://www.jugandoonline.com.ar/Quiniela-Previa.aspx',
+        'primera':    'https://www.jugandoonline.com.ar/Quiniela-Primera.aspx',
+        'matutina':   'https://www.jugandoonline.com.ar/Quiniela-Matutina.aspx',
+        'vespertina': 'https://www.jugandoonline.com.ar/Quiniela-Vespertina.aspx',
+        'nocturna':   'https://www.jugandoonline.com.ar/Quiniela-Nocturna.aspx',
+    }
+    # Texto que aparece en el título del bloque de cada lotería
+    LOTTERY_MAP = [
+        ('Prov Bs As', 'provincia'),
+        ('Ciudad',     'ciudad'),
+    ]
+
+    for shift, url in SHIFT_URLS.items():
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=12)
+            if r.status_code != 200:
+                print(f"[JugandoOnline] {shift}: HTTP {r.status_code}")
+                continue
+            soup = BeautifulSoup(r.content, 'html.parser')
+            boxes = soup.find_all('div', class_='versionmovilquinielas')
+
+            for box in boxes:
+                txt = box.get_text(' ', strip=True)
+                lottery = None
+                for key, val in LOTTERY_MAP:
+                    if key in txt:
+                        lottery = val
+                        break
+                if lottery is None:
+                    continue  # Ignorar Córdoba u otras provincias
+
+                # Extraer los 20 números de la pizarra
+                num_divs = box.find_all('div', class_='Num')
+                nums = [el.get_text(strip=True) for el in num_divs]
+                # Solo aceptar números de 4 dígitos; descartar "----" o vacíos
+                nums = [n for n in nums if re.match(r'^\d{4}$', n)]
+
+                if len(nums) != 20:
+                    # El sorteo todavía no tiene los 20 números (turno aún no jugado)
+                    print(f"[JugandoOnline] {shift} {lottery}: solo {len(nums)} nums — sorteo pendiente")
+                    continue
+
+                board20 = nums
+                results.append({
+                    "draw_date": date_str,
+                    "lottery": lottery,
+                    "shift": shift,
+                    "p1":  board20[0],  "p2":  board20[1],  "p3":  board20[2],
+                    "p4":  board20[3],  "p5":  board20[4],  "p6":  board20[5],
+                    "p7":  board20[6],  "p8":  board20[7],  "p9":  board20[8],
+                    "p10": board20[9],  "p11": board20[10], "p12": board20[11],
+                    "p13": board20[12], "p14": board20[13], "p15": board20[14],
+                    "p16": board20[15], "p17": board20[16], "p18": board20[17],
+                    "p19": board20[18], "p20": board20[19],
+                    "head_ambo":    board20[0][-2:],
+                    "head_centena": board20[0][-3:],
+                    "head_millar":  board20[0],
+                    "board": board20,
+                    "status": "PUBLISHED",
+                    "source": f"JUGANDOONLINE_{shift.upper()}"
+                })
+                print(f"[JugandoOnline] {date_str} {lottery} {shift} -> Cabeza {board20[0]}")
+
+        except Exception as e:
+            print(f"[JugandoOnline] Error en {shift}: {e}")
+
+    return results
+
+
 def run_live_sync():
-    print("Running Multi-Source Real Quiniela Sync Engine with LOTBA Official Source...")
+
+    print("Running Multi-Source Real Quiniela Sync Engine [LOTBA -> JugandoOnline -> Clarin/LaNacion]...")
+
+    # --- Fuente 1: LOTBA Oficial ---
     draws_lotba = scrape_lotba_official()
-    draws_other = scrape_clarin_and_lanacion() if len(draws_lotba) == 0 else []
-    all_draws = draws_lotba + draws_other
+    lotba_keys = {f"{d['draw_date']}_{d['lottery']}_{d['shift']}" for d in draws_lotba}
+    print(f"[LOTBA] {len(draws_lotba)} resultados obtenidos")
+
+    # --- Fuente 2: JugandoOnline (siempre corre como complemento) ---
+    # Agrega sorteos que LOTBA no trajo (ej: aún no publicados en el dropdown o falla)
+    draws_jugando_raw = scrape_jugandoonline()
+    draws_jugando = [d for d in draws_jugando_raw
+                     if f"{d['draw_date']}_{d['lottery']}_{d['shift']}" not in lotba_keys]
+    print(f"[JugandoOnline] {len(draws_jugando_raw)} raw, {len(draws_jugando)} nuevos (no en LOTBA)")
+
+    combined_keys = lotba_keys | {f"{d['draw_date']}_{d['lottery']}_{d['shift']}" for d in draws_jugando}
+
+    # --- Fuente 3: Clarín / La Nación (solo si ambas fuentes anteriores dieron 0) ---
+    draws_other = []
+    if len(draws_lotba) + len(draws_jugando) == 0:
+        draws_other = scrape_clarin_and_lanacion()
+        print(f"[Clarin/LaNacion] {len(draws_other)} resultados (fallback)")
+
+    all_draws = draws_lotba + draws_jugando + draws_other
     saved = save_scraped_draws_to_db(all_draws)
     
     # Export full JSON
