@@ -671,8 +671,8 @@ export default function App() {
       {/* Footer with Creator Credits and Icon Quick Actions */}
       <footer className="mt-auto border-t border-slate-800/80 py-4 bg-slate-950/90 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* App Title & Developed by */}
-          <div className="flex items-center gap-2">
+          {/* App Title & Developed by & Version */}
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span className="font-black text-white text-xs sm:text-sm">Quinela Master Pro AI</span>
             <span className="text-slate-600">•</span>
             <span className="text-slate-400 text-xs">
@@ -686,6 +686,8 @@ export default function App() {
                 ING JH
               </a>
             </span>
+            <span className="text-slate-700">•</span>
+            <span className="text-[9px] text-slate-600 font-mono tracking-wider border border-slate-800 px-1.5 py-0.5 rounded-md">v1.4.17</span>
           </div>
 
           {/* Clean Icon Quick Actions (No weird wrapped text) */}
