@@ -21,7 +21,7 @@ import {
   SIGNIFICADOS, 
   OFFICIAL_SHIFTS_SCHEDULE 
 } from './clientEngine.js';
-import { getMLPredictions } from './mlPredictionEngine.js';
+import { getMLPredictions, getMLTrendPredictions } from './mlPredictionEngine.js';
 
 export function getOrLockUpcomingCanonicalPrediction(dateStr, jurisdiction, shift, engineId) {
   if (!dateStr || !jurisdiction || !shift || !engineId) {
@@ -43,6 +43,12 @@ export function getOrLockUpcomingCanonicalPrediction(dateStr, jurisdiction, shif
   const drawDeadlineDate = new Date(`${dateStr}T${shiftSchedule.time}:00.000-03:00`);
   const now = new Date();
 
+  const getEngineName = (eng) => {
+    if (eng === 'ML-FULL') return 'ML-FULL (Champion)';
+    if (eng === 'ML-TREND') return 'ML-TREND (Tendencia)';
+    return 'Motor Estadístico';
+  };
+
   // If already past deadline, retrospective generation is strictly prohibited
   if (now >= drawDeadlineDate) {
     return {
@@ -52,7 +58,7 @@ export function getOrLockUpcomingCanonicalPrediction(dateStr, jurisdiction, shif
       shift: cleanShift,
       draw_time: shiftSchedule.time,
       engine_id: cleanEngine,
-      engine_name: cleanEngine === 'ML-FULL' ? 'ML-FULL (Champion)' : 'Motor Estadístico',
+      engine_name: getEngineName(cleanEngine),
       top_5: [],
       top_10: [],
       top_20: [],
@@ -78,6 +84,16 @@ export function getOrLockUpcomingCanonicalPrediction(dateStr, jurisdiction, shif
       number: p.number,
       significado: p.significado || SIGNIFICADOS[p.number] || 'La Suerte',
       score: p.composite_score || 85,
+      suggested_centenas: p.suggested_centenas || [`7${p.number}`],
+      suggested_millar: p.suggested_millar || [`17${p.number}`]
+    }));
+  } else if (cleanEngine === 'ML-TREND') {
+    const trendRes = getMLTrendPredictions(cleanJur, cleanShift, 5, dateStr);
+    top5Ambos = (trendRes.top_predictions || []).map(p => p.number);
+    items = (trendRes.top_predictions || []).map(p => ({
+      number: p.number,
+      significado: p.significado || SIGNIFICADOS[p.number] || 'La Suerte',
+      score: p.composite_score || 88,
       suggested_centenas: p.suggested_centenas || [`7${p.number}`],
       suggested_millar: p.suggested_millar || [`17${p.number}`]
     }));
@@ -107,7 +123,7 @@ export function getOrLockUpcomingCanonicalPrediction(dateStr, jurisdiction, shif
     shift: cleanShift,
     draw_time: shiftSchedule.time,
     engine_id: cleanEngine,
-    engine_name: cleanEngine === 'ML-FULL' ? 'ML-FULL (Champion)' : 'Motor Estadístico',
+    engine_name: getEngineName(cleanEngine),
     top_5: top5Ambos,
     top_10: top5Ambos,
     top_20: top5Ambos,
@@ -129,8 +145,10 @@ export function ensureAllUpcomingCanonicalRecords(dateStr, shift) {
   const cleanShift = String(shift).toLowerCase().replace('la_', '');
   const records = {
     ciudad_ml: getOrLockUpcomingCanonicalPrediction(dateStr, 'ciudad', cleanShift, 'ML-FULL'),
+    ciudad_trend: getOrLockUpcomingCanonicalPrediction(dateStr, 'ciudad', cleanShift, 'ML-TREND'),
     ciudad_stat: getOrLockUpcomingCanonicalPrediction(dateStr, 'ciudad', cleanShift, 'STATISTICAL'),
     provincia_ml: getOrLockUpcomingCanonicalPrediction(dateStr, 'provincia', cleanShift, 'ML-FULL'),
+    provincia_trend: getOrLockUpcomingCanonicalPrediction(dateStr, 'provincia', cleanShift, 'ML-TREND'),
     provincia_stat: getOrLockUpcomingCanonicalPrediction(dateStr, 'provincia', cleanShift, 'STATISTICAL'),
   };
   return records;

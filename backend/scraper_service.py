@@ -33,16 +33,13 @@ def detect_lottery_from_text(text: str) -> Optional[str]:
     return None
 
 def parse_lotba_html(html_content: bytes) -> Optional[List[str]]:
-    soup = BeautifulSoup(html_content, 'html.parser')
+    html_text = html_content.decode('utf-8', errors='ignore') if isinstance(html_content, bytes) else str(html_content)
+    pos_matches = re.findall(r'<div class=["\']pos["\']>(\d{2})</div>\s*<div>(\d{4})</div>', html_text, re.IGNORECASE)
     prizes = {}
-    for td in soup.find_all('td'):
-        txt = td.get_text(strip=True)
-        m = re.match(r'^(\d{2})(\d{4})$', txt)
-        if m:
-            pos = int(m.group(1))
-            num = m.group(2)
-            if 1 <= pos <= 20 and pos not in prizes:
-                prizes[pos] = num
+    for pos_str, num_str in pos_matches:
+        pos = int(pos_str)
+        if 1 <= pos <= 20 and pos not in prizes:
+            prizes[pos] = num_str
     if len(prizes) == 20:
         return [prizes[i] for i in range(1, 21)]
     return None
@@ -58,43 +55,32 @@ def scrape_lotba_official() -> List[Dict[str, Any]]:
         if r_home.status_code != 200:
             return results
         
-        soup = BeautifulSoup(r_home.content, 'html.parser')
-        
-        sorteos_found = []
-        for tr in soup.find_all('tr'):
-            tds = [td.get_text(strip=True) for td in tr.find_all(['td', 'th'])]
-            if len(tds) >= 3 and re.match(r'^\d{5}$', tds[0]):
-                sorteo_id = tds[0]
-                shift_raw = tds[1].lower()
-                shift = detect_shift_from_text(shift_raw) or 'previa'
-                sorteos_found.append((sorteo_id, shift))
-                
+        options = re.findall(r'<option[^>]*value=[\'"]?(\d{5})[\'"]?[^>]*>(.*?)</option>', r_home.text, re.IGNORECASE)
         now_arg = datetime.now()
         date_str = now_arg.strftime("%Y-%m-%d")
-        current_minutes = now_arg.hour * 60 + now_arg.minute
-
-        SHIFT_START_MINUTES = {
-            'previa': 10 * 60 + 15,    # 10:15
-            'primera': 12 * 60 + 0,    # 12:00
-            'matutina': 15 * 60 + 0,   # 15:00
-            'vespertina': 18 * 60 + 0, # 18:00
-            'nocturna': 21 * 60 + 0    # 21:00
-        }
+        today_dmy = now_arg.strftime("%d/%m/%Y")
         
-        for sorteo_id, shift in sorteos_found:
-            # Critical Safety: Only record for today if the shift's official start time has arrived!
-            shift_min = SHIFT_START_MINUTES.get(shift, 0)
-            if current_minutes < shift_min:
-                continue
+        today_options = []
+        for s_id, label in options:
+            if today_dmy in label or date_str in label:
+                today_options.append((int(s_id), label))
+
+        # Sort ascending (chronological): previa, primera, matutina, vespertina, nocturna
+        today_options.sort(key=lambda x: x[0])
+        shift_names = ['previa', 'primera', 'matutina', 'vespertina', 'nocturna']
+        
+        for idx, (sorteo_id, label) in enumerate(today_options):
+            shift = shift_names[idx] if idx < len(shift_names) else 'nocturna'
 
             for jur_code, lot_name in [('51', 'ciudad'), ('53', 'provincia')]:
                 try:
-                    payload = {'codigo': '0080', 'juridiccion': jur_code, 'sorteo': sorteo_id}
+                    payload = {'codigo': '0080', 'juridiccion': jur_code, 'sorteo': str(sorteo_id)}
                     r_res = requests.post(endpoint, data=payload, headers=HEADERS, timeout=8)
                     if r_res.status_code == 200:
                         board20 = parse_lotba_html(r_res.content)
                         if board20 and len(board20) == 20:
                             results.append({
+                                "draw_number": str(sorteo_id),
                                 "draw_date": date_str,
                                 "lottery": lot_name,
                                 "shift": shift,
@@ -105,11 +91,12 @@ def scrape_lotba_official() -> List[Dict[str, Any]]:
                                 "head_ambo": board20[0][-2:],
                                 "head_centena": board20[0][-3:],
                                 "head_millar": board20[0],
-                                "source": f"https://quiniela.loteriadelaciudad.gob.ar/ (Sorteo #{sorteo_id})"
+                                "board": board20,
+                                "source": f"LOTBA_DIRECT_EXTRACT (Sorteo #{sorteo_id})"
                             })
-                            print(f"[LOTBA Oficial] {date_str} {lot_name} {shift} -> {board20[0]}")
-                except Exception:
-                    pass
+                            print(f"[LOTBA Oficial] {date_str} {lot_name} {shift} (Sorteo #{sorteo_id}) -> Cabeza {board20[0]}")
+                except Exception as e:
+                    print(f"Error sorteo #{sorteo_id} {lot_name}: {e}")
     except Exception as e:
         print(f"Error scraping LOTBA: {e}")
         
@@ -270,7 +257,7 @@ def save_scraped_draws_to_db(draws: List[Dict[str, Any]]) -> int:
 def run_live_sync():
     print("Running Multi-Source Real Quiniela Sync Engine with LOTBA Official Source...")
     draws_lotba = scrape_lotba_official()
-    draws_other = scrape_clarin_and_lanacion()
+    draws_other = scrape_clarin_and_lanacion() if len(draws_lotba) == 0 else []
     all_draws = draws_lotba + draws_other
     saved = save_scraped_draws_to_db(all_draws)
     

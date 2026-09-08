@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   X, User, Mail, ShieldCheck, Crown, Sparkles, Clock, LogOut, 
-  ChevronRight, ExternalLink, Award, CheckCircle2, Ticket, Star, RefreshCw
+  ChevronRight, ExternalLink, Award, CheckCircle2, Ticket, Star, RefreshCw, Download
 } from 'lucide-react';
 import { logOutGoogleAccount, getAffiliateUrl } from '../services/firebaseClient';
 import { calculateRemainingVipDays } from '../services/telemetryService';
@@ -117,6 +117,16 @@ export default function UserProfileModal({ isOpen, onClose, user, onUserUpdated,
             </div>
           </div>
         </div>
+
+        {/* Download Android App (APK) Button */}
+        <a
+          href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
+          download="QuinelaMasterPro_v1.4.16.apk"
+          className="w-full py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow"
+        >
+          <Download className="w-4 h-4 text-amber-400" />
+          <span>📥 Descargar App Android Oficial (APK v1.4.16)</span>
+        </a>
 
         {/* Play on official portal button */}
         <a

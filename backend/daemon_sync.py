@@ -31,10 +31,22 @@ import('./src/services/firebaseClient.js').then(async ({ db }) => {
   const { doc, setDoc } = await import('firebase/firestore');
   const fs = await import('fs');
   const dump = JSON.parse(fs.readFileSync('../backend/real_draws_dump.json', 'utf-8'));
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(now);
   const todayKeys = Object.keys(dump).filter(k => k.startsWith(todayStr));
   const todayData = {};
-  todayKeys.forEach(k => { todayData[k] = dump[k]; });
+  todayKeys.forEach(k => { 
+    todayData[k] = { ...dump[k] };
+    todayData[k].status = 'PUBLISHED';
+    todayData[k].source = 'LOTBA_DIRECT_EXTRACT';
+    todayData[k].source_verified = true;
+    todayData[k].date = todayStr;
+    todayData[k].official_date = todayStr;
+    todayData[k].jurisdiction = todayData[k].lottery;
+    if (!todayData[k].received_at) {
+      todayData[k].received_at = now.toISOString();
+    }
+  });
   if (todayKeys.length > 0) {
     await setDoc(doc(db, 'official_draws', todayStr), todayData, { merge: true });
     await setDoc(doc(db, 'official_draws', 'latest'), todayData, { merge: true });

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Settings, User, Bell, Volume2, Shield, HelpCircle, 
   Code, Crown, LogOut, ChevronRight, Lock, Sparkles, Check, LogIn,
-  MessageSquare, Upload, MessageSquareHeart, Star
+  MessageSquare, Upload, MessageSquareHeart, Star, Download
 } from 'lucide-react';
 
 export default function SettingsModal({ 
@@ -284,6 +284,16 @@ export default function SettingsModal({
               {isGuest ? 'Conectar' : 'Salir'}
             </button>
           </div>
+
+          {/* Download Android App (APK) Button */}
+          <a
+            href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
+            download="QuinelaMasterPro_v1.4.16.apk"
+            className="w-full py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-95"
+          >
+            <Download className="w-4 h-4 text-white" />
+            <span>📥 Descargar App Android Oficial (APK v1.4.16)</span>
+          </a>
 
           {/* Credits & Authors Card */}
           <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 text-center space-y-1.5 text-xs">

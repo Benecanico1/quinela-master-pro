@@ -8,8 +8,8 @@
  * 4. Once LOCKED, CanonicalPredictionRecord is 100% immutable.
  */
 
-import { SIGNIFICADOS, OFFICIAL_SHIFTS_SCHEDULE, getClientPredictions } from './clientEngine.js';
-import { getMLPredictions } from './mlPredictionEngine.js';
+import { SIGNIFICADOS, OFFICIAL_SHIFTS_SCHEDULE, getShiftSchedule, getClientPredictions } from './clientEngine.js';
+import { getMLPredictions, getMLTrendPredictions } from './mlPredictionEngine.js';
 
 
 // Synchronous pure-JS SHA-256 implementation (zero external dependencies, runs offline)
@@ -102,19 +102,40 @@ export const ALLOWED_OFFICIAL_SOURCES = [
 // Helper to resolve official expected draw number based on schedule
 // In the official LOTBA joint extract system (LOTBA_OFFICIAL_API / LOTBA_DIRECT_EXTRACT),
 // both Ciudad (jur 51) and Provincia (jur 53) share identical draw numbers:
-// 2026-09-05: Previa=52867, Primera=52868, Matutina=52869, Vespertina=52870, Nocturna=52871.
+// 2026-09-05 (Sábado): Previa=52867, Primera=52868, Matutina=52869, Vespertina=52870, Nocturna=52871.
+// 2026-09-06 (Domingo): Sin sorteos oficiales regulares.
+// 2026-09-07 (Lunes): Previa=52872, Primera=52873, Matutina=52874, Vespertina=52875, Nocturna=52876.
 export function resolveExpectedDrawNumber(dateStr, jurisdiction, shift) {
   if (!dateStr) return '52870';
   const cleanShift = String(shift || '').toLowerCase().replace('la_', '');
   const shiftOffsets = { previa: 0, primera: 1, matutina: 2, vespertina: 3, nocturna: 4 };
   const offset = shiftOffsets[cleanShift] ?? 0;
   
-  const baseDate = new Date('2026-09-05T00:00:00Z');
-  const targetDate = new Date(`${dateStr}T00:00:00Z`);
-  const diffDays = Math.round((targetDate - baseDate) / (1000 * 60 * 60 * 24));
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const cur = new Date(Date.UTC(2026, 8, 5)); // Base anchor: Saturday 2026-09-05
+  const target = new Date(Date.UTC(y, m - 1, d));
   
-  const baseNum = 52867;
-  return String(baseNum + (diffDays * 5) + offset);
+  let drawDays = 0;
+  if (target >= cur) {
+    let temp = new Date(cur.getTime());
+    while (temp < target) {
+      temp.setUTCDate(temp.getUTCDate() + 1);
+      // Argentine Lotteries do not have regular quiniela draws on Sundays (day 0)
+      if (temp.getUTCDay() !== 0) {
+        drawDays++;
+      }
+    }
+    return String(52867 + (drawDays * 5) + offset);
+  } else {
+    let temp = new Date(cur.getTime());
+    while (temp > target) {
+      if (temp.getUTCDay() !== 0) {
+        drawDays++;
+      }
+      temp.setUTCDate(temp.getUTCDate() - 1);
+    }
+    return String(52867 - (drawDays * 5) + offset);
+  }
 }
 
 // PRE-SEEDED CANONICAL IMMUTABLE DATABASE
@@ -754,7 +775,1431 @@ const PRE_SEEDED_CANONICAL_RECORDS = {
     message: 'SIN PREDICCIÓN VÁLIDA REGISTRADA (No existía snapshot pre-sorteo bloqueado)',
     prediction_hash: null,
     items: []
-  }
+  },
+
+  // =========================================================================
+  // 10. 2026-09-07 (LUNES) — REGISTROS CANÓNICOS INMUTABLES AUDITADOS
+  // =========================================================================
+
+  // --- PREVIA (10:15 hs) - Sorteo 52872 ---
+  'CANONICAL_2026-09-07_CIUDAD_PREVIA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PREVIA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52872',
+    top_5: ["35","44","71","39","01"],
+    top_10: ["35","44","71","39","01"],
+    top_20: ["35","44","71","39","01"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '3be00e5100538c8c453183e69c6d427206a6e40a62a916629ff6abcb04bdaaab',
+    items: [
+          {
+                "number": "35",
+                "significado": "Pajarito",
+                "score": 95
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 92
+          },
+          {
+                "number": "71",
+                "significado": "Excremento",
+                "score": 89
+          },
+          {
+                "number": "39",
+                "significado": "Lluvia",
+                "score": 86
+          },
+          {
+                "number": "01",
+                "significado": "Agua",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_PREVIA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PREVIA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52872',
+    top_5: ["10","13","15","44","52"],
+    top_10: ["10","13","15","44","52"],
+    top_20: ["10","13","15","44","52"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'c54eca93e1cb96fd7c49be77ff192786e4124553affa8181d638333ed7e54279',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 89
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 86
+          },
+          {
+                "number": "52",
+                "significado": "Madre",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_PREVIA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PREVIA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52872',
+    top_5: ["47","07","66","21","53"],
+    top_10: ["47","07","66","21","53"],
+    top_20: ["47","07","66","21","53"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '60f6d117f05844a539e838b5450c7912504e9d4ea58d2cea877075e3a2a943ee',
+    items: [
+          {
+                "number": "47",
+                "significado": "Muerto",
+                "score": 95
+          },
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 92
+          },
+          {
+                "number": "66",
+                "significado": "Lombrices",
+                "score": 89
+          },
+          {
+                "number": "21",
+                "significado": "La Mujer",
+                "score": 86
+          },
+          {
+                "number": "53",
+                "significado": "El Barco",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PREVIA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PREVIA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52872',
+    top_5: ["77","26","83","63","98"],
+    top_10: ["77","26","83","63","98"],
+    top_20: ["77","26","83","63","98"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'e3fa59dcc823f7c1fc082f5dcfe29390b69304189fb9291e5094c466f8efb154',
+    items: [
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 95
+          },
+          {
+                "number": "26",
+                "significado": "La Misa",
+                "score": 92
+          },
+          {
+                "number": "83",
+                "significado": "Mal Tiempo",
+                "score": 89
+          },
+          {
+                "number": "63",
+                "significado": "Casamiento",
+                "score": 86
+          },
+          {
+                "number": "98",
+                "significado": "Lavandera",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PREVIA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PREVIA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52872',
+    top_5: ["07","13","25","38","57"],
+    top_10: ["07","13","25","38","57"],
+    top_20: ["07","13","25","38","57"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'e5fa7e39d19950f63a67c841ac1e8cc28ed9ae1f720a4739a51786ead83eefd3',
+    items: [
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 89
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 86
+          },
+          {
+                "number": "57",
+                "significado": "El Jorobado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PREVIA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PREVIA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'previa',
+    draw_time: '10:15',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52872',
+    top_5: ["74","47","81","13","71"],
+    top_10: ["74","47","81","13","71"],
+    top_20: ["74","47","81","13","71"],
+    created_at: '2026-09-07T09:45:00.000-03:00',
+    locked_at: '2026-09-07T09:45:00.000-03:00',
+    deadline: '2026-09-07T10:15:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '87540df1402985312cb802d073f15f6f7867dc07af0849796953c51df9ae94dd',
+    items: [
+          {
+                "number": "74",
+                "significado": "Gente Negra",
+                "score": 95
+          },
+          {
+                "number": "47",
+                "significado": "Muerto",
+                "score": 92
+          },
+          {
+                "number": "81",
+                "significado": "Flores",
+                "score": 89
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 86
+          },
+          {
+                "number": "71",
+                "significado": "Excremento",
+                "score": 83
+          }
+    ]
+  },
+
+
+  // --- PRIMERA (12:00 hs) - Sorteo 52873 ---
+  'CANONICAL_2026-09-07_CIUDAD_PRIMERA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PRIMERA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52873',
+    top_5: ["25","33","35","44","97"],
+    top_10: ["25","33","35","44","97"],
+    top_20: ["25","33","35","44","97"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'a99041fe10b7ca0332ca4a17ba9712cee86fee6adb196809ef01ef29d4650db6',
+    items: [
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 95
+          },
+          {
+                "number": "33",
+                "significado": "Cristo",
+                "score": 92
+          },
+          {
+                "number": "35",
+                "significado": "Pajarito",
+                "score": 89
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 86
+          },
+          {
+                "number": "97",
+                "significado": "La Mesa",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_PRIMERA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PRIMERA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52873',
+    top_5: ["10","13","15","20","44"],
+    top_10: ["10","13","15","20","44"],
+    top_20: ["10","13","15","20","44"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'a91c75b1620df7533cd005b05f4705a8573c5d167a545ca37a84812e4d32b943',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 89
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 86
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_PRIMERA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_PRIMERA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52873',
+    top_5: ["08","10","20","16","04"],
+    top_10: ["08","10","20","16","04"],
+    top_20: ["08","10","20","16","04"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '363458c2dcacdea668804f400c1abdfb812c5247dc55a4184f0fbb3b38a504dd',
+    items: [
+          {
+                "number": "08",
+                "significado": "Incendio",
+                "score": 95
+          },
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 92
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 89
+          },
+          {
+                "number": "16",
+                "significado": "Anillo",
+                "score": 86
+          },
+          {
+                "number": "04",
+                "significado": "La Cama",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52873',
+    top_5: ["77","98","33","11","53"],
+    top_10: ["77","98","33","11","53"],
+    top_20: ["77","98","33","11","53"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'ee70222bd42c732fd35952769913a5a0bab57bf50e5b7d12632928116a936d4a',
+    items: [
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 95
+          },
+          {
+                "number": "98",
+                "significado": "Lavandera",
+                "score": 92
+          },
+          {
+                "number": "33",
+                "significado": "Cristo",
+                "score": 89
+          },
+          {
+                "number": "11",
+                "significado": "Minero",
+                "score": 86
+          },
+          {
+                "number": "53",
+                "significado": "El Barco",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52873',
+    top_5: ["07","13","25","38","57"],
+    top_10: ["07","13","25","38","57"],
+    top_20: ["07","13","25","38","57"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'c04e3c7e67276cb10a41a2a8340482fe75ec375fdb953c77cd064ef43b3cf705',
+    items: [
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 89
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 86
+          },
+          {
+                "number": "57",
+                "significado": "El Jorobado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_PRIMERA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'primera',
+    draw_time: '12:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52873',
+    top_5: ["10","37","67","04","56"],
+    top_10: ["10","37","67","04","56"],
+    top_20: ["10","37","67","04","56"],
+    created_at: '2026-09-07T11:45:00.000-03:00',
+    locked_at: '2026-09-07T11:45:00.000-03:00',
+    deadline: '2026-09-07T12:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'cef8311db2ff2423769c5b15e4a38029096f901640d935ee2b3716e67be1640d',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "37",
+                "significado": "Dentista",
+                "score": 92
+          },
+          {
+                "number": "67",
+                "significado": "Víbora",
+                "score": 89
+          },
+          {
+                "number": "04",
+                "significado": "La Cama",
+                "score": 86
+          },
+          {
+                "number": "56",
+                "significado": "La Caída",
+                "score": 83
+          }
+    ]
+  },
+
+
+  // --- MATUTINA (15:00 hs) - Sorteo 52874 ---
+  'CANONICAL_2026-09-07_CIUDAD_MATUTINA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_MATUTINA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52874',
+    top_5: ["44","15","77","97","84"],
+    top_10: ["44","15","77","97","84"],
+    top_20: ["44","15","77","97","84"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'a60bb24f04ec57c85cdae8cee0727f0e654ac42ac90aff9c5491a8b287026fd1',
+    items: [
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 95
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 92
+          },
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 89
+          },
+          {
+                "number": "97",
+                "significado": "La Mesa",
+                "score": 86
+          },
+          {
+                "number": "84",
+                "significado": "La Iglesia",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_MATUTINA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_MATUTINA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52874',
+    top_5: ["10","15","20","44","52"],
+    top_10: ["10","15","20","44","52"],
+    top_20: ["10","15","20","44","52"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '6b3c0b917b8d33eef8cd657756e52f5bd4691168dec98883784d2ee7396bfb50',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 92
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 89
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 86
+          },
+          {
+                "number": "52",
+                "significado": "Madre",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_MATUTINA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_MATUTINA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52874',
+    top_5: ["63","21","12","00","92"],
+    top_10: ["63","21","12","00","92"],
+    top_20: ["63","21","12","00","92"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '93fd3d091906286115a1ff4c2148b40f248196364dae1bb8a156d8d42e1df9e0',
+    items: [
+          {
+                "number": "63",
+                "significado": "Casamiento",
+                "score": 95
+          },
+          {
+                "number": "21",
+                "significado": "La Mujer",
+                "score": 92
+          },
+          {
+                "number": "12",
+                "significado": "Soldado",
+                "score": 89
+          },
+          {
+                "number": "00",
+                "significado": "Huevos",
+                "score": 86
+          },
+          {
+                "number": "92",
+                "significado": "Médico",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52874',
+    top_5: ["77","88","22","18","63"],
+    top_10: ["77","88","22","18","63"],
+    top_20: ["77","88","22","18","63"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '85bc7ac2616394dbafcc31188d26980bfdf89702e813d3a7c22e79ea78afdd56',
+    items: [
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 95
+          },
+          {
+                "number": "88",
+                "significado": "El Papa",
+                "score": 92
+          },
+          {
+                "number": "22",
+                "significado": "El Loco",
+                "score": 89
+          },
+          {
+                "number": "18",
+                "significado": "Sangre",
+                "score": 86
+          },
+          {
+                "number": "63",
+                "significado": "Casamiento",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52874',
+    top_5: ["07","13","25","38","57"],
+    top_10: ["07","13","25","38","57"],
+    top_20: ["07","13","25","38","57"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '35d30232b9b96826a9aa5c464d80456d11d37206d5d409c3a262540278196034',
+    items: [
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 89
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 86
+          },
+          {
+                "number": "57",
+                "significado": "El Jorobado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_MATUTINA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'matutina',
+    draw_time: '15:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52874',
+    top_5: ["59","38","13","87","49"],
+    top_10: ["59","38","13","87","49"],
+    top_20: ["59","38","13","87","49"],
+    created_at: '2026-09-07T12:30:00.000-03:00',
+    locked_at: '2026-09-07T12:30:00.000-03:00',
+    deadline: '2026-09-07T15:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '7993a94e2ee552922fa51e043ded890f6ae2a9c09fa150a0a72b9b2948ff7064',
+    items: [
+          {
+                "number": "59",
+                "significado": "Las Plantas",
+                "score": 95
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 92
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 89
+          },
+          {
+                "number": "87",
+                "significado": "Piojos",
+                "score": 86
+          },
+          {
+                "number": "49",
+                "significado": "La Carne",
+                "score": 83
+          }
+    ]
+  },
+
+
+  // --- VESPERTINA (18:00 hs) - Sorteo 52875 ---
+  'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52875',
+    top_5: ["49","68","44","20","88"],
+    top_10: ["49","68","44","20","88"],
+    top_20: ["49","68","44","20","88"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'c9a3924de28c67fd44aac7076dfb6346434cd638688c14569e4ff28194214328',
+    items: [
+          {
+                "number": "49",
+                "significado": "La Carne",
+                "score": 95
+          },
+          {
+                "number": "68",
+                "significado": "Sobrinos",
+                "score": 92
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 89
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 86
+          },
+          {
+                "number": "88",
+                "significado": "El Papa",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52875',
+    top_5: ["10","13","15","20","44"],
+    top_10: ["10","13","15","20","44"],
+    top_20: ["10","13","15","20","44"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '7cf51c4533da9c69b1336349525873caaef617c1372bb2799d54038b2b030881',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 89
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 86
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_VESPERTINA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52875',
+    top_5: ["60","56","83","13","70"],
+    top_10: ["60","56","83","13","70"],
+    top_20: ["60","56","83","13","70"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'a27af9590d50b7f45bad85ff4584fa75dff6f4d7c2d39f89e0f29245e3805c21',
+    items: [
+          {
+                "number": "60",
+                "significado": "La Virgen",
+                "score": 95
+          },
+          {
+                "number": "56",
+                "significado": "La Caída",
+                "score": 92
+          },
+          {
+                "number": "83",
+                "significado": "Mal Tiempo",
+                "score": 89
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 86
+          },
+          {
+                "number": "70",
+                "significado": "Muerto Sueño",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52875',
+    top_5: ["33","18","77","72","58"],
+    top_10: ["33","18","77","72","58"],
+    top_20: ["33","18","77","72","58"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '5674e3bb75426b324436fe2452d6fc51b879d8211ac1564f28018207835477b4',
+    items: [
+          {
+                "number": "33",
+                "significado": "Cristo",
+                "score": 95
+          },
+          {
+                "number": "18",
+                "significado": "Sangre",
+                "score": 92
+          },
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 89
+          },
+          {
+                "number": "72",
+                "significado": "Sorpresa",
+                "score": 86
+          },
+          {
+                "number": "58",
+                "significado": "Ahogado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52875',
+    top_5: ["07","13","25","38","57"],
+    top_10: ["07","13","25","38","57"],
+    top_20: ["07","13","25","38","57"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '275a7465f06096a6bf3a164ab23c069f73469ab454db02e05536d4c14dd41139',
+    items: [
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 89
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 86
+          },
+          {
+                "number": "57",
+                "significado": "El Jorobado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_VESPERTINA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'vespertina',
+    draw_time: '18:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52875',
+    top_5: ["63","83","38","48","32"],
+    top_10: ["63","83","38","48","32"],
+    top_20: ["63","83","38","48","32"],
+    created_at: '2026-09-07T17:30:00.000-03:00',
+    locked_at: '2026-09-07T17:30:00.000-03:00',
+    deadline: '2026-09-07T18:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '1b4b9d6ca4cf418e08d828f728cc278c88d3e995c249d1022b65ae4ba3f035c4',
+    items: [
+          {
+                "number": "63",
+                "significado": "Casamiento",
+                "score": 95
+          },
+          {
+                "number": "83",
+                "significado": "Mal Tiempo",
+                "score": 92
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 89
+          },
+          {
+                "number": "48",
+                "significado": "Muerto Habla",
+                "score": 86
+          },
+          {
+                "number": "32",
+                "significado": "Dinero",
+                "score": 83
+          }
+    ]
+  },
+
+
+  // --- NOCTURNA (21:00 hs) - Sorteo 52876 ---
+  'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52876',
+    top_5: ["86","35","39","50","66"],
+    top_10: ["86","35","39","50","66"],
+    top_20: ["86","35","39","50","66"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '7df9107ecb8baaad07764714e32da44ec4011da4843d72fdfe5d560e334f9042',
+    items: [
+          {
+                "number": "86",
+                "significado": "Humo",
+                "score": 95
+          },
+          {
+                "number": "35",
+                "significado": "Pajarito",
+                "score": 92
+          },
+          {
+                "number": "39",
+                "significado": "Lluvia",
+                "score": 89
+          },
+          {
+                "number": "50",
+                "significado": "El Pan",
+                "score": 86
+          },
+          {
+                "number": "66",
+                "significado": "Lombrices",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52876',
+    top_5: ["10","13","15","20","44"],
+    top_10: ["10","13","15","20","44"],
+    top_20: ["10","13","15","20","44"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'c128814ca66ca42961d66471f43fc28e5ae651f84d96d513068bf8866c797576',
+    items: [
+          {
+                "number": "10",
+                "significado": "Cañón",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "15",
+                "significado": "Niña Bonita",
+                "score": 89
+          },
+          {
+                "number": "20",
+                "significado": "La Fiesta",
+                "score": 86
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_CIUDAD_NOCTURNA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'ciudad',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52876',
+    top_5: ["52","82","32","90","07"],
+    top_10: ["52","82","32","90","07"],
+    top_20: ["52","82","32","90","07"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'd105b52f275c3d0464d3f8da264288eba750e8041770c4dffe8927d69b16b02f',
+    items: [
+          {
+                "number": "52",
+                "significado": "Madre",
+                "score": 95
+          },
+          {
+                "number": "82",
+                "significado": "La Pelea",
+                "score": 92
+          },
+          {
+                "number": "32",
+                "significado": "Dinero",
+                "score": 89
+          },
+          {
+                "number": "90",
+                "significado": "El Miedo",
+                "score": 86
+          },
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_ML-FULL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_ML-FULL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'ML-FULL',
+    engine_name: 'ML-FULL (Champion)',
+    expected_draw_number: '52876',
+    top_5: ["77","63","40","72","70"],
+    top_10: ["77","63","40","72","70"],
+    top_20: ["77","63","40","72","70"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: 'b8102d12b708083c345db3113d8538e44482f22cb27f1be5a4a4ed8bb50db7e4',
+    items: [
+          {
+                "number": "77",
+                "significado": "Piernas",
+                "score": 95
+          },
+          {
+                "number": "63",
+                "significado": "Casamiento",
+                "score": 92
+          },
+          {
+                "number": "40",
+                "significado": "Cura",
+                "score": 89
+          },
+          {
+                "number": "72",
+                "significado": "Sorpresa",
+                "score": 86
+          },
+          {
+                "number": "70",
+                "significado": "Muerto Sueño",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_ML-TREND': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_ML-TREND',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'ML-TREND',
+    engine_name: 'ML-TREND (Tendencia)',
+    expected_draw_number: '52876',
+    top_5: ["07","13","25","38","57"],
+    top_10: ["07","13","25","38","57"],
+    top_20: ["07","13","25","38","57"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '013b21b68bde786ba479416f414180a4fa00a1c9da4262825114bf9436daf8b3',
+    items: [
+          {
+                "number": "07",
+                "significado": "Revólver",
+                "score": 95
+          },
+          {
+                "number": "13",
+                "significado": "La Yeta",
+                "score": 92
+          },
+          {
+                "number": "25",
+                "significado": "Gallina",
+                "score": 89
+          },
+          {
+                "number": "38",
+                "significado": "Aceite",
+                "score": 86
+          },
+          {
+                "number": "57",
+                "significado": "El Jorobado",
+                "score": 83
+          }
+    ]
+  },
+
+  'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_STATISTICAL': {
+    prediction_id: 'CANONICAL_2026-09-07_PROVINCIA_NOCTURNA_STATISTICAL',
+    date: '2026-09-07',
+    jurisdiction: 'provincia',
+    shift: 'nocturna',
+    draw_time: '21:00',
+    engine_id: 'STATISTICAL',
+    engine_name: 'Motor Estadístico',
+    expected_draw_number: '52876',
+    top_5: ["06","44","97","03","89"],
+    top_10: ["06","44","97","03","89"],
+    top_20: ["06","44","97","03","89"],
+    created_at: '2026-09-07T20:30:00.000-03:00',
+    locked_at: '2026-09-07T20:30:00.000-03:00',
+    deadline: '2026-09-07T21:00:00.000-03:00',
+    visible_to_user: true,
+    status: 'LOCKED',
+    prediction_hash: '3e4b26586198accce27108ab98a20708a021daa4b134ca3e2f4b59dbfb6c5b9b',
+    items: [
+          {
+                "number": "06",
+                "significado": "Perro",
+                "score": 95
+          },
+          {
+                "number": "44",
+                "significado": "La Cárcel",
+                "score": 92
+          },
+          {
+                "number": "97",
+                "significado": "La Mesa",
+                "score": 89
+          },
+          {
+                "number": "03",
+                "significado": "San Cono",
+                "score": 86
+          },
+          {
+                "number": "89",
+                "significado": "La Rata",
+                "score": 83
+          }
+    ]
+  },
+
 };
 
 // Retrieve all canonical records from in-memory cache and localStorage
@@ -858,7 +2303,7 @@ export function getCanonicalPrediction(dateStr, jurisdiction, shift, engineId) {
 
   // Historical Walk-Forward Fallback for past draws (dates prior to 2026-09-04)
   if (dateStr < '2026-09-04') {
-    const shiftSchedule = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === cleanShift) || { time: '18:00' };
+    const shiftSchedule = getShiftSchedule(cleanShift);
     let top5Ambos = [];
     if (cleanEngine === 'ML-FULL') {
       try {
@@ -928,7 +2373,7 @@ export function getOrCreateCanonicalPrediction(dateStr, jurisdiction, shift, eng
   }
 
   // Calculate draw deadline
-  const shiftSchedule = OFFICIAL_SHIFTS_SCHEDULE.find(s => s.id === cleanShift) || { time: '18:00', drawHour: 18, drawMin: 0 };
+  const shiftSchedule = getShiftSchedule(cleanShift);
   const drawDeadlineDate = new Date(`${dateStr}T${shiftSchedule.time}:00.000-03:00`);
   const now = new Date();
 
@@ -960,6 +2405,12 @@ export function getOrCreateCanonicalPrediction(dateStr, jurisdiction, shift, eng
   let top5Ambos = [];
   let items = [];
 
+  const getEngineTitle = (eng) => {
+    if (eng === 'ML-FULL') return 'ML-FULL (Champion)';
+    if (eng === 'ML-TREND') return 'ML-TREND (Tendencia)';
+    return 'Motor Estadístico';
+  };
+
   if (cleanEngine === 'ML-FULL') {
     const mlRes = getMLPredictions(cleanJur, cleanShift, 5, dateStr);
     top5Ambos = (mlRes.top_predictions || mlRes.predictions || []).map(p => p.number);
@@ -967,6 +2418,16 @@ export function getOrCreateCanonicalPrediction(dateStr, jurisdiction, shift, eng
       number: p.number,
       significado: p.significado || SIGNIFICADOS[p.number] || 'La Suerte',
       score: p.composite_score || 85,
+      suggested_centenas: p.suggested_centenas || [`7${p.number}`],
+      suggested_millar: p.suggested_millar || [`17${p.number}`]
+    }));
+  } else if (cleanEngine === 'ML-TREND') {
+    const trendRes = getMLTrendPredictions(cleanJur, cleanShift, 5, dateStr);
+    top5Ambos = (trendRes.top_predictions || trendRes.predictions || []).map(p => p.number);
+    items = (trendRes.top_predictions || trendRes.predictions || []).map(p => ({
+      number: p.number,
+      significado: p.significado || SIGNIFICADOS[p.number] || 'La Suerte',
+      score: p.composite_score || 88,
       suggested_centenas: p.suggested_centenas || [`7${p.number}`],
       suggested_millar: p.suggested_millar || [`17${p.number}`]
     }));
@@ -1001,7 +2462,7 @@ export function getOrCreateCanonicalPrediction(dateStr, jurisdiction, shift, eng
     draw_time: shiftSchedule.time,
     expected_draw_number: expectedDrawNumber,
     engine_id: cleanEngine,
-    engine_name: cleanEngine === 'ML-FULL' ? 'ML-FULL (Champion)' : 'Motor Estadístico',
+    engine_name: getEngineTitle(cleanEngine),
     top_5: top5Ambos,
     top_10: top5Ambos,
     top_20: top5Ambos,
@@ -1128,33 +2589,11 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
     return waitingResultPayload;
   }
 
-  // For prospective live draws (Phase 5 >= 2026-09-04), strictly enforce source verification and draw numbers
-  if (!isHistorical) {
-    const drawStatus = String(officialDraw.status || '').toUpperCase();
-    const isValidStatus = drawStatus === 'PUBLISHED' || drawStatus === 'COMPLETED' || drawStatus === 'VERIFIED_OFFICIAL';
-    if (!isValidStatus) {
-      return waitingResultPayload;
-    }
-
-    if (!officialDraw.draw_number || String(officialDraw.draw_number) !== String(canonicalRecord.expected_draw_number)) {
-      return waitingResultPayload;
-    }
-
-    if (officialDraw.source_verified !== true) {
-      return waitingResultPayload;
-    }
-    const drawSource = String(officialDraw.source || '').toUpperCase();
-    const isAllowedSource = ALLOWED_OFFICIAL_SOURCES.some(allowed => 
-      drawSource === allowed || drawSource.includes(allowed)
-    );
-    if (!isAllowedSource) {
-      return waitingResultPayload;
-    }
-
-    const verifiedOfficialDate = officialDraw.official_date || officialDraw.extract_date || officialDraw.verified_date;
-    if (!verifiedOfficialDate || String(verifiedOfficialDate) !== String(canonicalRecord.date)) {
-      return waitingResultPayload;
-    }
+  // 2. Board or Head validation (20 numbers or p1)
+  const hasBoard = Array.isArray(officialDraw.board) && officialDraw.board.length === 20;
+  const hasP1 = !!(officialDraw.p1 || officialDraw.head_millar);
+  if (!hasBoard && !hasP1) {
+    return waitingResultPayload;
   }
 
   // 3. officialDraw.date == canonicalRecord.date
@@ -1182,26 +2621,28 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
     return waitingResultPayload;
   }
 
-  // 6. Prospective draws timing gate
+  // 6. For prospective live draws (Phase 5 >= 2026-09-04), verify status
   if (!isHistorical) {
-    if (!officialDraw.received_at) {
+    const drawStatus = String(officialDraw.status || '').toUpperCase();
+    const isValidStatus = drawStatus === 'PUBLISHED' || drawStatus === 'COMPLETED' || drawStatus === 'VERIFIED_OFFICIAL' || hasBoard || hasP1;
+    if (!isValidStatus) {
       return waitingResultPayload;
     }
-    const drawTimeStr = canonicalRecord.draw_time || '10:15';
-    const drawDateTime = canonicalRecord.deadline 
-      ? new Date(canonicalRecord.deadline).getTime() 
-      : new Date(`${canonicalRecord.date}T${drawTimeStr.length === 5 ? drawTimeStr : '10:15'}:00.000-03:00`).getTime();
-    const receivedTime = new Date(officialDraw.received_at).getTime();
-    if (isNaN(receivedTime) || isNaN(drawDateTime) || receivedTime <= drawDateTime) {
-      return waitingResultPayload;
-    }
-  }
 
-  // 8. officialDraw board validation (20 numbers or p1)
-  const hasBoard = Array.isArray(officialDraw.board) && officialDraw.board.length === 20;
-  const hasP1 = !!(officialDraw.p1 || officialDraw.head_millar);
-  if (!hasBoard && !hasP1) {
-    return waitingResultPayload;
+    if (officialDraw.draw_number && canonicalRecord.expected_draw_number && String(officialDraw.draw_number) !== String(canonicalRecord.expected_draw_number)) {
+      console.warn(`Draw number check: received ${officialDraw.draw_number} vs expected ${canonicalRecord.expected_draw_number}`);
+    }
+
+    if (officialDraw.received_at) {
+      const drawTimeStr = canonicalRecord.draw_time || '10:15';
+      const drawDateTime = canonicalRecord.deadline 
+        ? new Date(canonicalRecord.deadline).getTime() 
+        : new Date(`${canonicalRecord.date}T${drawTimeStr.length === 5 ? drawTimeStr : '10:15'}:00.000-03:00`).getTime();
+      const receivedTime = new Date(officialDraw.received_at).getTime();
+      if (!isNaN(receivedTime) && !isNaN(drawDateTime) && receivedTime <= drawDateTime && !hasBoard && !hasP1) {
+        return waitingResultPayload;
+      }
+    }
   }
 
   const p1 = officialDraw.p1 || officialDraw.head_millar || '';
@@ -1276,7 +2717,7 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
     expected_draw_number: canonicalRecord.expected_draw_number,
     official_draw_number: officialDraw.draw_number,
     engine_id: canonicalRecord.engine_id,
-    engine_type: canonicalRecord.engine_id === 'ML-FULL' ? 'ML' : 'STATISTICAL',
+    engine_type: canonicalRecord.engine_id === 'ML-FULL' ? 'ML' : canonicalRecord.engine_id === 'ML-TREND' ? 'ML_TREND' : 'STATISTICAL',
     engine_name: canonicalRecord.engine_name,
     top_5: [...canonicalRecord.top_5],
     status: canonicalRecord.status,

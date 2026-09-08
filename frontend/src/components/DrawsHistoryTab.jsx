@@ -3,7 +3,7 @@ import axios from 'axios';
 import { 
   History, Calendar, ChevronDown, ChevronUp, ChevronRight, Trophy, CheckCircle2, 
   RefreshCw, Check, Sparkles, Award, TrendingUp, ShieldCheck, Flame, Clock, Radio, Building2, Trees,
-  Layers, CheckSquare, FileText, Eye, AlertCircle, Hash, Star, X, ExternalLink, Zap, HelpCircle
+  Layers, CheckSquare, FileText, Eye, AlertCircle, Hash, Star, X, ExternalLink, Zap, HelpCircle, Lock
 } from 'lucide-react';
 import { 
   getClientDraws, SIGNIFICADOS, OFFICIAL_SHIFTS_SCHEDULE, getShiftDrawStatus,
@@ -225,10 +225,13 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
 
   const renderCanonicalComparisonRow = (engineKey, title, evalResult, draw) => {
     const isML = engineKey === 'ml';
-    const icon = isML ? '🧠' : '📊';
+    const isTrend = engineKey === 'trend';
+    const icon = isTrend ? '🚀' : isML ? '🧠' : '📊';
 
-    // Case 1: No canonical prediction registered pre-draw
-    if (!evalResult || !evalResult.is_evaluated || evalResult.status === 'INVALID_OR_MISSING' || evalResult.status === 'INVALID' || !evalResult.top_5 || evalResult.top_5.length === 0) {
+    const hasTop5 = evalResult && Array.isArray(evalResult.top_5) && evalResult.top_5.length > 0;
+
+    // Case 1: Truly no canonical prediction registered pre-draw
+    if (!evalResult || !hasTop5 || evalResult.status === 'INVALID_OR_MISSING' || evalResult.status === 'INVALID') {
       return (
         <div className="p-2.5 sm:p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-inner">
           <div className="flex items-center gap-2">
@@ -250,15 +253,37 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     }
 
     // Case 2: Evaluated canonical prediction
-    const headHit = evalResult.head_hit;
-    const positions = evalResult.official_positions || [];
     const top5 = evalResult.top_5 || [];
-    const headAmbo = evalResult.official_head_ambo || (draw.p1 || draw.head_millar || '').slice(-2);
     const headFull = evalResult.official_head_number || draw.p1 || draw.head_millar || '----';
+    const headAmbo = evalResult.official_head_ambo || (headFull !== '----' ? headFull.slice(-2) : '--');
+
+    let headHit = !!evalResult.head_hit;
+    let positions = evalResult.official_positions ? [...evalResult.official_positions] : [];
+
+    // Evaluate hits directly if draw has board or p1 and positions is empty
+    if (headFull !== '----' && positions.length === 0) {
+      if (top5.includes(headAmbo)) {
+        headHit = true;
+      }
+      const board = draw.board || [];
+      board.forEach((num, idx) => {
+        const a = String(num).slice(-2);
+        if (top5.includes(a)) {
+          positions.push({
+            number: a,
+            position: idx + 1,
+            full_number: num,
+            multiplier: (idx + 1) === 1 ? '70x (A la Cabeza)' : (idx + 1) <= 5 ? '14x (A los 5)' : (idx + 1) <= 10 ? '7x (A los 10)' : '3.5x (A los 20)'
+          });
+        }
+      });
+    }
 
     // Determine Award Badge
     let awardBadge = { label: '⚪ Sin acierto', style: 'bg-slate-800 text-slate-400 border-slate-700' };
-    if (headHit) {
+    if (!evalResult.is_evaluated && headFull === '----') {
+      awardBadge = { label: '⏳ Aguardando sorteo', style: 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold' };
+    } else if (headHit) {
       awardBadge = { label: '👑 CABEZA (70x)', style: 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow' };
     } else if (positions.some(p => p.position <= 5)) {
       const pos = positions.find(p => p.position <= 5);
@@ -385,12 +410,14 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
     const ambo = isCompleted ? (draw.head_ambo || draw.p1?.slice(-2) || '--') : '--';
     const sig = isCompleted ? (SIGNIFICADOS[ambo] || draw.significado || 'La Suerte') : draw.significado;
     
-    // Strict evaluation against Canonical Ledger
-    const canonicalML = isCompleted ? getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL') : null;
-    const canonicalStat = isCompleted ? getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL') : null;
-    const evalML = isCompleted ? evaluateCanonicalPrediction(canonicalML, draw) : null;
-    const evalStat = isCompleted ? evaluateCanonicalPrediction(canonicalStat, draw) : null;
-    const isCardHit = evalML?.is_hit || evalStat?.is_hit;
+    // Strict evaluation against Canonical Ledger (Triple Engine: ML Champion, ML Trend, Statistical)
+    const canonicalML = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL');
+    const canonicalTrend = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-TREND');
+    const canonicalStat = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL');
+    const evalML = evaluateCanonicalPrediction(canonicalML, draw);
+    const evalTrend = evaluateCanonicalPrediction(canonicalTrend, draw);
+    const evalStat = evaluateCanonicalPrediction(canonicalStat, draw);
+    const isCardHit = evalML?.is_hit || evalTrend?.is_hit || evalStat?.is_hit;
     const isExpanded = !!expandedBoards[draw.id];
 
     return (
@@ -469,12 +496,14 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
           </div>
         ) : null}
 
-        {/* Cotejo Dual Canónico de Motores con Trazabilidad Completa (Strict Canonical Ledger) */}
+        {/* Cotejo Triple Canónico de Motores con Trazabilidad Completa (Strict Canonical Ledger) */}
         {isCompleted && (() => {
           const canonicalML = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-FULL');
+          const canonicalTrend = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'ML-TREND');
           const canonicalStat = getCanonicalPrediction(draw.draw_date, draw.lottery, draw.shift, 'STATISTICAL');
 
           const evalML = evaluateCanonicalPrediction(canonicalML, draw);
+          const evalTrend = evaluateCanonicalPrediction(canonicalTrend, draw);
           const evalStat = evaluateCanonicalPrediction(canonicalStat, draw);
 
           return (
@@ -485,11 +514,12 @@ export default function DrawsHistoryTab({ onNavigateToRadar }) {
                   Cotejo de Pronósticos Canónicos vs Resultado Oficial:
                 </span>
                 <span className="font-mono text-[10px] text-amber-400 font-bold">
-                  Fase 5 • TRACEABILITY_V1
+                  Triple Motor • TRACEABILITY_V1
                 </span>
               </div>
 
-              {renderCanonicalComparisonRow('ml', 'IA / ML — Champion (ML-FULL)', evalML, draw)}
+              {renderCanonicalComparisonRow('trend', 'IA ML — Tendencia (ML-TREND)', evalTrend, draw)}
+              {renderCanonicalComparisonRow('ml', 'IA ML — Champion (ML-FULL)', evalML, draw)}
               {renderCanonicalComparisonRow('stat', 'Motor Estadístico (Frecuencias & Atrasos)', evalStat, draw)}
             </div>
           );

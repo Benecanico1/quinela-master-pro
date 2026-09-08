@@ -30,20 +30,32 @@ export function calculateRemainingVipDays(user) {
   const now = Date.now();
   let expiresAt = user.vip_expires_at;
 
-  // Migration / Default initialization if vip_expires_at is not yet set
-  if (!expiresAt) {
-    if (user.vip_days_left && user.vip_days_left > 0) {
+  // Convert to numeric milliseconds if it's ISO string or string number
+  if (typeof expiresAt === 'string') {
+    const parsed = new Date(expiresAt).getTime();
+    if (!isNaN(parsed)) {
+      expiresAt = parsed;
+    } else if (!isNaN(Number(expiresAt))) {
+      expiresAt = Number(expiresAt);
+    }
+  }
+
+  // If expiresAt is not set:
+  if (!expiresAt || typeof expiresAt !== 'number') {
+    if (user.vip_days_left === 0 || user.is_vip === 0 || user.is_vip === false) {
+      expiresAt = now - 1000; // Ya vencido
+    } else if (user.vip_days_left && Number(user.vip_days_left) > 0) {
       expiresAt = now + (Number(user.vip_days_left) * 86400000);
     } else if (user.is_vip || user.vip_active) {
       expiresAt = now + 15 * 86400000;
     } else {
-      expiresAt = now; // Expired
+      expiresAt = now - 1000;
     }
   }
 
   const diffMs = expiresAt - now;
   const daysLeft = Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
-  const isVip = daysLeft > 0;
+  const isVip = daysLeft > 0 && user.is_vip !== 0 && user.is_vip !== false;
 
   return { daysLeft, isVip, expiresAt };
 }
@@ -117,20 +129,41 @@ export async function syncUserProfileToCloud(userData) {
 
     const now = Date.now();
     const isAdmin = cleanEmail === 'jesushidalgo25@gmail.com' || userData.role === 'admin';
-    const initialDays = isAdmin ? 365 : (userData.vip_days_left ?? 15);
-    const expiresAt = userData.vip_expires_at || (now + initialDays * 86400000);
-    const calculated = calculateRemainingVipDays({ ...userData, vip_expires_at: expiresAt });
+    
+    // Check if cloud already has an established expiration date
+    let expiresAt = userData.vip_expires_at;
+    let existingData = null;
+    try {
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        existingData = userSnap.data();
+        if (existingData.vip_expires_at) {
+          expiresAt = existingData.vip_expires_at;
+        }
+      }
+    } catch (e) {}
+
+    if (!expiresAt) {
+      const initialDays = isAdmin ? 365 : (userData.vip_days_left ?? 15);
+      expiresAt = now + initialDays * 86400000;
+    }
+
+    const calculated = calculateRemainingVipDays({ 
+      ...userData, 
+      ...(existingData || {}),
+      vip_expires_at: expiresAt 
+    });
 
     const nowIso = new Date().toISOString();
     const payload = {
       id: docId,
-      name: userData.name || 'Usuario Quiniela',
+      name: userData.name || existingData?.name || 'Usuario Quiniela',
       email: cleanEmail,
-      photoURL: userData.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + cleanEmail),
-      role: isAdmin ? 'admin' : (userData.role || 'user'),
+      photoURL: userData.photoURL || existingData?.photoURL || ('https://api.dicebear.com/7.x/bottts/svg?seed=' + cleanEmail),
+      role: isAdmin ? 'admin' : (existingData?.role || userData.role || 'user'),
       is_vip: calculated.isVip ? 1 : 0,
       vip_active: calculated.isVip ? 1 : 0,
-      tier: isAdmin ? 'VIP_ANNUAL' : (userData.tier || (calculated.isVip ? 'VIP_TRIAL' : 'FREE')),
+      tier: isAdmin ? 'VIP_ANNUAL' : (existingData?.tier || userData.tier || (calculated.isVip ? 'VIP_TRIAL' : 'FREE')),
       vip_days_left: calculated.daysLeft,
       vip_expires_at: expiresAt,
       trial_active: (userData.trial_active ?? (isAdmin ? 0 : 1)) && calculated.isVip ? 1 : 0,

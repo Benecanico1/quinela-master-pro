@@ -71,7 +71,7 @@ export default function SplashScreen({ onFinish, duration = 2400 }) {
         {/* Title & Tagline */}
         <div className="space-y-1.5">
           <h1 className="text-2xl sm:text-3xl font-black tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 bg-clip-text text-transparent">
-            QUINIELA MASTER PRO
+            QUINELA MASTER PRO
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 font-medium tracking-wide">
             Modelos de Predicción e Inteligencia Estadística
@@ -92,8 +92,8 @@ export default function SplashScreen({ onFinish, duration = 2400 }) {
 
       {/* Footer Info */}
       <div className="text-center space-y-1 opacity-70 pb-2">
-        <p className="text-[10px] tracking-wider text-slate-500">
-          CIUDAD • PROVINCIA • SANTA FE • CÓRDOBA
+        <p className="text-[10px] tracking-wider text-slate-500 font-bold">
+          CIUDAD • PROVINCIA
         </p>
         <p className="text-[9px] text-slate-600">
           Toca la pantalla para continuar

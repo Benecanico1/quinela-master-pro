@@ -3,7 +3,7 @@ import axios from 'axios';
 import { X, Crown, Copy, Check, MessageCircle, Send, ShieldCheck, CreditCard, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 import { notifyPaymentIntention, submitCloudPaymentProof } from '../services/telemetryService';
 
-export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }) {
+export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted, isForcedPaywall = false, onSwitchAccount }) {
   const [settings, setSettings] = useState(null);
   const [copiedAlias, setCopiedAlias] = useState(false);
   const [copiedCbu, setCopiedCbu] = useState(false);
@@ -85,15 +85,30 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
   const whatsappUrl = `https://wa.me/${(settings?.whatsapp_number || '+5491123456789').replace(/[^0-9]/g, '')}?text=${whatsappMessage}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-fadeIn">
       <div className="bg-slate-900 border border-amber-500/50 rounded-3xl max-w-xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar space-y-4 sm:space-y-5">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-xl bg-slate-800 cursor-pointer transition-all"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Close Button - Only visible if NOT forced paywall */}
+        {!isForcedPaywall && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-xl bg-slate-800 cursor-pointer transition-all"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Forced Paywall Banner */}
+        {isForcedPaywall && (
+          <div className="bg-gradient-to-r from-rose-950/90 via-slate-900 to-rose-950/90 border border-rose-500/60 p-4 rounded-2xl text-left space-y-1.5 shadow-lg">
+            <div className="flex items-center gap-2 text-rose-400 font-black text-xs uppercase tracking-wider">
+              <AlertCircle className="w-4 h-4" />
+              <span>🚨 Período de Prueba Finalizado (Día 0)</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Tu prueba gratuita de 15 días ha concluido. Para continuar accediendo a los pronósticos oficiales en 3 capas, el radar de aciertos y las estrategias de Quinela Master Pro, abona tu cuota mensual.
+            </p>
+          </div>
+        )}
 
         {/* Header */}
         <div className="text-center">
@@ -101,15 +116,15 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
             <Crown className="w-7 h-7 sm:w-8 sm:h-8" />
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-white">
-            {user?.is_vip ? 'Tu Membresía VIP' : 'Pase VIP Quinela Master'}
+            {user?.is_vip && !isForcedPaywall ? 'Tu Membresía VIP' : 'Pase VIP Quinela Master Pro'}
           </h3>
           <p className="text-xs text-slate-300 mt-0.5">
             Solo <strong className="text-amber-400 font-bold">$5 USD / mes</strong> (o ${settings?.price_ars?.toLocaleString() || '5.500'} ARS vía Mercado Pago)
           </p>
         </div>
 
-        {/* Active VIP Status Banner if user is already VIP */}
-        {user?.is_vip && (
+        {/* Active VIP Status Banner if user is already VIP and not expired */}
+        {user?.is_vip && !isForcedPaywall && (
           <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-emerald-950/80 border border-emerald-500/40 p-4 rounded-2xl space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -119,7 +134,7 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
                 <strong className="text-xs font-black text-emerald-300">ESTADO: VIP ACTIVO</strong>
               </div>
               <span className="text-[11px] font-bold font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {user.tier === 'VIP_TRIAL' ? `${user.trial_days_left} días restantes de prueba` : 'Suscripción Activa'}
+                {user?.tier === 'VIP_TRIAL' ? `${user?.trial_days_left ?? user?.vip_days_left ?? 0} días restantes de prueba` : 'Suscripción Activa'}
               </span>
             </div>
 
@@ -246,6 +261,18 @@ export default function UpgradeModal({ isOpen, onClose, user, onProofSubmitted }
           <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
           <span>Activación segura garantizada por ING JH • Quinela Master Pro AI</span>
         </div>
+
+        {isForcedPaywall && onSwitchAccount && (
+          <div className="pt-2 border-t border-slate-800 text-center">
+            <button
+              type="button"
+              onClick={onSwitchAccount}
+              className="text-xs text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer"
+            >
+              ¿Deseas ingresar con otra cuenta registrada de Google?
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

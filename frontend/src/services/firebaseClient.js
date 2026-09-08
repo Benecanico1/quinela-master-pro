@@ -54,46 +54,87 @@ export function setAffiliateUrl(url) {
   }
 }
 
-// Google Sign-In Function
+// Google Sign-In Function (Official Google Identity / OAuth 2.0)
 export async function signInWithGoogleAccount() {
   if (!auth) {
-    throw new Error("Firebase Auth no inicializado");
+    throw new Error("Firebase Auth no inicializado en la aplicación.");
   }
 
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
+    if (!user || !user.email) {
+      throw new Error("No se pudo obtener la cuenta verificada de Google.");
+    }
 
-    const userData = {
-      id: user.uid,
-      name: user.displayName || user.email?.split('@')[0] || 'Usuario Quinela',
-      email: user.email,
-      photoURL: user.photoURL,
-      is_vip: user.email === 'jesushidalgo25@gmail.com' ? 1 : 0,
-      vip_days_left: user.email === 'jesushidalgo25@gmail.com' ? 365 : 0,
-      role: user.email === 'jesushidalgo25@gmail.com' ? 'admin' : 'user',
-      tier: user.email === 'jesushidalgo25@gmail.com' ? 'VIP_ANNUAL' : 'FREE',
+    const cleanEmail = user.email.trim().toLowerCase();
+    const isMasterAdmin = cleanEmail === 'jesushidalgo25@gmail.com';
+    const now = Date.now();
+    const defaultExpiresAt = isMasterAdmin ? (now + 365 * 86400000) : (now + 15 * 86400000);
+    const docId = 'user_' + cleanEmail.replace(/[^a-zA-Z0-9]/g, '_');
+
+    let userData = {
+      id: docId,
+      firebase_uid: user.uid,
+      name: user.displayName || cleanEmail.split('@')[0] || 'Usuario Quinela',
+      email: cleanEmail,
+      photoURL: user.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanEmail}`,
+      role: isMasterAdmin ? 'admin' : 'user',
+      is_vip: 1,
+      vip_active: 1,
+      tier: isMasterAdmin ? 'VIP_ANNUAL' : 'VIP_TRIAL',
+      vip_days_left: isMasterAdmin ? 365 : 15,
+      vip_expires_at: defaultExpiresAt,
+      trial_active: isMasterAdmin ? 0 : 1,
+      trial_days_left: isMasterAdmin ? 365 : 15,
+      provider: 'google.com',
       last_login: new Date().toISOString()
     };
 
-    // Save to Firestore
+    // Verificar si ya existía en Firestore para respetar días restantes y estado VIP
     if (db) {
-      const userRef = doc(db, 'users', user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const existingData = userSnap.data();
-        userData.is_vip = existingData.is_vip ?? userData.is_vip;
-        userData.vip_days_left = existingData.vip_days_left ?? userData.vip_days_left;
-        userData.tier = existingData.tier ?? userData.tier;
-        userData.role = existingData.role ?? userData.role;
+      try {
+        const userRef = doc(db, 'users', docId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          const existing = userSnap.data();
+          let effectiveExpiresAt = existing.vip_expires_at || defaultExpiresAt;
+          if (typeof effectiveExpiresAt === 'string') {
+            const p = new Date(effectiveExpiresAt).getTime();
+            if (!isNaN(p)) effectiveExpiresAt = p;
+          }
+          const diffMs = effectiveExpiresAt - now;
+          const calculatedDaysLeft = Math.max(0, Math.ceil(diffMs / 86400000));
+          const isVip = isMasterAdmin ? 1 : (calculatedDaysLeft > 0 && existing.is_vip !== 0 ? 1 : 0);
+
+          userData = {
+            ...userData,
+            ...existing,
+            photoURL: user.photoURL || existing.photoURL || userData.photoURL,
+            name: user.displayName || existing.name || userData.name,
+            is_vip: isVip,
+            vip_active: isVip,
+            vip_days_left: isMasterAdmin ? 365 : calculatedDaysLeft,
+            vip_expires_at: effectiveExpiresAt,
+            last_login: new Date().toISOString()
+          };
+        }
+        await setDoc(userRef, userData, { merge: true });
+      } catch (dbErr) {
+        console.warn("Firestore sync error on Google Sign-In:", dbErr.message);
       }
-      await setDoc(userRef, userData, { merge: true });
     }
 
     localStorage.setItem('quiniela_user', JSON.stringify(userData));
+    localStorage.setItem('has_completed_onboarding', 'true');
     return userData;
   } catch (error) {
     console.error("Error signing in with Google:", error);
+    if (error.code === 'auth/popup-closed-by-user') {
+      throw new Error("Inicio de sesión cancelado en la ventana de Google.");
+    } else if (error.code === 'auth/unauthorized-domain') {
+      throw new Error("Dominio no autorizado en Firebase Auth. Por favor agrega este dominio en la consola de Firebase.");
+    }
     throw error;
   }
 }

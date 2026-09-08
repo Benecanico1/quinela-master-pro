@@ -19,7 +19,8 @@ import {
   MessageSquare,
   MessageSquareHeart,
   Bell,
-  Cpu
+  Cpu,
+  Download
 } from 'lucide-react';
 
 import PredictionsTab from './components/PredictionsTab';
@@ -173,6 +174,7 @@ export default function App() {
   const [activeBroadcastPopup, setActiveBroadcastPopup] = useState(null);
 
   const isAdmin = user?.email === 'jesushidalgo25@gmail.com' || user?.role === 'admin';
+  const isPaywallBlocked = !isAdmin && !isWelcomeAuthOpen && (user?.vip_days_left <= 0 || !user?.is_vip);
 
   useEffect(() => {
     if (user?.email && user.email !== 'visita@quiniela.com') {
@@ -227,6 +229,18 @@ export default function App() {
         return prev;
       });
     }, 60000);
+
+    // Midnight reset watcher: triggers automatically when calendar day flips at 00:00:00
+    let lastCheckedDate = new Date().toLocaleDateString('es-AR');
+    const midnightTicker = setInterval(() => {
+      const currentDate = new Date().toLocaleDateString('es-AR');
+      if (currentDate !== lastCheckedDate) {
+        console.log(`[Quinela] Reinicio de medianoche ejecutado: ${lastCheckedDate} -> ${currentDate}`);
+        lastCheckedDate = currentDate;
+        setLastUpdated(new Date().toLocaleTimeString());
+        setPredictions(getClientPredictions('all', 'auto', 15));
+      }
+    }, 15000);
 
     // 1. Immediate Cloud Auto-Sync with LOTBA/Firebase on App Launch
     syncRemoteOfficialDraws().then(res => {
@@ -291,6 +305,8 @@ export default function App() {
 
     return () => {
       clearInterval(syncInterval);
+      clearInterval(vipTicker);
+      clearInterval(midnightTicker);
       if (unsubscribeNotifs) unsubscribeNotifs();
       window.removeEventListener('app-notifications-updated', handleNotifsLocalUpdate);
       window.removeEventListener('focus', handleNotifsLocalUpdate);
@@ -309,17 +325,21 @@ export default function App() {
   };
 
   const handleContinueAsGuest = () => {
+    const now = Date.now();
+    const expiresAt = user?.vip_expires_at || (now + 15 * 86400000);
+    const vipCalc = calculateRemainingVipDays({ ...user, vip_expires_at: expiresAt });
     const guestUser = {
-      id: 0,
-      name: 'Invitado',
+      id: user?.id || ('guest_' + now),
+      name: user?.name || 'Usuario Quiniela',
       email: 'visita@quiniela.com',
       role: 'user',
-      is_vip: false,
-      tier: 'FREE',
-      trial_active: false,
-      trial_days_left: 0,
-      vip_active: false,
-      vip_days_left: 0
+      is_vip: vipCalc.isVip,
+      tier: 'VIP_TRIAL',
+      trial_active: true,
+      trial_days_left: vipCalc.daysLeft,
+      vip_active: vipCalc.isVip,
+      vip_days_left: vipCalc.daysLeft,
+      vip_expires_at: expiresAt
     };
     setUser(guestUser);
     localStorage.setItem('quiniela_user', JSON.stringify(guestUser));
@@ -387,10 +407,9 @@ export default function App() {
     fetchAllData();
   }, [lottery, shift, target]);
 
-  // 6 Main Intuitive Tabs (incluyendo IA Predictiva ML)
+  // 5 Main Intuitive Tabs (Se oculta la pestaña de laboratorio ML para no saturar al usuario, sus motores operan en Pronósticos AI)
   const tabs = [
     { id: 'predictions', label: 'Pronósticos AI', icon: Sparkles, color: 'text-amber-400', isVipOnly: false },
-    { id: 'ml_ai', label: 'IA Predictiva (ML)', icon: Cpu, color: 'text-indigo-400', isVipOnly: false },
     { id: 'draws_history', label: 'Sorteos & Resultados', icon: Trophy, color: 'text-amber-300', isVipOnly: false },
     { id: 'stats_radar', label: 'Radar & Números', icon: Radio, color: 'text-cyan-400', isVipOnly: false },
     { id: 'dreams', label: 'Libro de Sueños', icon: Moon, color: 'text-purple-400', isVipOnly: false },
@@ -433,6 +452,18 @@ export default function App() {
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>+18</span>
             </button>
+
+            {/* Descargar App Android (APK) */}
+            <a
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
+              download="QuinelaMasterPro_v1.4.16.apk"
+              className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/40 text-white text-[10px] sm:text-xs font-black tracking-tight flex items-center gap-1 transition-all shadow-md active:scale-95"
+              title="Descargar App Android Oficial (APK v1.4.16)"
+            >
+              <Download className="w-3.5 h-3.5 text-white" />
+              <span className="hidden xs:inline">Instalar App</span>
+              <span className="xs:hidden">App</span>
+            </a>
 
             {/* Quick Wallet Shortcut */}
             <button
@@ -658,6 +689,16 @@ export default function App() {
 
           {/* Clean Icon Quick Actions (No weird wrapped text) */}
           <div className="flex items-center gap-2">
+            <a
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.16.apk"
+              download="QuinelaMasterPro_v1.4.16.apk"
+              className="p-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
+              title="Descargar App Android Oficial (APK v1.4.16)"
+            >
+              <Download className="w-4 h-4 text-emerald-400" />
+              <span className="text-[11px] font-black hidden md:inline">Descargar App (APK)</span>
+            </a>
+
             <button 
               onClick={() => setIsResponsibleGamingOpen(true)} 
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1.5 shadow"
@@ -717,22 +758,14 @@ export default function App() {
         </div>
       </footer>
 
-      {/* Mobile Sticky Bottom Navigation Bar (6 Touch Buttons) */}
-      <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 py-2 px-1 grid grid-cols-6 sm:hidden shadow-2xl">
+      {/* Mobile Sticky Bottom Navigation Bar (5 Touch Buttons) */}
+      <div className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 py-2 px-1 grid grid-cols-5 sm:hidden shadow-2xl">
         <button
           onClick={() => setActiveTab('predictions')}
           className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'predictions' ? 'text-amber-400 font-black' : 'text-slate-400'}`}
         >
           <Sparkles className="w-4 h-4" />
           <span className="text-[8.5px] font-bold">Pronósticos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ml_ai')}
-          className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'ml_ai' ? 'text-indigo-400 font-black' : 'text-slate-400'}`}
-        >
-          <Cpu className="w-4 h-4" />
-          <span className="text-[8.5px] font-bold">IA ML</span>
         </button>
 
         <button
@@ -830,9 +863,18 @@ export default function App() {
       />
 
       <UpgradeModal
-        isOpen={isUpgradeOpen}
-        onClose={() => setIsUpgradeOpen(false)}
+        isOpen={isUpgradeOpen || isPaywallBlocked}
+        isForcedPaywall={isPaywallBlocked}
+        onClose={() => {
+          if (!isPaywallBlocked) {
+            setIsUpgradeOpen(false);
+          }
+        }}
         user={user}
+        onSwitchAccount={() => {
+          setIsUpgradeOpen(false);
+          setIsAuthOpen(true);
+        }}
         onAuthRequired={() => {
           setIsUpgradeOpen(false);
           setIsAuthOpen(true);
