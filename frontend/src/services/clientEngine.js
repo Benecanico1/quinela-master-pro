@@ -2209,41 +2209,47 @@ export function generateDeterministicBoard(dateStr, lottery, shift) {
   // 1. Check Real Official Database (and local synced storage) first
   const realDb = getRealOfficialDrawsFromStorage();
   if (realDb[hashKey]) {
-    const real = realDb[hashKey];
-    const headAmbo = real.head_ambo;
-    const p1 = real.head_millar;
-    const significado = SIGNIFICADOS[headAmbo] || "La Suerte";
-    const board = [...real.board];
+    // CRITICAL GUARD: If today's shift has NOT reached its ready time yet,
+    // do NOT trust realDb data — it may be stale or erroneously synced future data.
+    if (isToday && shiftStatus.status !== 'COMPLETED') {
+      // Fall through to return pending draw object below
+    } else {
+      const real = realDb[hashKey];
+      const headAmbo = real.head_ambo;
+      const p1 = real.head_millar;
+      const significado = SIGNIFICADOS[headAmbo] || "La Suerte";
+      const board = [...real.board];
 
-    const drawObj = {
-      id: `${dateStr.replace(/-/g, '')}_${cleanLot.slice(0, 3)}_${cleanShift.slice(0, 3)}`,
-      draw_number: real.draw_number,
-      draw_date: dateStr,
-      date: dateStr,
-      official_date: real.official_date || dateStr,
-      lottery: cleanLot,
-      jurisdiction: cleanLot,
-      lottery_name: cleanLot === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : 'Lotería de la Provincia de Bs As',
-      shift: cleanShift,
-      head_ambo: headAmbo,
-      head_centena: real.head_centena,
-      head_millar: p1,
-      significado: significado,
-      p1: p1,
-      board: board,
-      source: real.source || 'LOTBA_DIRECT_EXTRACT',
-      source_verified: real.source_verified !== undefined ? real.source_verified : true,
-      received_at: real.received_at || `${dateStr}T23:59:59.000-03:00`
-    };
+      const drawObj = {
+        id: `${dateStr.replace(/-/g, '')}_${cleanLot.slice(0, 3)}_${cleanShift.slice(0, 3)}`,
+        draw_number: real.draw_number,
+        draw_date: dateStr,
+        date: dateStr,
+        official_date: real.official_date || dateStr,
+        lottery: cleanLot,
+        jurisdiction: cleanLot,
+        lottery_name: cleanLot === 'ciudad' ? 'Lotería de la Ciudad (Nacional)' : 'Lotería de la Provincia de Bs As',
+        shift: cleanShift,
+        head_ambo: headAmbo,
+        head_centena: real.head_centena,
+        head_millar: p1,
+        significado: significado,
+        p1: p1,
+        board: board,
+        source: real.source || 'LOTBA_DIRECT_EXTRACT',
+        source_verified: real.source_verified !== undefined ? real.source_verified : true,
+        received_at: real.received_at || `${dateStr}T23:59:59.000-03:00`
+      };
 
-    for (let i = 1; i <= 20; i++) {
-      drawObj[`p${i}`] = board[i - 1] || '0000';
+      for (let i = 1; i <= 20; i++) {
+        drawObj[`p${i}`] = board[i - 1] || '0000';
+      }
+
+      drawObj.status = 'COMPLETED';
+      drawObj.status_text = 'Pizarra Oficial Confirmada';
+      drawObj.ai_hit = auditDrawAgainstPredictions(drawObj, dateStr, cleanLot, cleanShift);
+      return drawObj;
     }
-
-    drawObj.status = 'COMPLETED';
-    drawObj.status_text = 'Pizarra Oficial Confirmada';
-    drawObj.ai_hit = auditDrawAgainstPredictions(drawObj, dateStr, cleanLot, cleanShift);
-    return drawObj;
   }
 
   // Return pending draw object

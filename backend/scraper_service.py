@@ -218,11 +218,39 @@ def scrape_clarin_and_lanacion() -> List[Dict[str, Any]]:
     return results
 
 def save_scraped_draws_to_db(draws: List[Dict[str, Any]]) -> int:
+    from datetime import datetime, timezone, timedelta
+    ARG_TZ = timezone(timedelta(hours=-3))
+    now_arg = datetime.now(ARG_TZ)
+    today_str = now_arg.strftime('%Y-%m-%d')
+
+    # Official ready times (Argentina, 15 min after draw start)
+    SHIFT_READY_HOUR = {
+        'previa':     (10, 30),
+        'primera':    (12, 15),
+        'matutina':   (15, 15),
+        'vespertina': (18, 15),
+        'nocturna':   (21, 15),
+    }
+
     conn = get_db_connection()
     cursor = conn.cursor()
     saved = 0
     for d in draws:
         try:
+            draw_date = d.get('draw_date', '')
+            shift = d.get('shift', '').lower()
+
+            # GUARD: Never save a shift that hasn't happened yet today
+            if draw_date == today_str and shift in SHIFT_READY_HOUR:
+                ready_h, ready_m = SHIFT_READY_HOUR[shift]
+                now_h = now_arg.hour
+                now_m = now_arg.minute
+                now_total = now_h * 60 + now_m
+                ready_total = ready_h * 60 + ready_m
+                if now_total < ready_total:
+                    print(f"[GUARD] Skipping {shift} ({draw_date}) - not ready yet (now={now_h}:{now_m:02d}, ready={ready_h}:{ready_m:02d})")
+                    continue
+
             cursor.execute('''
                 INSERT INTO draws (
                     draw_date, lottery, shift,
