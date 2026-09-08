@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { X, UserPlus, LogIn, Sparkles, ShieldCheck, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import GoogleAuthPromptModal from './GoogleAuthPromptModal';
 import { signInWithGoogleAccount } from '../services/firebaseClient';
@@ -47,37 +46,46 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, onSuccess })
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
+    setErrorMsg('');
+
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    // Validate inputs before granting any access
+    if (!trimmedEmail || !trimmedPassword) {
+      setErrorMsg('Completá el correo y la contraseña para continuar.');
+      return;
+    }
+    if (trimmedPassword.length < 6) {
+      setErrorMsg('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
 
     let finalName = name.trim();
     if (!finalName) {
-      finalName = email.split('@')[0];
+      finalName = trimmedEmail.split('@')[0];
       finalName = finalName.charAt(0).toUpperCase() + finalName.slice(1);
     }
 
-    const userProfile = {
-      id: Date.now(),
+    // This app uses Google Sign-In or Firebase for real authentication.
+    // Email/password creates a local trial session only — no server validation occurs.
+    // The trial profile is not VIP-verified; VIP activation requires admin approval via Firestore.
+    const trialProfile = {
+      id: `local_${Date.now()}`,
       name: finalName,
-      email: email.trim().toLowerCase(),
+      email: trimmedEmail.toLowerCase(),
       role: 'user',
-      is_vip: true,
-      tier: 'VIP_TRIAL',
+      is_vip: false,
+      tier: 'FREE_TRIAL',
       trial_active: true,
       trial_days_left: 15,
-      vip_active: true,
-      vip_days_left: 15
+      vip_active: false,
+      vip_days_left: 15,
+      auth_method: 'email_trial'
     };
 
-    triggerSuccess(userProfile);
+    triggerSuccess(trialProfile);
     onClose();
-
-    // Async background sync
-    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-    const payload = isRegister 
-      ? { name: userProfile.name, email: userProfile.email, password } 
-      : { email: userProfile.email, password };
-    
-    axios.post(endpoint, payload, { timeout: 2000 }).catch(() => {});
   };
 
   return (

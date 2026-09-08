@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Sparkles, 
@@ -687,7 +687,7 @@ export default function App() {
               </a>
             </span>
             <span className="text-slate-700">â€¢</span>
-            <span className="text-[9px] text-slate-600 font-mono tracking-wider border border-slate-800 px-1.5 py-0.5 rounded-md">v1.4.17</span>
+            <span className="text-[9px] text-slate-600 font-mono tracking-wider border border-slate-800 px-1.5 py-0.5 rounded-md">v1.4.18</span>
           </div>
 
           {/* Clean Icon Quick Actions (No weird wrapped text) */}

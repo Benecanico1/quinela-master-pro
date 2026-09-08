@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Bot, MessageCircle, X, Send, Sparkles, ArrowRight,
   Crown, BarChart3, Brain, Award,
@@ -7,7 +7,7 @@ import {
 import { OFFICIAL_SHIFTS_SCHEDULE, getClientBacktest } from '../services/clientEngine.js';
 
 const SUPPORT_WHATSAPP_URL = 'https://wa.me/5491159158512';
-const APP_VERSION = 'v1.4.17';
+const APP_VERSION = 'v1.4.18';
 
 // Calcula estado de cada turno segun hora local actual
 function getShiftsStatus() {
@@ -22,29 +22,32 @@ function getShiftsStatus() {
   });
 }
 
-// Rendimiento de motores basado en backtest real
-function getEnginePerformance() {
-  const ENGINES = [
-    { name: 'Frecuencia + Atraso',  desc: 'Frecuencia historica y atrasos observados' },
-    { name: 'Markov + Transicion',  desc: 'Matrices de probabilidad entre sorteos' },
-    { name: 'Suma + Distribucion',  desc: 'Distribucion estadistica de los 20 premios' },
-  ];
+// Rendimiento real del sistema basado en backtest historico
+// Usa los campos reales que devuelve getClientBacktest: head_hit_rate, board_hit_rate, total_simulated_draws
+// No atribuye metricas globales a motores individuales sin evidencia especifica de cada uno
+function getBacktestSummary() {
   try {
-    const bt = getClientBacktest('all', 'auto', 30);
-    const r20 = bt?.hit_rate_top20 ?? bt?.precision_20 ?? 0.55;
-    const r10 = bt?.hit_rate_top10 ?? bt?.precision_10 ?? 0.48;
-    const r5  = bt?.hit_rate_top5  ?? bt?.precision_5  ?? 0.42;
-    return [
-      { ...ENGINES[0], accuracy: Math.min(99, Math.round(r20 * 100)) },
-      { ...ENGINES[1], accuracy: Math.min(99, Math.round(r10 * 100)) },
-      { ...ENGINES[2], accuracy: Math.min(99, Math.round(r5  * 100)) },
-    ].sort((a, b) => b.accuracy - a.accuracy);
-  } catch(_) {
-    return [
-      { ...ENGINES[0], accuracy: 58 },
-      { ...ENGINES[1], accuracy: 51 },
-      { ...ENGINES[2], accuracy: 44 },
-    ];
+    const bt = getClientBacktest('all', 'all', 30);
+    const totalDraws = bt?.total_simulated_draws ?? 0;
+    if (!bt || totalDraws < 5) {
+      return { noMeasurement: true, reason: bt?.disclaimer || 'Datos insuficientes (muestra menor a 5 sorteos).' };
+    }
+    const headRate = typeof bt.head_hit_rate === 'number' ? bt.head_hit_rate : null;
+    const boardRate = typeof bt.board_hit_rate === 'number' ? bt.board_hit_rate : null;
+    if (headRate === null && boardRate === null) {
+      return { noMeasurement: true, reason: 'Los campos de tasa de acierto no estan disponibles en el backtest.' };
+    }
+    return {
+      noMeasurement: false,
+      headHitRate: headRate,
+      boardHitRate: boardRate,
+      totalDraws,
+      samplePeriod: bt.sample_period || '',
+      disclaimer: bt.disclaimer || '',
+      performanceLift: bt.performance_lift || ''
+    };
+  } catch (e) {
+    return { noMeasurement: true, reason: 'Error al calcular el backtest: ' + (e?.message || 'desconocido') };
   }
 }
 
@@ -94,23 +97,30 @@ const QUICK_TOPICS = [
   { id: 'whatsapp',    label: 'Hablar con Soporte', query: 'Quiero hablar con soporte por WhatsApp' },
 ];
 
-function processQuery(query, engines, shifts) {
+function processQuery(query, backtestSummary, shifts) {
   const q = query.toLowerCase();
-  const top = engines[0];
   const nextShift = shifts.find(s => s.upcoming);
 
-  if (q.includes('motor') || q.includes('cual') || q.includes('ganando') || q.includes('rendimiento') || q.includes('eficiencia')) {
+  if (q.includes('motor') || q.includes('cual') || q.includes('ganando') || q.includes('rendimiento') || q.includes('eficiencia') || q.includes('mejor')) {
+    if (backtestSummary.noMeasurement) {
+      return {
+        text: '**Rendimiento del sistema**:\n\nSin medicion disponible aun.\n_' + backtestSummary.reason + '_\n\nEl sistema requiere al menos 5 sorteos con resultados oficiales sincronizados para calcular el backtest.',
+        action: { type: 'tab', tabId: 'stats_radar', label: 'Ver Radar de Aciertos' }
+      };
+    }
     return {
-      text: '**Rendimiento actual de Motores** (ultimos 30 sorteos):\n\n' +
-        engines.map((e, i) => (i===0?'🥇':'🥈🥉'[i-1]||'  ') + ' **' + e.name + '** — ' + e.accuracy + '% aciertos\n_' + e.desc + '_').join('\n\n') +
-        '\n\n**Mi recomendacion:** El motor **' + top.name + '** es el que mas esta acertando. Los pronosticos ya lo incorporan con mayor peso.',
+      text: '**Rendimiento historico auditado** (' + backtestSummary.totalDraws + ' sorteos):\n\n' +
+        '• Acierto en cabeza: **' + backtestSummary.headHitRate + '%** (vs 5% al azar)\n' +
+        '• Acierto en pizarra: **' + backtestSummary.boardHitRate + '%**\n' +
+        (backtestSummary.performanceLift ? '• Rendimiento vs azar: **' + backtestSummary.performanceLift + '**\n' : '') +
+        '\n_' + (backtestSummary.disclaimer || 'El rendimiento historico no garantiza resultados futuros.') + '_',
       action: { type: 'tab', tabId: 'stats_radar', label: 'Ver Radar de Aciertos' }
     };
   }
   if (q.includes('recomiend') || q.includes('que jugar') || q.includes('proximo') || q.includes('jugar')) {
     const shift = nextShift ? nextShift.name + ' (' + nextShift.time + 'hs)' : 'el proximo sorteo';
     return {
-      text: '**Recomendacion para ' + shift + '**:\n\n• Motor mas eficiente: **' + top.name + '** (' + top.accuracy + '% de aciertos recientes)\n• **Estrategia:** Jugar los primeros 3 numeros "Al 1 Premio (70x)" mas los primeros 5 "A los 5 Premios"\n• **Bankroll:** No superes el 5% de tu saldo por turno. Si perdes 2 turnos seguidos, parate\n• **Redoblona:** Combina el N1 de Ciudad con el N1 de Provincia para maxima cobertura\n\n⚠️ La IA analiza historia. Los sorteos son aleatorios. Juga con responsabilidad.',
+      text: '**Recomendacion para ' + shift + '**:\n\n• **Estrategia:** Jugar los primeros 3 numeros "Al 1 Premio (70x)" mas los primeros 5 "A los 5 Premios"\n• **Bankroll:** No superes el 5% de tu saldo por turno. Si perdes 2 turnos seguidos, parate\n• **Redoblona:** Combina el N1 de Ciudad con el N1 de Provincia para maxima cobertura\n\n⚠️ La IA analiza historia. Los sorteos son aleatorios. Juga con responsabilidad.',
       action: { type: 'tab', tabId: 'predictions', label: 'Ver Pronosticos Ahora' }
     };
   }
@@ -165,7 +175,7 @@ function processQuery(query, engines, shifts) {
   // Default
   const shiftStr = nextShift ? 'Proximo sorteo: **' + nextShift.name + '** a las **' + nextShift.time + 'hs**' : 'Todos los sorteos de hoy ya finalizaron';
   return {
-    text: '**Asesor IA Quinela Master Pro** ' + APP_VERSION + ':\n\n• Motor lider hoy: **' + top.name + '** (' + top.accuracy + '%)\n• ' + shiftStr + '\n\nPuedo ayudarte con:\n• Que motor priorizar y por que\n• Estrategia para el proximo turno\n• Tabla de premios (70x, 500x, 3.500x)\n• Como funciona la auditoria de aciertos\n• Beneficios del Pase VIP\n• Diccionario de suenos en numeros',
+    text: '**Asesor IA Quinela Master Pro** ' + APP_VERSION + ':\n\n• ' + shiftStr + '\n\nPuedo ayudarte con:\n• Rendimiento auditado del sistema\n• Estrategia para el proximo turno\n• Tabla de premios (70x, 500x, 3.500x)\n• Como funciona la auditoria de aciertos\n• Beneficios del Pase VIP\n• Diccionario de suenos en numeros',
     action: { type: 'tab', tabId: 'predictions', label: 'Explorar Pronosticos' }
   };
 }
@@ -176,14 +186,21 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
   const [isTyping, setIsTyping]   = useState(false);
   const chatEndRef = useRef(null);
 
-  const shifts  = useMemo(() => getShiftsStatus(), []);
-  const engines = useMemo(() => getEnginePerformance(), []);
-  const insight = useMemo(() => getProactiveInsight(shifts), [shifts]);
-  const top     = engines[0];
+  const shifts         = useMemo(() => getShiftsStatus(), []);
+  const backtestSummary = useMemo(() => getBacktestSummary(), []);
+  const insight        = useMemo(() => getProactiveInsight(shifts), [shifts]);
+
+  const nextShift = shifts.find(s => s.upcoming);
+  const welcomeBacktestLine = backtestSummary.noMeasurement
+    ? 'Sin medicion disponible aun (se necesitan mas sorteos registrados).'
+    : 'Tasa de acierto en cabeza: **' + backtestSummary.headHitRate + '%** | Pizarra: **' + backtestSummary.boardHitRate + '%** (' + backtestSummary.totalDraws + ' sorteos)';
 
   const [messages, setMessages] = useState(() => [{
     id: 'welcome', sender: 'bot', time: 'Ahora',
-    text: 'Hola! Soy tu **Asesor IA Quinela Master Pro** ' + APP_VERSION + '.\n\nAnalisis en tiempo real:\n• Motor mas eficiente: **' + top.name + '** (' + top.accuracy + '% de aciertos recientes)\n• ' + (shifts.find(s => s.upcoming) ? 'Proximo sorteo: **' + shifts.find(s=>s.upcoming).name + '** a las **' + shifts.find(s=>s.upcoming).time + 'hs**' : 'Sorteos del dia finalizados. Pronosticos actualizandose para manana.') + '\n\nElige un tema rapido o escribime tu consulta:',
+    text: 'Hola! Soy tu **Asesor IA Quinela Master Pro** ' + APP_VERSION + '.\n\n' +
+      welcomeBacktestLine + '\n• ' +
+      (nextShift ? 'Proximo sorteo: **' + nextShift.name + '** a las **' + nextShift.time + 'hs**' : 'Sorteos del dia finalizados. Pronosticos actualizandose para manana.') +
+      '\n\nElige un tema rapido o escribime tu consulta:',
     action: null
   }]);
 
@@ -202,7 +219,7 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
     if (!textToSend) setInputText('');
     setIsTyping(true);
     setTimeout(() => {
-      const resp = processQuery(text, engines, shifts);
+      const resp = processQuery(text, backtestSummary, shifts);
       setMessages(prev => [...prev, { id: (Date.now()+1).toString(), sender: 'bot', text: resp.text, action: resp.action, showWhatsApp: resp.showWhatsApp, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
       setIsTyping(false);
     }, 480);
@@ -288,20 +305,30 @@ export default function AiAdvisorFloatingModal({ activeTab, onNavigate, onOpenUp
                 </div>
               </div>
 
-              {/* Rendimiento de motores */}
+              {/* Panel de rendimiento del sistema — datos reales del backtest */}
               <div className="mb-2">
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider px-0.5 flex items-center gap-1 mb-1.5">
-                  <BarChart3 className="w-3 h-3 text-emerald-400" /> Motores IA — Rendimiento ultimos 30 sorteos
+                  <BarChart3 className="w-3 h-3 text-emerald-400" /> Rendimiento historico auditado
                 </p>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {engines.map((eng, i) => (
-                    <div key={i} className={'rounded-lg p-1.5 border text-center ' + (i === 0 ? 'bg-emerald-950/50 border-emerald-500/40' : 'bg-slate-900/80 border-slate-700/50')}>
-                      <div className={'text-sm font-black ' + (i === 0 ? 'text-emerald-300' : 'text-slate-300')}>{eng.accuracy}%</div>
-                      <div className="text-[8px] text-slate-400 leading-tight mt-0.5 line-clamp-2">{eng.name}</div>
-                      {i === 0 && <div className="text-[7px] text-emerald-400 font-black mt-0.5">LIDER</div>}
+                {backtestSummary.noMeasurement ? (
+                  <div className="rounded-lg p-2 border border-slate-700/50 bg-slate-900/60 text-center">
+                    <p className="text-[9px] text-slate-400 leading-snug">Sin medicion disponible</p>
+                    <p className="text-[8px] text-slate-500 mt-0.5 leading-snug">{backtestSummary.reason}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="rounded-lg p-1.5 border border-emerald-500/40 bg-emerald-950/50 text-center">
+                      <div className="text-sm font-black text-emerald-300">{backtestSummary.headHitRate}%</div>
+                      <div className="text-[8px] text-slate-400 leading-tight mt-0.5">Acierto en cabeza</div>
+                      <div className="text-[7px] text-slate-500 mt-0.5">{backtestSummary.totalDraws} sorteos</div>
                     </div>
-                  ))}
-                </div>
+                    <div className="rounded-lg p-1.5 border border-slate-700/50 bg-slate-900/80 text-center">
+                      <div className="text-sm font-black text-slate-300">{backtestSummary.boardHitRate}%</div>
+                      <div className="text-[8px] text-slate-400 leading-tight mt-0.5">Acierto en pizarra</div>
+                      <div className="text-[7px] text-slate-500 mt-0.5">{backtestSummary.samplePeriod || 'ultimos 30'}</div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Quick chips */}

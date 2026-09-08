@@ -2589,12 +2589,21 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
     return waitingResultPayload;
   }
 
-  // 2. Board or Head validation (20 numbers or p1)
-  const hasBoard = Array.isArray(officialDraw.board) && officialDraw.board.length === 20;
+  // 2. Board or Head presence — determines evaluation scope
+  const boardField = officialDraw.board;
+  const boardPresent = Array.isArray(boardField);
+  const hasBoard = boardPresent && boardField.length === 20;
+  // If board field exists but is not 20 numbers, it is a corrupt result — reject
+  if (boardPresent && !hasBoard) {
+    return waitingResultPayload;
+  }
   const hasP1 = !!(officialDraw.p1 || officialDraw.head_millar);
   if (!hasBoard && !hasP1) {
     return waitingResultPayload;
   }
+  // Head-only evaluation: p1 present and board field entirely absent
+  const boardIsComplete = hasBoard;
+  const headOnlyEvaluation = hasP1 && !boardPresent;
 
   // 3. officialDraw.date == canonicalRecord.date
   const drawDate = officialDraw.date || officialDraw.draw_date || officialDraw.official_date;
@@ -2621,16 +2630,30 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
     return waitingResultPayload;
   }
 
-  // 6. For prospective live draws (Phase 5 >= 2026-09-04), verify status
+  // 6. For prospective live draws (Phase 5 >= 2026-09-04), verify status and provenance
   if (!isHistorical) {
+    // 6a. Status must be explicitly valid — board/p1 presence does NOT bypass status check
     const drawStatus = String(officialDraw.status || '').toUpperCase();
-    const isValidStatus = drawStatus === 'PUBLISHED' || drawStatus === 'COMPLETED' || drawStatus === 'VERIFIED_OFFICIAL' || hasBoard || hasP1;
+    const isValidStatus = drawStatus === 'PUBLISHED' || drawStatus === 'COMPLETED' || drawStatus === 'VERIFIED_OFFICIAL';
     if (!isValidStatus) {
-      return waitingResultPayload;
+      return { ...waitingResultPayload, status: 'WAITING_OFFICIAL_RESULT', evaluation_blocked_reason: `Status '${drawStatus}' is not an accepted published state` };
     }
 
-    if (officialDraw.draw_number && canonicalRecord.expected_draw_number && String(officialDraw.draw_number) !== String(canonicalRecord.expected_draw_number)) {
-      console.warn(`Draw number check: received ${officialDraw.draw_number} vs expected ${canonicalRecord.expected_draw_number}`);
+    // 6b. source_verified must be explicitly true — undefined or false is rejected
+    if (officialDraw.source_verified !== true) {
+      return { ...waitingResultPayload, status: 'WAITING_OFFICIAL_RESULT', evaluation_blocked_reason: 'source_verified is not true' };
+    }
+
+    // 6c. At least one official date metadata field must be present
+    const hasOfficialDateMeta = !!(officialDraw.official_date || officialDraw.extract_date || officialDraw.verified_date);
+    if (!hasOfficialDateMeta) {
+      return { ...waitingResultPayload, status: 'WAITING_OFFICIAL_RESULT', evaluation_blocked_reason: 'Missing official date metadata (official_date / extract_date / verified_date)' };
+    }
+
+    // 6d. draw_number mismatch is a hard rejection, not just a warning
+    if (officialDraw.draw_number && canonicalRecord.expected_draw_number &&
+        String(officialDraw.draw_number) !== String(canonicalRecord.expected_draw_number)) {
+      return { ...waitingResultPayload, status: 'WAITING_OFFICIAL_RESULT', evaluation_blocked_reason: `Draw number mismatch: received ${officialDraw.draw_number}, expected ${canonicalRecord.expected_draw_number}` };
     }
 
     if (officialDraw.received_at) {
@@ -2644,6 +2667,7 @@ export function evaluateCanonicalPrediction(canonicalRecord, officialDraw) {
       }
     }
   }
+
 
   const p1 = officialDraw.p1 || officialDraw.head_millar || '';
   const headAmbo = p1.slice(-2);
