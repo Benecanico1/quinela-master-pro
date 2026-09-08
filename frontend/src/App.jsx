@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Sparkles, 
@@ -86,12 +86,12 @@ class ErrorBoundary extends React.Component {
       return (
         <div className="p-6 bg-slate-900 border border-rose-500/40 rounded-2xl text-center space-y-4 my-6">
           <div className="text-rose-400 font-bold text-lg">Actualizando vista...</div>
-          <p className="text-slate-300 text-xs">Optimizando datos estadísticos.</p>
+          <p className="text-slate-300 text-xs">Optimizando datos estadÃ­sticos.</p>
           <button 
             onClick={() => this.setState({ hasError: false, error: null })}
             className="px-4 py-2 bg-amber-500 text-slate-950 font-black rounded-xl text-xs hover:bg-amber-400 cursor-pointer"
           >
-            Recargar Módulo
+            Recargar MÃ³dulo
           </button>
         </div>
       );
@@ -408,12 +408,12 @@ export default function App() {
     fetchAllData();
   }, [lottery, shift, target]);
 
-  // 5 Main Intuitive Tabs (Se oculta la pestaña de laboratorio ML para no saturar al usuario, sus motores operan en Pronósticos AI)
+  // 5 Main Intuitive Tabs (Se oculta la pestaÃ±a de laboratorio ML para no saturar al usuario, sus motores operan en PronÃ³sticos AI)
   const tabs = [
-    { id: 'predictions', label: 'Pronósticos AI', icon: Sparkles, color: 'text-amber-400', isVipOnly: false },
+    { id: 'predictions', label: 'PronÃ³sticos AI', icon: Sparkles, color: 'text-amber-400', isVipOnly: false },
     { id: 'draws_history', label: 'Sorteos & Resultados', icon: Trophy, color: 'text-amber-300', isVipOnly: false },
-    { id: 'stats_radar', label: 'Radar & Números', icon: Radio, color: 'text-cyan-400', isVipOnly: false },
-    { id: 'dreams', label: 'Libro de Sueños', icon: Moon, color: 'text-purple-400', isVipOnly: false },
+    { id: 'stats_radar', label: 'Radar & NÃºmeros', icon: Radio, color: 'text-cyan-400', isVipOnly: false },
+    { id: 'dreams', label: 'Libro de SueÃ±os', icon: Moon, color: 'text-purple-400', isVipOnly: false },
     { id: 'bankroll', label: 'Estrategia & Premios', icon: Calculator, color: 'text-emerald-400', isVipOnly: true }
   ];
 
@@ -426,7 +426,7 @@ export default function App() {
           <div 
             onClick={() => window.open('/ingenieria_jh_showcase.html', '_blank')}
             className="flex items-center gap-2 min-w-0 cursor-pointer hover:opacity-90 transition-all"
-            title="Ver Arquitectura y Fórmulas de la IA (Ingeniería JH)"
+            title="Ver Arquitectura y FÃ³rmulas de la IA (IngenierÃ­a JH)"
           >
             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl overflow-hidden border border-amber-500/40 shadow shrink-0">
               <img src="/logo.jpg" alt="Quinela Master Pro" className="w-full h-full object-cover" />
@@ -448,7 +448,7 @@ export default function App() {
               type="button"
               onClick={() => setIsResponsibleGamingOpen(true)}
               className="px-2 py-1 rounded-xl bg-slate-900 border border-amber-500/30 hover:border-amber-400 text-amber-300 text-[10px] font-black tracking-tight flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-              title="Información Importante & Juego Responsable (+18)"
+              title="InformaciÃ³n Importante & Juego Responsable (+18)"
             >
               <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
               <span>+18</span>
@@ -456,10 +456,10 @@ export default function App() {
 
             {/* Descargar App Android (APK) */}
             <a
-              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.17.apk"
-              download="QuinelaMasterPro_v1.4.17.apk"
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.18.apk"
+              download="QuinelaMasterPro_v1.4.18.apk"
               className="px-2.5 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/40 text-white text-[10px] sm:text-xs font-black tracking-tight flex items-center gap-1 transition-all shadow-md active:scale-95"
-              title="Descargar App Android Oficial (APK v1.4.17)"
+              title="Descargar App Android Oficial (APK v1.4.18)"
             >
               <Download className="w-3.5 h-3.5 text-white" />
               <span className="hidden xs:inline">Instalar App</span>
@@ -539,7 +539,7 @@ export default function App() {
             <button
               onClick={() => setIsSettingsOpen(true)}
               className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white cursor-pointer transition-all"
-              title="Configuración"
+              title="ConfiguraciÃ³n"
             >
               <Settings className="w-4 h-4" />
             </button>
@@ -655,7 +655,7 @@ export default function App() {
           )}
 
           {activeTab === 'wallet' && (
-            <VipGate isVip={user?.is_vip} featureName="Billetera y Auditoría Oficial de Premios" onOpenUpgrade={() => {
+            <VipGate isVip={user?.is_vip} featureName="Billetera y AuditorÃ­a Oficial de Premios" onOpenUpgrade={() => {
               if (!user?.email || user.email === 'visita@quiniela.com') {
                 setIsAuthOpen(true);
               } else {
@@ -674,7 +674,7 @@ export default function App() {
           {/* App Title & Developed by & Version */}
           <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
             <span className="font-black text-white text-xs sm:text-sm">Quinela Master Pro AI</span>
-            <span className="text-slate-600">•</span>
+            <span className="text-slate-600">â€¢</span>
             <span className="text-slate-400 text-xs">
               Desarrollado por{' '}
               <a 
@@ -686,17 +686,17 @@ export default function App() {
                 ING JH
               </a>
             </span>
-            <span className="text-slate-700">•</span>
+            <span className="text-slate-700">â€¢</span>
             <span className="text-[9px] text-slate-600 font-mono tracking-wider border border-slate-800 px-1.5 py-0.5 rounded-md">v1.4.17</span>
           </div>
 
           {/* Clean Icon Quick Actions (No weird wrapped text) */}
           <div className="flex items-center gap-2">
             <a
-              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.17.apk"
-              download="QuinelaMasterPro_v1.4.17.apk"
+              href="https://raw.githubusercontent.com/Benecanico1/quinela-master-pro/main/play_store_package/QuinelaMasterPro_v1.4.18.apk"
+              download="QuinelaMasterPro_v1.4.18.apk"
               className="p-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
-              title="Descargar App Android Oficial (APK v1.4.17)"
+              title="Descargar App Android Oficial (APK v1.4.18)"
             >
               <Download className="w-4 h-4 text-emerald-400" />
               <span className="text-[11px] font-black hidden md:inline">Descargar App (APK)</span>
@@ -714,25 +714,25 @@ export default function App() {
             <button 
               onClick={() => setIsFeedbackOpen(true)} 
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-pink-400 hover:text-pink-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
-              title="Dejar Opinión & Feedback"
+              title="Dejar OpiniÃ³n & Feedback"
             >
               <MessageSquareHeart className="w-4 h-4" />
-              <span className="text-[11px] font-bold hidden md:inline">Opinión</span>
+              <span className="text-[11px] font-bold hidden md:inline">OpiniÃ³n</span>
             </button>
 
             <button 
               onClick={() => setIsGuideOpen(true)} 
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1.5 shadow"
-              title="Guía de Uso Interactiva"
+              title="GuÃ­a de Uso Interactiva"
             >
               <HelpCircle className="w-4 h-4" />
-              <span className="text-[11px] font-bold hidden md:inline">Guía</span>
+              <span className="text-[11px] font-bold hidden md:inline">GuÃ­a</span>
             </button>
 
             <button 
               onClick={() => setIsSettingsOpen(true)} 
               className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow"
-              title="Configuración"
+              title="ConfiguraciÃ³n"
             >
               <Settings className="w-4 h-4" />
               <span className="text-[11px] font-bold hidden md:inline">Ajustes</span>
@@ -768,7 +768,7 @@ export default function App() {
           className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'predictions' ? 'text-amber-400 font-black' : 'text-slate-400'}`}
         >
           <Sparkles className="w-4 h-4" />
-          <span className="text-[8.5px] font-bold">Pronósticos</span>
+          <span className="text-[8.5px] font-bold">PronÃ³sticos</span>
         </button>
 
         <button
@@ -792,7 +792,7 @@ export default function App() {
           className={`flex flex-col items-center gap-0.5 cursor-pointer ${activeTab === 'dreams' ? 'text-purple-400' : 'text-slate-400'}`}
         >
           <Moon className="w-4 h-4" />
-          <span className="text-[9px] font-bold">Sueños</span>
+          <span className="text-[9px] font-bold">SueÃ±os</span>
         </button>
 
         <button
@@ -844,7 +844,7 @@ export default function App() {
         onElevateAdmin={() => {
           const adminUser = {
             id: 1,
-            name: 'Jesús Hidalgo (Admin)',
+            name: 'JesÃºs Hidalgo (Admin)',
             email: 'jesushidalgo25@gmail.com',
             role: 'admin',
             is_vip: true,
