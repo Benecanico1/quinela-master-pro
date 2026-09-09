@@ -39,15 +39,9 @@ jobs:
           mkdir -p frontend/public/api
           cp backend/real_draws_dump.json frontend/public/api/draws.json
 
-      - name: Deploy Updated draws.json to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_OPENCLAW_NYJ_IA_WEB }}'
-          projectId: openclaw-nyj-ia-web
-          target: ingenieriajh
-          channelId: live
-        continue-on-error: true
+      # Live results are served on demand by quinelaOfficialDraws.
+      # This workflow maintains the independent GitHub archive fallback.
+      # Do not deploy a partial/stale site or hide deployment errors here.
 
       - name: Commit & Push Updated Draws Database
         run: |
